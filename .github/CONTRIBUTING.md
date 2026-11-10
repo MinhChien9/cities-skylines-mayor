@@ -89,16 +89,24 @@ Complete the [pull request template](./pull_request_template.md). It is short on
 ### Verifying your change
 
 ```bash
-# 1. The mod still compiles against the real game assemblies
-powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-mod.ps1 -NoInstall
+# 1. The MCP server and the tests build, and the tests pass
+dotnet build ./mcp-server/Cs1Mayor.Mcp.csproj -c Release
+dotnet test  ./tests/Cs1Mayor.Mcp.Tests/Cs1Mayor.Mcp.Tests.csproj
 
-# 2. The MCP server still builds and the protocol handshake still works
-dotnet build ./Cs1Mayor.sln -c Release
+# 2. The MCP protocol handshake still works (the game may be closed)
 python ./scripts/smoke-test-mcp.py
 
-# 3. The unit tests pass
-dotnet test ./Cs1Mayor.sln
+# 3. The API reference still matches the route table
+python ./scripts/check-api-docs.py
+
+# 4. The mod still compiles against the real game assemblies
+#    (needs Cities: Skylines installed; see -GamePath)
+powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-mod.ps1 -NoInstall
 ```
+
+`dotnet build ./Cs1Mayor.sln` also works, but it includes the mod project, which needs a
+local Cities: Skylines installation. CI builds the MCP server and the test project
+individually for exactly that reason.
 
 If your change touches the in-game bridge, also read
 [`docs/07-verification.md`](../docs/07-verification.md) — it is the playbook for proving

@@ -61,14 +61,17 @@ by the game's Mono runtime.
 ## 2. Build the MCP server
 
 ```powershell
+dotnet build .\mcp-server\Cs1Mayor.Mcp.csproj -c Release
+```
+
+Or the whole solution, which also builds the mod and the tests:
+
+```powershell
 dotnet build .\Cs1Mayor.sln -c Release
 ```
 
-Or just the server:
-
-```powershell
-dotnet build .\mcp-server\Cs1Mayor.Mcp.csproj -c Release
-```
+> The solution includes the mod project, so it needs a local Cities: Skylines
+> installation. Build `mcp-server` on its own if you do not have one.
 
 > If the MCP server is currently running (it is, if opencode has it connected), the
 > build will fail with "file is locked". Restart opencode, or build in Debug, while
