@@ -39,12 +39,15 @@ Two more files live outside this folder:
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-mod.ps1 -NoInstall
 
 # 2. The MCP server builds and the unit tests pass
-dotnet build .\Cs1Mayor.sln
-dotnet test  .\Cs1Mayor.sln
+dotnet build .\mcp-server\Cs1Mayor.Mcp.csproj
+dotnet test  .\tests\Cs1Mayor.Mcp.Tests\Cs1Mayor.Mcp.Tests.csproj
 
 # 3. The MCP protocol handshake works (game may be closed)
 python .\scripts\smoke-test-mcp.py
 ```
+
+`dotnet build .\Cs1Mayor.sln` builds all three projects at once, but it includes the mod
+project, which needs a local Cities: Skylines installation.
 
 ## The one rule
 

@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, project-structure]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -24,23 +24,33 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
+      # The in-game mod compiles against Cities: Skylines' own runtime assemblies,
+      # which cannot be redistributed, so it is not built here. The MCP server and the
+      # test project are, and they have no such dependency.
+      #
+      # The solution (Cs1Mayor.sln) also contains src/SkylinesAgentBridge.csproj, so the
+      # projects are built individually rather than through the solution.
+
       - name: Restore
-        run: dotnet restore ./Cs1Mayor.sln
+        run: |
+          dotnet restore ./mcp-server/Cs1Mayor.Mcp.csproj
+          dotnet restore ./tests/Cs1Mayor.Mcp.Tests/Cs1Mayor.Mcp.Tests.csproj
 
       - name: Build
-        run: dotnet build ./Cs1Mayor.sln -c Release --no-restore
+        run: |
+          dotnet build ./mcp-server/Cs1Mayor.Mcp.csproj -c Release --no-restore
+          dotnet build ./tests/Cs1Mayor.Mcp.Tests/Cs1Mayor.Mcp.Tests.csproj -c Release --no-restore
 
       - name: Test
-        run: dotnet test ./Cs1Mayor.sln -c Release --no-build
+        run: dotnet test ./tests/Cs1Mayor.Mcp.Tests/Cs1Mayor.Mcp.Tests.csproj -c Release --no-build
 
       - name: MCP stdio smoke test
         run: python ./scripts/smoke-test-mcp.py
 
-      # The in-game mod compiles against Cities: Skylines' own runtime assemblies,
-      # which cannot be redistributed. Build it locally with:
-      #   powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-mod.ps1
-      # See docs/02-getting-started.md.
-      - name: Check the mod build script is present and parses
+      - name: Check that the documented endpoints match the route table
+        run: python ./scripts/check-api-docs.py
+
+      - name: Check that the mod build script parses
         run: |
           $errors = $null
           [System.Management.Automation.Language.Parser]::ParseFile(
@@ -48,5 +58,6 @@ jobs:
           if ($errors) { $errors | ForEach-Object { Write-Error $_ }; exit 1 }
           Write-Host "build-mod.ps1 parses cleanly"
 
-      - name: Check that every documented bridge endpoint exists in the router
-        run: python ./scripts/check-api-docs.py
+      # The mod itself is built locally, against a real installation:
+      #   powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-mod.ps1
+      # See docs/02-getting-started.md.
