@@ -95,6 +95,13 @@ public sealed class CityTools
     public Task<JsonNode?> CityPolicies(CancellationToken cancellationToken)
         => Get("/state/policies", cancellationToken);
 
+    [System.ComponentModel.Description("GET /state/transport. All transport lines: id, name, type, complete flag, day/night active, stop count and stop positions, vehicle count and selected vehicle, and per-line passenger counters. Ridership needs simulated time to accumulate — compare two reads after letting time run.")]
+    [McpServerTool(Name = "city_transport", Title = "Transport Lines")]
+    public async Task<JsonNode?> CityTransport(
+        [System.ComponentModel.Description("Max lines to return (1-251, default 251 — the game's own line limit).")] int limit = 251,
+        CancellationToken cancellationToken = default)
+        => await Get($"/state/transport?limit={Clamp(limit, 1, 251)}", cancellationToken).ConfigureAwait(false);
+
     [System.ComponentModel.Description("GET /state/facilities. Service facilities (power, water, police, ...) with coverage data.")]
     [McpServerTool(Name = "city_facilities", Title = "Service Facilities")]
     public async Task<JsonNode?> CityFacilities(
@@ -216,6 +223,13 @@ public sealed class CityTools
         [System.ComponentModel.Description("Optional service filter.")] string? service = null,
         CancellationToken cancellationToken = default)
         => await Get(Query("/prefabs/networks", "service", service), cancellationToken).ConfigureAwait(false);
+
+    [System.ComponentModel.Description("GET /prefabs/transport. Transport line prefabs (bus, tram, metro, ...) with their class, economics, unlock milestone and the compatible vehicle assets. Transport lines are created with city_transport_line action 'create' passing one of these exact names.")]
+    [McpServerTool(Name = "city_transport_prefabs", Title = "Transport Prefabs")]
+    public async Task<JsonNode?> CityTransportPrefabs(
+        [System.ComponentModel.Description("Optional transport type filter, e.g. 'Bus', 'Metro', 'Train'.")] string? type = null,
+        CancellationToken cancellationToken = default)
+        => await Get(Query("/prefabs/transport", "type", type), cancellationToken).ConfigureAwait(false);
 
     // ------------------------------------------------------------------ act
 
@@ -387,6 +401,69 @@ public sealed class CityTools
             ["district"] = district,
             ["dryRun"] = dryRun,
         }, cancellationToken).ConfigureAwait(false);
+
+    [System.ComponentModel.Description("POST /commands/transport-line. Create, edit, activate, rename or re-vehicle a transport line, as the transport line editor does. action='create' takes transportInfo (name from city_transport_prefabs). action='add-stop' takes line + position (x,z world; index defaults to -1 = append at the end, and a new stop placed within ~2.5 units of the first stop closes the line into a loop). action='remove-stop' takes line + index (-1 = last). action='activate' takes line + day/night booleans (false = unserviceable), active=false disables everything. action='rename' takes line + name. action='set-vehicle' takes line + vehicle (asset name). Every action returns the live game readback for the line.")]
+    [McpServerTool(Name = "city_transport_line", Title = "Transport Line Editor")]
+    public async Task<JsonNode?> CityTransportLine(
+        [System.ComponentModel.Description("Action: 'create', 'add-stop', 'remove-stop', 'activate', 'rename' or 'set-vehicle'.")] string action,
+        [System.ComponentModel.Description("Line id for every action except 'create'.")] int line = 0,
+        [System.ComponentModel.Description("For 'create': transport prefab name from city_transport_prefabs, e.g. 'Bus'.")] string? transportInfo = null,
+        [System.ComponentModel.Description("For 'add-stop': stop position X in world coordinates.")] double? x = null,
+        [System.ComponentModel.Description("For 'add-stop': stop position Y (height); omit to sample the terrain.")] double? y = null,
+        [System.ComponentModel.Description("For 'add-stop': stop position Z in world coordinates.")] double? z = null,
+        [System.ComponentModel.Description("Stop index: -1 appends (default); a specific index inserts; placing a stop within ~2.5 units of the first stop closes the loop.")] int index = -1,
+        [System.ComponentModel.Description("For 'add-stop': freeze the platform at the given position (default false).")] bool fixedPlatform = false,
+        [System.ComponentModel.Description("For 'activate': day service (default true).")] bool day = true,
+        [System.ComponentModel.Description("For 'activate': night service (default true).")] bool night = true,
+        [System.ComponentModel.Description("For 'activate': short for day=true, night=true (default true); false disables all service.")] bool active = true,
+        [System.ComponentModel.Description("For 'rename': the new line name.")] string? name = null,
+        [System.ComponentModel.Description("For 'set-vehicle': the vehicle asset name.")] string? vehicle = null,
+        [System.ComponentModel.Description("For 'create': allocate a new line number for the type (default true).")] bool newNumber = true,
+        [System.ComponentModel.Description("Validate only, do not mutate (default false; add-stop answers the game's own CanAddStop).")] bool dryRun = false,
+        CancellationToken cancellationToken = default)
+    {
+        var body = new Dictionary<string, object?>
+        {
+            ["action"] = action,
+            ["line"] = Clamp(line, 0, 65535),
+            ["dryRun"] = dryRun,
+        };
+        if (transportInfo != null)
+        {
+            body["transportInfo"] = transportInfo;
+        }
+        if (x.HasValue || y.HasValue || z.HasValue)
+        {
+            body["position"] = new { x = x ?? 0, y = y ?? 0, z = z ?? 0 };
+        }
+        if (index != -1)
+        {
+            body["index"] = index;
+        }
+        if (fixedPlatform)
+        {
+            body["fixedPlatform"] = true;
+        }
+        if (action == "activate")
+        {
+            body["day"] = day;
+            body["night"] = night;
+            body["active"] = active;
+        }
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            body["name"] = name;
+        }
+        if (!string.IsNullOrWhiteSpace(vehicle))
+        {
+            body["vehicle"] = vehicle;
+        }
+        if (!newNumber)
+        {
+            body["newNumber"] = false;
+        }
+        return await Post("/commands/transport-line", body, cancellationToken).ConfigureAwait(false);
+    }
 
     [System.ComponentModel.Description("POST /commands/save. Save the city to a named slot (.crp on disk).")]
     [McpServerTool(Name = "city_save", Title = "Save City")]

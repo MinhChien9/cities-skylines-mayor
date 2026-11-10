@@ -45,7 +45,7 @@ C# 5, `net35`, compiled against the game's own assemblies. Namespace root:
 | `AgentBridgeLoading.cs` | 18 | `LoadingExtensionBase` hook — forwards level load/unload to the singleton. |
 | `AgentBridgeThreading.cs` | 27 | `ThreadingExtensionBase` hook — pumps the dispatcher per frame and captures the `ICities.IManagers` handle in `OnCreated`. |
 | `ApiServer.cs` | 119 | The TCP listener. Accepts connections, hands each to a thread-pool worker, writes the response. Nothing else. |
-| `ApiRoutes.cs` | 405 | The whole HTTP surface: one table of `(method, path) → handler`, plus the route descriptions shown in the in-game console. |
+| `ApiRoutes.cs` | 438 | The whole HTTP surface: one table of `(method, path) → handler`, plus the route descriptions shown in the in-game console. |
 | `AgentBridgeNotifier.cs` | 349 | The draggable in-game console panel. Shows what the agent is doing, live. |
 | `Http/HttpRequest.cs` | 190 | Parses one HTTP/1.1 request off the socket and reads its query parameters. |
 | `Http/HttpResponse.cs` | 55 | Writes a JSON response with the right status line and headers. |
@@ -75,6 +75,7 @@ silently reintroduced exactly the race the design exists to prevent, and it was 
 | `BulldozeCommands.cs` | 73 | `bulldoze` | Removing a building, a segment or a node. |
 | `EconomyCommands.cs` | 524 | `set-tax-rate`, `/state/budgets`, `set-budget` | Reading and writing tax rates across every service target, plus service day/night budgets. |
 | `PolicyCommands.cs` | 405 | `/state/policies`, `set-policy` | The 127-policy catalogue (name, game group, loaded state, city-wide and per-district state) and setting/unsetting policies city-wide, per district or per park. |
+| `TransportCommands.cs` | 712 | `/state/transport`, `/prefabs/transport`, `transport-line` | The transport line model: prefab catalogue with compatible vehicles, line state (stops, vehicles, active flags, passenger counters), and the six line-editor actions (create / add-stop / remove-stop / activate / rename / set-vehicle). |
 | `SaveCommands.cs` | 132 | `save` | Saving the city and listing `.crp` files on disk. |
 | `SimulationCommands.cs` | 32 | `set-simulation-speed` | Pause and speed 1–3. |
 | `AssetCommands.cs` | 60 | `disable-blocked-assets` | Disabling prefabs the game ships broken. |
@@ -113,7 +114,7 @@ C#, .NET 10, `ModelContextProtocol` 2.4.0. Namespace `Cs1Mayor.Mcp`.
 | File | Lines | Owns |
 |------|-------|------|
 | `Program.cs` | 67 | Host setup, the stdio transport, and the operating instructions sent to the agent. |
-| `CityTools.cs` | ~500 | The 33 raw tools — one per bridge endpoint, plus `city_request`. Each is a thin relay of one HTTP call. |
+| `CityTools.cs` | ~609 | The raw tools — one per bridge endpoint, plus `city_request`. Each is a thin relay of one HTTP call. |
 | `BridgeClient.cs` | 181 | The HTTP client, the error translation, and body truncation so errors stay small in the agent's context. |
 
 ### The tool surface (one tool per endpoint)

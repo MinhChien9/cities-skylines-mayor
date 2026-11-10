@@ -210,6 +210,33 @@ is on disk after the run.
 
 ---
 
+## 1f. R2 verification — transport lines — ⏳ IMPLEMENTED, LIVE RUN PENDING
+
+*(Code shipped 2026-11-11; the mod DLL is installed and the endpoints compile against
+the live game assemblies. The live run below follows the same act → re-read → compare
+discipline, and needs the game restarted with the new DLL first.)*
+
+| Check | How |
+|---|---|
+| Prefab catalogue | `GET /prefabs/transport` enumerates the `TransportInfo` assets (the R2 open question about `PrefabCollection<TransportInfo>`) — bus, metro, tram … with their classes, economics and vehicle lists. |
+| Create | `transport-line create` → the response `line` id plus `lineData`; an **independent** `GET /state/transport` shows the line with `complete:false`, default `selectedVehicle`. |
+| Stop-chain | `add-stop` → `lineData.stopCount` grows; the stop node positions read back from `NetManager`. `dryRun` answers `CanAddStop` and mutates nothing. |
+| Loop closing | A stop within ~2.5 units of the first stop → `complete:true` (the game closes the chain itself). |
+| Stop removal | `remove-stop` → `stopCount` drops, the chain reconnects. |
+| Day/night service | `activate` day/night → `GetActive` readback flips, independently confirmed in `/state/transport`. |
+| Rename | `rename` → `GetLineName` before/after in the same response. |
+| Vehicle | `set-vehicle` → `GetLineVehicle` readback flips; `GetVehicleIndex` refuses unknown names with the compatible list. |
+| Ridership | With a complete line and its depot connected, let simulated time run (speed 3, unpaused) → `vehicleCount` leaves from 0 and `passengers` counters start climbing. |
+| Unemployment effects | Optional cross-check: `/state/growables` and land value in the zoned blocks the line serves. |
+| Save the state | `city_save R2-verify-transport` once the line runs. |
+
+Because a bus depot must exist for vehicles to spawn (the game's spawn AI needs a depot
+of the same service/starvation class), the live run starts on a save that has a bus depot
+or builds one first with `city_place_building` — if `vehicleCount` stays 0 with a
+`complete` line, `city_facilities?service=PublicTransport` is the next read, not a retry.
+
+---
+
 ## 2. Dry runs
 
 Every mutating tool accepts `dryRun=true`:

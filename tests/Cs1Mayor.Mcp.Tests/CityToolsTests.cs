@@ -30,6 +30,7 @@ public class CityToolsTests
     [InlineData("CityPolicies", "/state/policies")]
     [InlineData("CitySaves", "/state/saves")]
     [InlineData("CityRoadPrefabs", "/prefabs/roads")]
+    [InlineData("CityTransportPrefabs", "/prefabs/transport")]
     [InlineData("CityDisableBlockedAssets", "/commands/disable-blocked-assets")]
     public async Task Tools_relay_their_endpoint_one_to_one(string toolName, string expectedPath)
     {
@@ -108,6 +109,39 @@ public class CityToolsTests
 
         Assert.DoesNotContain("service=", handler.Requests[0].Path);
         Assert.DoesNotContain("includeMapObjects=", handler.Requests[0].Path);
+    }
+
+    [Fact]
+    public async Task CityTransport_defaults_to_the_game_line_limit()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityTransport(cancellationToken: CancellationToken.None);
+
+        Assert.Equal("/state/transport?limit=251", handler.Requests[0].Path);
+    }
+
+    [Fact]
+    public async Task CityTransportPrefabs_passes_the_type_filter()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityTransportPrefabs(type: "Bus", CancellationToken.None);
+
+        Assert.Contains("type=Bus", handler.Requests[0].Path);
+    }
+
+    [Fact]
+    public async Task CityTransportPrefabs_omits_the_filter_when_none_is_given()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityTransportPrefabs(cancellationToken: CancellationToken.None);
+
+        Assert.Equal("/prefabs/transport", handler.Requests[0].Path);
     }
 
     // ---------------------------------------------------------------- posts
@@ -280,6 +314,69 @@ public class CityToolsTests
     }
 
     // ------------------------------------------------------------ passthrough
+
+    [Fact]
+    public async Task CityTransportLine_create_posts_the_transport_info()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityTransportLine("create", transportInfo: "Bus", cancellationToken: CancellationToken.None);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("/commands/transport-line", request.Path);
+        Assert.Contains("\"action\":\"create\"", request.Body);
+        Assert.Contains("\"transportInfo\":\"Bus\"", request.Body);
+        Assert.Contains("\"line\":0", request.Body);
+        Assert.DoesNotContain("\"position\"", request.Body);
+    }
+
+    [Fact]
+    public async Task CityTransportLine_add_stop_posts_the_position_and_index()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityTransportLine("add-stop", 3, x: 10, z: 20, index: -1, cancellationToken: CancellationToken.None);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Contains("\"line\":3", request.Body);
+        Assert.Contains("\"position\":{\"x\":10,\"y\":0,\"z\":20}", request.Body);
+        Assert.Contains("\"dryRun\":false", request.Body);
+    }
+
+    [Fact]
+    public async Task CityTransportLine_activate_posts_day_and_night()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityTransportLine("activate", 7, day: true, night: false, cancellationToken: CancellationToken.None);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Contains("\"action\":\"activate\"", request.Body);
+        Assert.Contains("\"line\":7", request.Body);
+        Assert.Contains("\"day\":true", request.Body);
+        Assert.Contains("\"night\":false", request.Body);
+    }
+
+    [Fact]
+    public async Task CityTransportLine_rename_and_set_vehicle_post_their_fields()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityTransportLine("rename", 7, name: "Blue Line", cancellationToken: CancellationToken.None);
+        var rename = Assert.Single(handler.Requests);
+        Assert.Contains("\"action\":\"rename\"", rename.Body);
+        Assert.Contains("\"name\":\"Blue Line\"", rename.Body);
+
+        handler.Requests.Clear();
+        await tools.CityTransportLine("set-vehicle", 7, vehicle: "Bus", dryRun: true, cancellationToken: CancellationToken.None);
+        var vehicle = Assert.Single(handler.Requests);
+        Assert.Contains("\"vehicle\":\"Bus\"", vehicle.Body);
+        Assert.Contains("\"dryRun\":true", vehicle.Body);
+    }
 
     [Fact]
     public async Task CityRequest_relays_get_without_a_body()

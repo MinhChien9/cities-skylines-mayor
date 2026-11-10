@@ -129,16 +129,22 @@ read back); see `docs/07-verification.md`.
 
 ### R2 — transport lines (Tier 1 + Tier 3)
 
-- [ ] `GET /prefabs/transport` — the `TransportInfo` catalogue (bus, tram, metro, ferry,
-      cargo) and their default vehicles
-- [ ] `GET /state/transport` — lines, stops, vehicles, active state
-- [ ] `POST /commands/transport-line` — create / add stop / remove stop / activate /
-      rename / set vehicle **[verified API: `TransportManager.CreateLine`,
-      `TransportLine.AddStop`, `TransportLine.SetActive`]**
-- [ ] MCP tool `city_transport_line`
-- [ ] **Verify**: a bus line runs, picks up passengers, and the city reads it back
-- [ ] *No `ICities` transport interface exists — this is the one big family with no
-      supported API.*
+- [x] `GET /prefabs/transport` — the `TransportInfo` catalogue (bus, tram, metro, ferry,
+      cargo) and their default vehicles *(the compatible vehicle list per type)*
+- [x] `GET /state/transport` — lines, stops, vehicles, active state
+- [x] `POST /commands/transport-line` — create / add stop / remove stop / activate /
+      rename / set vehicle
+      **[verified API, decompiled 2026-11-11: `TransportManager.CreateLine`,
+      `TransportLine.AddStop`, `TransportLine.SetActive`; corrections to the earlier
+      research: `TransportLine.ReplaceVehicles` is internal — the public vehicle route is
+      `TransportManager.AssignSelectedLineVehicle` + `GetVehicleIndex`, and
+      `SetLineName` is a one-shot `IEnumerator<bool>` coroutine.]**
+- [x] MCP tools `city_transport`, `city_transport_prefabs`, `city_transport_line`
+- [ ] **Verify live**: a bus line runs, picks up passengers, and the city reads it back
+      *(mod DLL installed 2026-11-11; plan in `docs/07-verification.md` §1f — needs a
+      game restart with the new DLL, check #1 for the end-to-end flow)*
+- [x] *No `ICities` transport interface exists — confirmed; this is the one big family
+      with no supported API.*
 
 ### R3 — districts & special areas (Tier 2 + Tier 3)
 
