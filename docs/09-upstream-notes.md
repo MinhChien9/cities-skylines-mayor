@@ -164,7 +164,7 @@ Claude Code, and any other MCP client.
 ### 7. New: the knowledge base
 
 The upstream has no game-mechanics reference; the agent is expected to know the game or
-look it up. This fork adds `docs/GAME-MECHANICS.md` and `docs/EXPANSIONS.md`, both derived
+look it up. This fork adds `docs/05-game-mechanics.md` and `docs/06-expansions.md`, both derived
 from decompiled game code, with the exact formulas and thresholds.
 
 ---

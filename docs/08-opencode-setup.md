@@ -150,9 +150,9 @@ with:
 public sealed class KnowledgeResources
 {
     [McpServerResource(UriTemplate = "cs1://knowledge/{topic}", Name = "Game mechanics")]
-    private static string GameMechanics() => File.ReadAllText(KnowledgePath("GAME-MECHANICS.md"));
+    private static string GameMechanics() => File.ReadAllText(KnowledgePath("05-game-mechanics.md"));
 
-    // ... EXPANSIONS.md, ARCHITECTURE.md, VERIFICATION.md
+    // ... 06-expansions.md, 01-architecture.md, 07-verification.md
 }
 ```
 
