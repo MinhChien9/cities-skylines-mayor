@@ -1,8 +1,10 @@
 using ColossalFramework;
 using ColossalFramework.Math;
 using UnityEngine;
+using SkylinesAgentBridge.State;
+using SkylinesAgentBridge.Support;
 
-namespace SkylinesAgentBridge
+namespace SkylinesAgentBridge.Commands
 {
     public static class RoadCommands
     {
@@ -12,8 +14,8 @@ namespace SkylinesAgentBridge
             string prefabName = JsonUtil.GetString(body, "roadPrefab", "Basic Road");
             string name = JsonUtil.GetString(body, "name", "");
 
-            Vector3 start = ReadPoint(body, "start");
-            Vector3 end = ReadPoint(body, "end");
+            Vector3 start = CommandInput.ReadPoint(body, "start");
+            Vector3 end = CommandInput.ReadPoint(body, "end");
 
             NetInfo info = PrefabCollection<NetInfo>.FindLoaded(prefabName);
             if (info == null)
@@ -149,14 +151,6 @@ namespace SkylinesAgentBridge
 
             return existing.m_class.m_service == ItemClass.Service.Road &&
                 requested.m_class.m_service == ItemClass.Service.Road;
-        }
-
-        private static Vector3 ReadPoint(string body, string name)
-        {
-            float x = JsonUtil.GetPointNumber(body, name, "x", 0f);
-            float z = JsonUtil.GetPointNumber(body, name, "z", 0f);
-            float y = JsonUtil.GetPointNumber(body, name, "y", 0f);
-            return new Vector3(x, y, z);
         }
     }
 }

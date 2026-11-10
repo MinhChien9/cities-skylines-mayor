@@ -1,7 +1,8 @@
 using System.Collections.Generic;
 using System.Text;
+using SkylinesAgentBridge.Support;
 
-namespace SkylinesAgentBridge
+namespace SkylinesAgentBridge.Commands
 {
     public static class BatchCommands
     {

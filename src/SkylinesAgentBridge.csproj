@@ -1,0 +1,96 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The in-game bridge mod.
+
+    This project file exists so the mod can be opened in an IDE, browsed with
+    IntelliSense, and built from the repository solution. It is NOT the canonical
+    build for shipping the mod: scripts/build-mod.ps1 compiles the exact same
+    sources with Roslyn against the game's own runtime assemblies and copies the
+    result into the Cities: Skylines mods folder. Both produce the same DLL.
+
+    The game ships its own Mono runtime and a full set of reference assemblies in
+    Cities_Data\Managed. We reference those exact assemblies so the mod links
+    against the same BCL the game loads at runtime.
+
+    NOTE: reference Cities_Data\Managed\System.Core.dll (NOT Mono\lib\mono\unity\).
+    The "unity" compile profile does not contain System.IO.Pipes, while the runtime
+    Managed\ folder does.
+
+    Point the build at a different install with:
+        dotnet build src/SkylinesAgentBridge.csproj -p:GamePath="D:\Games\CitiesSkylines"
+    or by setting the CITIES_SKYLINES_PATH environment variable.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net35</TargetFramework>
+    <LangVersion>5</LangVersion>
+    <AssemblyName>SkylinesAgentBridge</AssemblyName>
+    <RootNamespace>SkylinesAgentBridge</RootNamespace>
+    <OutputPath>$(MSBuildThisFileDirectory)..\bin\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <DebugType>portable</DebugType>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoStdLib>true</NoStdLib>
+    <NoWarn>$(NoWarn);CS0169;CS0414;CS0649</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GamePath)' == '' and '$(CITIES_SKYLINES_PATH)' != ''">
+    <GamePath>$(CITIES_SKYLINES_PATH)</GamePath>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GamePath)' == ''">
+    <GamePath>D:\Epic Games\CitiesSkylines</GamePath>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <ManagedDir>$(GamePath)\Cities_Data\Managed\</ManagedDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="**\*.cs" Exclude="bin\**;obj\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="mscorlib">
+      <HintPath>$(ManagedDir)mscorlib.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="System">
+      <HintPath>$(ManagedDir)System.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="System.Core">
+      <HintPath>$(ManagedDir)System.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="ICities">
+      <HintPath>$(ManagedDir)ICities.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(ManagedDir)Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp-firstpass">
+      <HintPath>$(ManagedDir)Assembly-CSharp-firstpass.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="ColossalManaged">
+      <HintPath>$(ManagedDir)ColossalManaged.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(ManagedDir)UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="CheckGameAssemblies" BeforeTargets="BeforeCompile">
+    <Error Condition="!Exists('$(ManagedDir)ICities.dll')"
+           Text="Cities: Skylines managed assemblies were not found at '$(ManagedDir)'. Pass -p:GamePath=&quot;path to the game&quot; or set CITIES_SKYLINES_PATH." />
+  </Target>
+
+</Project>
