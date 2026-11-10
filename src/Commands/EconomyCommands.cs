@@ -100,7 +100,39 @@ namespace SkylinesAgentBridge.Commands
                 }
             }
 
-            return CommandResult.FromJson("{\"ok\":true,\"aggregateTaxRates\":[" + aggregateRates.ToString() + "],\"taxRates\":[" + rates.ToString() + "]}");
+            return CommandResult.FromJson("{\"ok\":true" + BuildMoneyJson(manager) +
+                ",\"aggregateTaxRates\":[" + aggregateRates.ToString() + "]" +
+                ",\"taxRates\":[" + rates.ToString() + "]}");
+        }
+
+        /// <summary>
+        /// Builds the money block. The game stores money in hundredths and divides by 100
+        /// for display, so the figures here match the HUD and AGENTS.md's thresholds.
+        /// </summary>
+        private static string BuildMoneyJson(EconomyManager manager)
+        {
+            long income = 0;
+            long expenses = 0;
+            manager.GetIncomeAndExpenses(ItemClass.Service.None, ItemClass.SubService.None,
+                ItemClass.Level.None, out income, out expenses);
+
+            // The multiplier is stored in units of 1/10000, so 10000 is 100%.
+            int rawMultiplier = GetRawTaxMultiplier(manager);
+
+            return ",\"cash\":" + (manager.InternalCashAmount / 100) +
+                ",\"income\":" + (income / 100) +
+                ",\"expenses\":" + (expenses / 100) +
+                ",\"balance\":" + ((income - expenses) / 100) +
+                ",\"taxMultiplierPercent\":" + (rawMultiplier / 100);
+        }
+
+        /// <summary>Reads the private tax multiplier field.</summary>
+        private static int GetRawTaxMultiplier(EconomyManager manager)
+        {
+            FieldInfo field = typeof(EconomyManager).GetField(
+                "m_taxMultiplier",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            return field == null ? 10000 : (int)field.GetValue(manager);
         }
 
         public static CommandResult SetTaxRate(string body)

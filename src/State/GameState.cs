@@ -14,7 +14,11 @@ namespace SkylinesAgentBridge.State
             SimulationManager simulation = Singleton<SimulationManager>.instance;
             NetManager net = NetManager.instance;
             ZoneManager zones = ZoneManager.instance;
+            DistrictManager districts = Singleton<DistrictManager>.instance;
+            EconomyManager economy = Singleton<EconomyManager>.instance;
             CitizenManager citizens = CitizenManager.instance;
+
+            District district = districts.m_districts.m_buffer[0];
 
             StringBuilder json = new StringBuilder();
             json.Append("{\"ok\":true");
@@ -26,7 +30,12 @@ namespace SkylinesAgentBridge.State
             json.Append(",\"network\":{\"nodes\":").Append(net.m_nodeCount);
             json.Append(",\"segments\":").Append(net.m_segmentCount);
             json.Append(",\"lanes\":").Append(net.m_laneCount).Append("}");
-            json.Append(",\"citizens\":{\"count\":").Append(citizens.m_citizenCount).Append("}");
+            json.Append(",\"population\":").Append(district.m_populationData.m_finalCount);
+            json.Append(",\"cash\":").Append(economy.InternalCashAmount / 100);
+            json.Append(",\"happiness\":").Append(district.m_finalHappiness);
+            // Not the population: citizen objects include the travellers the
+            // outside-connection AI spawns for the map-edge airports and rail heads.
+            json.Append(",\"citizenObjects\":").Append(citizens.m_citizenCount);
             json.Append(",\"demand\":{\"residential\":").Append(zones.m_residentialDemand);
             json.Append(",\"commercial\":").Append(zones.m_commercialDemand);
             json.Append(",\"workplace\":").Append(zones.m_workplaceDemand).Append("}");

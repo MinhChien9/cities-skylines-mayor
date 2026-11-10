@@ -40,6 +40,53 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 | GET | `/prefabs/roads` | Available road prefabs. |
 | GET | `/prefabs/networks` | Available network prefabs. `?service=`. |
 
+### `/state/summary` — the headline numbers
+
+```json
+{
+  "ok": true,
+  "gameTime": "2027-03-19T13:28:50",
+  "buildIndex": 4628,
+  "simulation": { "paused": true, "selectedSpeed": 1, "finalSpeed": 0 },
+  "network": { "nodes": 1415, "segments": 1412, "lanes": 4521 },
+  "population": 0,
+  "cash": 65002,
+  "happiness": 0,
+  "citizenObjects": 1472,
+  "demand": { "residential": 100, "commercial": 0, "workplace": 0 }
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `population` | **Residents.** The same number the game's own population label shows. |
+| `cash` | City treasury in currency units (₡), the same scale the game HUD shows. Negative means a deficit. |
+| `happiness` | Average citizen happiness, 0–100. |
+| `citizenObjects` | Citizen objects the simulation has allocated. **Not** population — this includes the dummy travellers the outside-connection AI spawns for the map-edge airports, harbours and rail heads, so it reads in the thousands on a map with no citizens at all. Use `population`. |
+
+### `/state/economy` — the money block
+
+```json
+{
+  "ok": true,
+  "cash": 65002,
+  "income": 0,
+  "expenses": 272,
+  "balance": -272,
+  "taxMultiplierPercent": 183,
+  "aggregateTaxRates": [ ... ],
+  "taxRates": [ ... ]
+}
+```
+
+Money is reported in the same currency units the game HUD uses. The game stores money
+in hundredths and divides by 100 for display, so the default bailout limit of
+`-1000000` shows as **−₡10,000** — the figure AGENTS.md quotes.
+
+`taxMultiplierPercent` is the plain percentage the mayor should reason about: **100 is
+break-even, above 100 means the city is in deficit**. The game stores the raw value in
+units of 1/10000.
+
 ### `/debug/threads` — the thread proof
 
 ```json
