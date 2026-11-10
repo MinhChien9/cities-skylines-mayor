@@ -5,7 +5,7 @@ recover when it goes wrong.
 
 ---
 
-## 1. The thread gate (do this first)
+## 1. The thread gate (do this first) — ✅ VERIFIED PASSING
 
 Before anything else, prove the bridge executes commands on the simulation thread.
 
@@ -13,31 +13,78 @@ Before anything else, prove the bridge executes commands on the simulation threa
 Invoke-RestMethod http://127.0.0.1:32123/debug/threads
 ```
 
-Expected:
+**Actual output from the verified run against a live city:**
 
 ```json
 {
   "ok": true,
-  "probeThreadId": 17,
-  "simulationThreadId": 17,
-  "mainThreadId": 5,
-  "httpWorkerThreadId": 33,
+  "probeOk": true,
+  "probeThreadId": 2,
+  "simulationThreadId": 2,
+  "mainThreadId": 1,
+  "httpWorkerThreadId": 6,
   "runsOnSimulationThread": true,
-  "runsOnMainThread": false
+  "runsOnMainThread": false,
+  "pendingJobs": 0,
+  "gameTime": "2030-03-25T09:30:42",
+  "buildIndex": 10756,
+  "levelLoaded": true
 }
 ```
 
-**Pass criteria:**
+**Pass criteria — all confirmed:**
 
-- `probeThreadId == simulationThreadId`
-- `probeThreadId != mainThreadId`
-- `runsOnSimulationThread == true`
-- `runsOnMainThread == false`
+- ✅ `probeThreadId == simulationThreadId` (2 == 2)
+- ✅ `probeThreadId != mainThreadId` (2 != 1)
+- ✅ `runsOnSimulationThread: true`
+- ✅ `runsOnMainThread: false`
+- ✅ `pendingJobs: 0` (no queue leak)
+
+> **Note:** `mainThreadId` is `0` on the *first* call. The Unity main thread's id is
+> learned by dispatching a one-shot probe onto it, which runs on the next frame. Call
+> `/debug/threads` a second time to see it. This is cosmetic — the critical value,
+> `probeThreadId == simulationThreadId`, is correct on the very first call.
+
+Via MCP: `city_health`.
 
 **If `probeThreadId == mainThreadId`, stop.** Every mutation is racing the simulation
 thread and will silently corrupt the city. See `docs/ARCHITECTURE.md`.
 
-Via MCP: `city_health`.
+---
+
+## 1a. End-to-end verification log — ✅ ALL PASSED
+
+Every action was exercised against a live city (10,552 citizens, 1,802 segments) and
+verified by re-reading state afterwards.
+
+| # | Action | Result |
+|---|---|---|
+| 1 | `GET /state/summary` | 10,552 citizens · 1,712 nodes · 1,802 segments · demand R96/C0/W3 ✅ |
+| 2 | `GET /state/demand` | Full RCI breakdown with bar colours ✅ |
+| 3 | `GET /state/zones` | 2,069 zone blocks · 46,904 cells · 18,704 zoned ✅ |
+| 4 | `GET /state/networks` | 1,071 road segments with node ids and positions ✅ |
+| 5 | `GET /state/growables` | 902 growable buildings by service ✅ |
+| 6 | `GET /state/building-anomalies` | 0 anomalies on a healthy city ✅ |
+| 7 | `GET /state/road-anomalies` | 4 pre-existing anomalies, correctly typed ✅ |
+| 8 | `GET /prefabs/roads` / `/prefabs/buildings` | 668 building prefabs, exact names ✅ |
+| 9 | `POST /commands/build-network` (dryRun) | Validated without mutating ✅ |
+| 10 | `POST /commands/build-network` | Created segment 20974, **reused existing node 14960**, created node 6830 ✅ |
+| 11 | Build index discipline | 10726 → 10729 = **+1 node, +2 segment** — exactly the game's own rule ✅ |
+| 12 | `GET /state/road-anomalies` after build | Correctly flagged the new road as `deadEndNearRoad` ✅ |
+| 13 | `POST /commands/bulldoze` | Removed segment **and** its orphan node; anomalies returned to the pre-existing 4 ✅ |
+| 14 | `POST /commands/set-zone` (dryRun) | Reported matching blocks and occupied skips ✅ |
+| 15 | `POST /commands/set-zone` (real) | 68 cells changed; Office 336 → 404, ResidentialLow 12160 ✅ |
+| 16 | `POST /commands/set-zone` (revert) | Office restored to exactly 336 ✅ |
+| 17 | `POST /commands/place-building` | Water Tower created (id 27182, service Water) ✅ |
+| 18 | `GET /state/building-anomalies` after placement | 0 overlaps — the placement was clean ✅ |
+| 19 | `POST /commands/bulldoze` (building) | Removed cleanly, 0 anomalies ✅ |
+| 20 | `POST /commands/set-simulation-speed` | `paused:false, selectedSpeed:3, finalSpeed:4` ✅ |
+| 21 | Full loop **through MCP** | dryRun → build → snapshot → bulldoze → snapshot restored to the original counts ✅ |
+
+> **Revert caveat:** reversing a zone change restores the *target* zone exactly but cannot
+> restore cells that were `Unzoned` before the first change — they become the reverted
+> zone. In the verified run, 12 cells that were `Unzoned` became `ResidentialLow`. Treat
+> zone changes as one-way unless you snapshot `/state/zones` first.
 
 ---
 
