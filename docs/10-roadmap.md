@@ -14,7 +14,7 @@ endpoint, exposed to the agent as one raw MCP tool. The master table — and the
       thread; the upstream's reflection bypass and `CommandQueue` are deleted
 - [x] **`/debug/threads`** — runtime proof of which thread executes commands
 - [x] **MCP server** — C# / .NET 10, `ModelContextProtocol` 2.4.0, stdio
-- [x] **Raw 1:1 tool surface** — 33 tools, one per bridge endpoint, each relaying one
+- [x] **Raw 1:1 tool surface** — 34 tools, one per bridge endpoint, each relaying one
       HTTP call with no server-side logic; `city_request` reaches *any* endpoint, so new
       bridge work is agent-callable before a dedicated tool exists
 - [x] **Protocol smoke test** — initialize → tools/list → tools/call verified
@@ -81,10 +81,23 @@ Each release also adds its MCP tools (or relies on `city_request` in the interim
 
 ### R0 — capture `ICities` (Tier 0)
 
-- [ ] Capture `IManagers` in `ICities.ThreadingExtensionBase.OnCreated`
-- [ ] `GET /state/capabilities` — what this running game supports: expansions, version,
-      the milestone names, the unlocked `Feature`s
-- [ ] Read the simulation clock from `IThreading` instead of parsing the date
+- [x] Capture `IManagers` in `ICities.ThreadingExtensionBase.OnCreated` — stored on
+      `AgentBridge.ICitiesManagers`, served as an opaque handle.
+      **Live-game finding:** for a mod dropped into the Mods folder, the game loads the
+      assembly and constructs `IUserMod` but never instantiates the extension bases —
+      neither `OnCreated` nor `OnLevelLoaded` fired — so `EnsureICitiesManagers()`
+      lazily constructs the game's own public `ManagersWrapper` on the simulation
+      thread as a fallback.
+- [x] `GET /state/capabilities` — version (`IApplication.currentVersion`), expansions
+      (`SupportsExpansion`), milestone names (`IMilestones.EnumerateMilestones`), the
+      current milestone, and the unlocked/locked `UnlockManager.Feature` list.
+      Tool: `city_capabilities`.
+- [x] Read the simulation clock from `IThreading` (the `clock` block of
+      `/state/capabilities`: `simulationTime`, `simulationFrame`, `simulationTick`, …)
+      — diff two reads to measure elapsed simulated time
+
+Live-game verification follows the Phase 2 pattern (restart with the new mod → call →
+read back); see `docs/07-verification.md`.
 
 ### R1 — budgets & policies (Tier 1, easy)
 
@@ -163,7 +176,7 @@ a command that corrupts the save has failed, no matter what its response says.
 
 | Question | Notes |
 |---|---|
-| Does the simulation thread step while the game is paused? | `SimulationStep()` drains the action queue **before** the pause check, and `FixedUpdate()` keeps pulsing the lock — so it likely does. **Verify empirically.** If it does not, paused-mode commands need the game unpaused. |
+| Does the simulation thread step while the game is paused? | **Answered empirically (R0 verification): yes** — `simulationTick` advanced across two reads while paused, so queued commands are drained even paused. Game time itself stays frozen. |
 | Can a command be cancelled once running? | `IThreading` has no cancellation hook. Cancellation is best-effort: queued jobs can be dropped, running jobs finish. |
 | Is `System.IO.Pipes` worth it after all? | Measured ~12.6 µs vs ~139 µs. Not worth it. Revisit only if HTTP ever becomes a bottleneck (it will not). |
 | Does `PrefabCollection<TransportInfo>` enumerate the bus/metro assets? | Almost certainly — same generic as the road catalogue — but unverified. |

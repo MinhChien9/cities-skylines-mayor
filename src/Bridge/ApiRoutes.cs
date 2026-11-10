@@ -49,6 +49,9 @@ namespace SkylinesAgentBridge
                 delegate { return HttpResponse.Json(200, BuildThreadDiagnostics()); });
 
             // ---- read endpoints ------------------------------------------------
+            MapGet("/state/capabilities", "Read game capabilities (version, expansions, milestones, features, simulation clock)",
+                delegate { return OnGameThread(delegate { return GameState.BuildCapabilitiesJson(); }); });
+
             MapGet("/state/summary", "Read city summary",
                 delegate { return OnGameThread(delegate { return GameState.BuildSummaryJson(); }); });
 

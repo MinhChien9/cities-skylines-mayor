@@ -46,6 +46,11 @@ public sealed class CityTools
 
     // ------------------------------------------------------------------- reads
 
+    [System.ComponentModel.Description("GET /state/capabilities. What the running game supports: version, DLC, milestone list, current milestone, unlocked/locked features, and the IThreading simulation clock (simulationTime/frame/tick) — compare two reads to know how much simulated time actually elapsed.")]
+    [McpServerTool(Name = "city_capabilities", Title = "Game Capabilities")]
+    public Task<JsonNode?> CityCapabilities(CancellationToken cancellationToken)
+        => Get("/state/capabilities", cancellationToken);
+
     [System.ComponentModel.Description("GET /state/summary. Compact city overview: date, pause/speed, population, cash, happiness, RCI demand, network counts.")]
     [McpServerTool(Name = "city_summary", Title = "City Summary")]
     public Task<JsonNode?> CitySummary(CancellationToken cancellationToken)

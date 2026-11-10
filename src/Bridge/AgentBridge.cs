@@ -1,4 +1,5 @@
 using System;
+using ICities;
 using UnityEngine;
 using SkylinesAgentBridge.Threading;
 
@@ -11,6 +12,7 @@ namespace SkylinesAgentBridge
         private ApiServer server;
         private bool levelLoaded;
         private bool started;
+        private IManagers iCitiesManagers;
 
         public static AgentBridge Instance
         {
@@ -56,6 +58,50 @@ namespace SkylinesAgentBridge
         public SimulationDispatcher Dispatcher
         {
             get { return dispatcher; }
+        }
+
+        /// <summary>
+        /// The game's supported modding surface, or null until captured. Treated as an
+        /// opaque handle — the wrappers are the game's own implementations.
+        /// </summary>
+        public IManagers ICitiesManagers
+        {
+            get { return iCitiesManagers; }
+        }
+
+        /// <summary>
+        /// The ICities surface, always non-null once a city is loaded.
+        ///
+        /// OnCreated is the supported path but does not fire for a mod dropped into the
+        /// Mods folder, so construct the game's public ManagersWrapper on demand until the
+        /// hook (if ever) supplies the real handle. Call on the simulation thread.
+        /// </summary>
+        public IManagers EnsureICitiesManagers()
+        {
+            if (iCitiesManagers != null)
+            {
+                return iCitiesManagers;
+            }
+            try
+            {
+                iCitiesManagers = new ManagersWrapper();
+                Debug.Log("[SkylinesAgentBridge] ICities surface captured via ManagersWrapper (OnCreated did not run).");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[SkylinesAgentBridge] Could not obtain the ICities surface: " + ex);
+            }
+            return iCitiesManagers;
+        }
+
+        public void CaptureICitiesManagers(IManagers managers)
+        {
+            if (managers == null)
+            {
+                return;
+            }
+            iCitiesManagers = managers;
+            Debug.Log("[SkylinesAgentBridge] ICities.IManagers captured from OnCreated.");
         }
 
         public bool IsRunning

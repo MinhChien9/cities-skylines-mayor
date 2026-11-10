@@ -40,10 +40,10 @@ C# 5, `net35`, compiled against the game's own assemblies. Namespace root:
 
 | File | Lines | Owns |
 |------|-------|------|
-| `AgentBridge.cs` | 119 | The singleton that owns the dispatcher and the server. `Instance`, `LevelLoaded`, `Start()`, `OnLevelLoaded()`, `OnLevelUnloading()`. |
+| `AgentBridge.cs` | 150 | The singleton that owns the dispatcher and the server. `Instance`, `LevelLoaded`, `Start()`, `OnLevelLoaded()`, `OnLevelUnloading()`, `EnsureICitiesManagers()`. |
 | `AgentBridgeMod.cs` | 31 | The `IUserMod` entry point. The game always constructs it, so it is where the server is started. |
 | `AgentBridgeLoading.cs` | 18 | `LoadingExtensionBase` hook — forwards level load/unload to the singleton. |
-| `AgentBridgeThreading.cs` | 24 | `ThreadingExtensionBase` hook — the game's per-frame call, used to learn the Unity main thread id. |
+| `AgentBridgeThreading.cs` | 27 | `ThreadingExtensionBase` hook — pumps the dispatcher per frame and captures the `ICities.IManagers` handle in `OnCreated`. |
 | `ApiServer.cs` | 119 | The TCP listener. Accepts connections, hands each to a thread-pool worker, writes the response. Nothing else. |
 | `ApiRoutes.cs` | 405 | The whole HTTP surface: one table of `(method, path) → handler`, plus the route descriptions shown in the in-game console. |
 | `AgentBridgeNotifier.cs` | 349 | The draggable in-game console panel. Shows what the agent is doing, live. |
@@ -87,6 +87,7 @@ silently reintroduced exactly the race the design exists to prevent, and it was 
 |------|-------|-------------|------|
 | `GameState.cs` | 814 | all `/state/*` and `/prefabs/*` | The snapshot builders. One method per payload. |
 | `ProblemCollector.cs` | 343 | `state/problems` | Every active problem icon, with positions and counts. |
+| `CapabilityCollector.cs` | 200 | `state/capabilities` | Game version, expansions, milestones, unlocked features, simulation clock — read through the `ICities` handle. |
 | `RoadAnomalyCollector.cs` | 885 | `state/road-anomalies` | Short stubs, near-miss nodes, dead ends, overlaps, crossings without a node, terrain cliffs. |
 | `ZoneAnomalyCollector.cs` | 367 | `state/zone-anomalies` | Mottled and unzoned blocks, and zoned clusters. |
 | `BuildingAnomalyCollector.cs` | 159 | `state/building-anomalies` | Buildings sitting on top of roads. |
