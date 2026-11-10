@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Cs1Mayor.Mcp.Tests</RootNamespace>
+    <!-- The linked bridge sources predate nullable reference types. -->
+    <NoWarn>$(NoWarn);CS8618;CS8625</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\mcp-server\Cs1Mayor.Mcp.csproj" />
+  </ItemGroup>
+
+  <!--
+    The bridge's JSON reader lives in src/Support and has no dependency on the game
+    assemblies, so it can be compiled straight into the test project instead of being
+    duplicated. That keeps the tests honest: they exercise the same file the game loads.
+  -->
+  <ItemGroup>
+    <Compile Include="..\..\src\Support\JsonUtil.cs" Link="Bridge\JsonUtil.cs" />
+    <Compile Include="..\..\src\Support\CommandResult.cs" Link="Bridge\CommandResult.cs" />
+  </ItemGroup>
+
+</Project>
