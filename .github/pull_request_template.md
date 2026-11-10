@@ -31,9 +31,10 @@ For bridge changes, state that you ran:
   - docs/07-verification.md            (the dry-run / read-back / save checks)
 
 For MCP-only changes, state that you ran:
-  - dotnet build ./Cs1Mayor.sln -c Release
+  - dotnet build ./mcp-server/Cs1Mayor.Mcp.csproj -c Release
+  - dotnet test  ./tests/Cs1Mayor.Mcp.Tests/Cs1Mayor.Mcp.Tests.csproj
   - python ./scripts/smoke-test-mcp.py
-  - dotnet test ./Cs1Mayor.sln
+  - python ./scripts/check-api-docs.py
 -->
 
 ### Screenshots / recordings
