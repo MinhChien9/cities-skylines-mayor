@@ -2,8 +2,9 @@ using System;
 using System.Reflection;
 using System.Text;
 using ColossalFramework;
+using SkylinesAgentBridge.Support;
 
-namespace SkylinesAgentBridge
+namespace SkylinesAgentBridge.Commands
 {
     public static class EconomyCommands
     {

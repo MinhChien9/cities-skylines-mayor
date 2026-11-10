@@ -1,4 +1,5 @@
-namespace SkylinesAgentBridge
+
+namespace SkylinesAgentBridge.Support
 {
     public sealed class CommandResult
     {

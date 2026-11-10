@@ -1,6 +1,9 @@
 using UnityEngine;
+using SkylinesAgentBridge.State;
+using SkylinesAgentBridge.Support;
+using System.Collections.Generic;
 
-namespace SkylinesAgentBridge
+namespace SkylinesAgentBridge.Commands
 {
     public static class ZoneCommands
     {
@@ -10,7 +13,7 @@ namespace SkylinesAgentBridge
             bool preserveOccupied = JsonUtil.GetBool(body, "preserveOccupied", true);
             string zoneName = JsonUtil.GetString(body, "zone", "ResidentialLow");
             float radius = JsonUtil.GetNumber(body, "radius", 32f);
-            Vector3 center = ReadPoint(body, "center");
+            Vector3 center = CommandInput.ReadPoint(body, "center");
 
             if (radius <= 0f || radius > 256f)
             {
@@ -214,12 +217,12 @@ namespace SkylinesAgentBridge
             }
 
             ZoneManager manager = ZoneManager.instance;
-            System.Collections.Generic.Dictionary<string, ZoneClusterRepairStats> clusters = BuildZoneClusters(manager, gridSize);
+            Dictionary<string, ZoneClusterRepairStats> clusters = BuildZoneClusters(manager, gridSize);
             int repairableClusters = 0;
             int repairedBlocks = 0;
             int changedCells = 0;
 
-            foreach (System.Collections.Generic.KeyValuePair<string, ZoneClusterRepairStats> pair in clusters)
+            foreach (KeyValuePair<string, ZoneClusterRepairStats> pair in clusters)
             {
                 ZoneClusterRepairStats stats = pair.Value;
                 bool isMixed = stats.DistinctZoned > 1 && stats.MinorityCells >= minMinorityCells;
@@ -346,7 +349,7 @@ namespace SkylinesAgentBridge
                 }
 
                 BuildingInfo info = building.Info;
-                if (info == null || info.m_class == null || IsInternalNetworkHelperBuilding(info))
+                if (info == null || info.m_class == null || GameInfoHelpers.IsInternalNetworkHelperBuilding(info))
                 {
                     continue;
                 }
@@ -447,9 +450,9 @@ namespace SkylinesAgentBridge
             return false;
         }
 
-        private static System.Collections.Generic.Dictionary<string, ZoneClusterRepairStats> BuildZoneClusters(ZoneManager manager, float gridSize)
+        private static Dictionary<string, ZoneClusterRepairStats> BuildZoneClusters(ZoneManager manager, float gridSize)
         {
-            System.Collections.Generic.Dictionary<string, ZoneClusterRepairStats> clusters = new System.Collections.Generic.Dictionary<string, ZoneClusterRepairStats>();
+            Dictionary<string, ZoneClusterRepairStats> clusters = new Dictionary<string, ZoneClusterRepairStats>();
             for (ushort blockId = 1; blockId < manager.m_blocks.m_buffer.Length; blockId++)
             {
                 ZoneBlock block = manager.m_blocks.m_buffer[blockId];
@@ -458,7 +461,7 @@ namespace SkylinesAgentBridge
                     continue;
                 }
 
-                string key = ClusterKey(block.m_position, gridSize);
+                string key = GameInfoHelpers.ClusterKey(block.m_position, gridSize);
                 ZoneClusterRepairStats stats;
                 if (!clusters.TryGetValue(key, out stats))
                 {
@@ -470,19 +473,11 @@ namespace SkylinesAgentBridge
 
             return clusters;
         }
-
-        private static string ClusterKey(Vector3 position, float gridSize)
-        {
-            int x = Mathf.FloorToInt((position.x + gridSize * 0.5f) / gridSize);
-            int z = Mathf.FloorToInt((position.z + gridSize * 0.5f) / gridSize);
-            return x.ToString() + ":" + z.ToString();
-        }
-
         private sealed class ZoneClusterRepairStats
         {
             public readonly string Key;
-            public readonly System.Collections.Generic.List<ushort> BlockIds = new System.Collections.Generic.List<ushort>();
-            private readonly System.Collections.Generic.Dictionary<string, int> zoneCounts = new System.Collections.Generic.Dictionary<string, int>();
+            public readonly List<ushort> BlockIds = new List<ushort>();
+            private readonly Dictionary<string, int> zoneCounts = new Dictionary<string, int>();
             public int CellCount;
             public int ZonedCells;
             public int UnzonedCells;
@@ -535,7 +530,7 @@ namespace SkylinesAgentBridge
                 DominantCells = 0;
                 DominantZone = "Unzoned";
                 DistinctZoned = 0;
-                foreach (System.Collections.Generic.KeyValuePair<string, int> pair in zoneCounts)
+                foreach (KeyValuePair<string, int> pair in zoneCounts)
                 {
                     if (pair.Key == "Unzoned")
                     {
@@ -571,19 +566,6 @@ namespace SkylinesAgentBridge
                 service == "Disaster" ||
                 service == "Beautification" ||
                 service == "Monument";
-        }
-
-        private static bool IsInternalNetworkHelperBuilding(BuildingInfo info)
-        {
-            return info.name == "Water Pipe Junction" || info.name == "Heating Pipe Junction";
-        }
-
-        private static Vector3 ReadPoint(string body, string name)
-        {
-            float x = JsonUtil.GetPointNumber(body, name, "x", 0f);
-            float z = JsonUtil.GetPointNumber(body, name, "z", 0f);
-            float y = JsonUtil.GetPointNumber(body, name, "y", 0f);
-            return new Vector3(x, y, z);
         }
     }
 }

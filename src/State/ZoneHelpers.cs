@@ -1,4 +1,4 @@
-namespace SkylinesAgentBridge
+namespace SkylinesAgentBridge.State
 {
     public static class ZoneHelpers
     {
