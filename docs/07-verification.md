@@ -93,7 +93,7 @@ verified by re-reading state afterwards.
 These need no game running:
 
 ```powershell
-dotnet test .\Cs1Mayor.sln          # 42 xunit tests
+dotnet test .\tests\Cs1Mayor.Mcp.Tests\Cs1Mayor.Mcp.Tests.csproj   # 42 xunit tests
 python .\scripts\smoke-test-mcp.py   # MCP protocol handshake
 python .\scripts\check-api-docs.py  # API reference matches the route table
 ```

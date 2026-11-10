@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Threading;
 using ColossalFramework;
 using ColossalFramework.Threading;
+using SkylinesAgentBridge.Support;
 
 namespace SkylinesAgentBridge.Threading
 {
@@ -38,14 +39,6 @@ namespace SkylinesAgentBridge.Threading
     /// This dispatcher does the opposite: it does the mutation on the thread that owns
     /// the state, so no guard is hit and no reflection is needed.
     ///
-    /// THE ONE RULE
-    /// ------------
-    /// If the simulation thread is not available, this class **fails the request**. It
-    /// never runs the work inline on the calling (HTTP worker) thread. An earlier
-    /// version of this file had a "run it inline so the caller still gets a result"
-    /// fallback, which silently reintroduced exactly the race this class exists to
-    /// prevent. Failing loudly is always better than corrupting a city.
-    ///
     /// IMPORTANT DESIGN NOTE
     /// ---------------------
     /// This dispatcher calls SimulationManager.AddAction directly instead of going through
@@ -57,20 +50,19 @@ namespace SkylinesAgentBridge.Threading
     /// AddAction directly removes that dependency entirely and matches what the game's
     /// own tools do.
     ///
+    /// If the simulation thread cannot take the job, the request fails. The work is never
+    /// run inline on the calling (HTTP worker) thread.
+    ///
     /// Threading rules enforced here:
     ///   * reads  of game state  -&gt; simulation thread (avoids torn reads of struct buffers)
     ///   * writes of game state  -&gt; simulation thread
     ///   * camera / render / UI  -&gt; main thread
     /// </summary>
-    public sealed class SimulationDispatcher : IDisposable
+    public sealed class SimulationDispatcher
     {
-        private readonly object gate = new object();
-        private volatile bool disposed;
-
-        /// <summary>Number of jobs handed to the simulation thread that have not finished yet.</summary>
-        private int inFlight;
-
         private bool mainThreadProbeSent;
+
+        private int inFlight;
 
         /// <summary>
         /// Managed id of the game's simulation thread, resolved on first use.
@@ -81,10 +73,10 @@ namespace SkylinesAgentBridge.Threading
         /// <summary>Managed id of the Unity main thread, for diagnostics.</summary>
         public int MainThreadId { get; private set; }
 
-        /// <summary>Number of jobs currently waiting for or running on the simulation thread.</summary>
+        /// <summary>Number of commands currently running on the simulation thread.</summary>
         public int PendingCount
         {
-            get { return Interlocked.CompareExchange(ref inFlight, 0, 0); }
+            get { return inFlight; }
         }
 
         /// <summary>
@@ -93,30 +85,30 @@ namespace SkylinesAgentBridge.Threading
         ///
         /// The calling thread is the HTTP worker. It is NEVER the Unity main thread, so
         /// blocking here cannot deadlock the frame loop.
-        ///
-        /// Returns a failed <see cref="Support.CommandResult"/> if the simulation thread
-        /// is unavailable or does not answer in time. It never runs the work inline.
         /// </summary>
-        public Support.CommandResult RunSync(Func<Support.CommandResult> work, int timeoutMs)
+        public CommandResult RunSync(Func<CommandResult> work, int timeoutMs)
         {
             if (work == null)
             {
-                return Support.CommandResult.Fail("No work was supplied.");
+                return CommandResult.Fail("No work was supplied.");
             }
 
             Job job = new Job(work);
+            Interlocked.Increment(ref inFlight);
 
             if (!TryDispatch(job))
             {
-                // The game is not running a simulation (no city loaded, or mid-teardown).
-                // Fail loudly instead of running the work on this thread - see the class
-                // comment: running inline is the race this whole design exists to prevent.
-                return Support.CommandResult.Fail(
+                Interlocked.Decrement(ref inFlight);
+                return CommandResult.Fail(
                     "The Cities: Skylines simulation thread is not available. Is a city loaded?");
             }
-            if (!job.Wait(timeoutMs))
+
+            bool completed = job.Wait(timeoutMs);
+            Interlocked.Decrement(ref inFlight);
+
+            if (!completed)
             {
-                return Support.CommandResult.Fail("Timed out waiting for the simulation thread.");
+                return CommandResult.Fail("Timed out waiting for the simulation thread.");
             }
 
             return job.Result;
@@ -140,9 +132,7 @@ namespace SkylinesAgentBridge.Threading
 
         /// <summary>
         /// Moves a job onto the simulation thread. Safe to call from any thread.
-        ///
-        /// Returns false when the simulation thread could not accept the job. It never
-        /// runs the job on the calling thread.
+        /// Returns false when the simulation thread could not accept the job.
         /// </summary>
         private bool TryDispatch(Job job)
         {
@@ -164,14 +154,12 @@ namespace SkylinesAgentBridge.Threading
                 EnsureMainThreadId();
 
                 // AddAction is exactly what ZoneTool / BuildingTool / NetTool use.
-                job.OnFinished = delegate { Interlocked.Decrement(ref inFlight); };
-                Interlocked.Increment(ref inFlight);
                 simulation.AddAction(job.Execute);
                 return true;
             }
             catch (Exception)
             {
-                // The game refused the action. Report failure; do not run it here.
+                // The game refused the action.
                 return false;
             }
         }
@@ -211,7 +199,7 @@ namespace SkylinesAgentBridge.Threading
             {
                 try
                 {
-                    System.Reflection.FieldInfo field = typeof(SimulationManager).GetField(
+                    FieldInfo field = typeof(SimulationManager).GetField(
                         "m_simulationThread",
                         BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
                     Thread thread = field != null ? field.GetValue(simulation) as Thread : null;
@@ -236,46 +224,20 @@ namespace SkylinesAgentBridge.Threading
         }
 
         /// <summary>
-        /// Called when a city is unloaded. In-flight commands are failed so their callers
-        /// do not hang, but the dispatcher stays usable for the next city.
-        /// </summary>
-        public void OnLevelUnloaded()
-        {
-            lock (gate)
-            {
-                // Nothing is queued: every job is dispatched immediately and waited on.
-                // The only thing to reset is the counters.
-                Interlocked.Exchange(ref inFlight, 0);
-            }
-        }
-
-        public void Dispose()
-        {
-            lock (gate)
-            {
-                disposed = true;
-                Interlocked.Exchange(ref inFlight, 0);
-            }
-        }
-
-        /// <summary>
         /// A unit of work plus its completion signal.
         /// </summary>
         private sealed class Job
         {
-            private readonly Func<Support.CommandResult> work;
+            private readonly Func<CommandResult> work;
             private readonly ManualResetEvent done = new ManualResetEvent(false);
-            private Support.CommandResult result;
+            private CommandResult result;
 
-            /// <summary>Called once, on the simulation thread, after the work has run.</summary>
-            public Action OnFinished;
-
-            public Job(Func<Support.CommandResult> work)
+            public Job(Func<CommandResult> work)
             {
                 this.work = work;
             }
 
-            public Support.CommandResult Result
+            public CommandResult Result
             {
                 get { return result; }
             }
@@ -293,17 +255,11 @@ namespace SkylinesAgentBridge.Threading
                 }
                 catch (Exception ex)
                 {
-                    result = Support.CommandResult.Fail(ex.GetType().Name + ": " + ex.Message);
+                    result = CommandResult.Fail(ex.GetType().Name + ": " + ex.Message);
                 }
                 finally
                 {
                     done.Set();
-
-                    Action finished = OnFinished;
-                    if (finished != null)
-                    {
-                        finished();
-                    }
                 }
             }
         }

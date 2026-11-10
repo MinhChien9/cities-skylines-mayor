@@ -17,7 +17,7 @@ namespace SkylinesAgentBridge
         private const int VisibleEntries = 9;
         private const int MaxLineLength = 78;
 
-        // `entries` is only ever touched on the Unity main thread (by Update and by the
+        // `entries` is only touched on the Unity main thread (by Update and by the
         // panel's own button handlers). `pending` is the hand-off point: the HTTP worker
         // thread calls Notify(), which only enqueues, and the main thread drains it.
         private static readonly object gate = new object();
@@ -34,10 +34,8 @@ namespace SkylinesAgentBridge
         private static Vector3 savedPanelPosition = new Vector3(18f, 92f);
 
         /// <summary>
-        /// Records a line for the console.
-        ///
-        /// Called from the HTTP worker thread, so it must not touch any Unity object.
-        /// It only enqueues; <see cref="Update"/> drains the queue on the main thread.
+        /// Records a line for the console. Called from the HTTP worker thread, so it must
+        /// not touch any Unity object.
         /// </summary>
         public static void Notify(string text)
         {
@@ -54,7 +52,6 @@ namespace SkylinesAgentBridge
 
         /// <summary>
         /// Called from the game's per-frame hook on the Unity main thread.
-        /// Moves newly recorded lines into the visible log and refreshes the panel.
         /// </summary>
         public static void Update(float realTimeDelta)
         {
@@ -67,8 +64,7 @@ namespace SkylinesAgentBridge
         }
 
         /// <summary>
-        /// Moves queued lines into the visible log.
-        /// Returns true when something was added.
+        /// Moves queued lines into the visible log. Returns true when something was added.
         /// </summary>
         private static bool DrainPending()
         {

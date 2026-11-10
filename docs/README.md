@@ -56,6 +56,3 @@ project, which needs a local Cities: Skylines installation.
 If a change mutates the city from the HTTP worker thread or the Unity main thread, it
 races the simulation and silently corrupts the save. `src/Dispatch/SimulationDispatcher.cs`
 is the only sanctioned way in, and `GET /debug/threads` is the runtime proof.
-
-Nothing in this repository may break that rule without a very good reason and a very
-clear explanation.

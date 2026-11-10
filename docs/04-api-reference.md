@@ -62,9 +62,9 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 
 **`probeThreadId` must equal `simulationThreadId` and must NOT equal `mainThreadId`.**
 
-`pendingJobs` counts the commands currently queued on or running on the simulation
-thread. It should return to zero immediately after a command completes; if it does
-not, the simulation thread is stuck and every later command will time out.
+`pendingJobs` counts the commands currently running on the simulation thread. It should
+return to zero as soon as a command completes; if it does not, the simulation thread is
+stuck and every later command will time out.
 
 Call this endpoint twice after starting the game: the Unity main thread's id is learned
 on the next frame, so the first call can report `mainThreadId: 0`.

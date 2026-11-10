@@ -9,20 +9,13 @@ using SkylinesAgentBridge.Support;
 namespace SkylinesAgentBridge
 {
     /// <summary>
-    /// The bridge's entire HTTP surface: one table mapping (method, path) to a handler.
+    /// The bridge's HTTP surface: one table mapping (method, path) to a handler.
     ///
-    /// WHY A TABLE
-    /// -----------
-    /// The router used to be a 200-line if-chain in <see cref="ApiServer"/>. Two problems
-    /// with that: adding an endpoint meant editing a method that was already too long, and
-    /// the in-game console could not describe a request without a *second* if-chain that
-    /// had to be kept in sync by hand. Both problems are solved by keeping the description
-    /// next to the handler it describes.
+    /// The description next to each route is what the in-game console shows, so a route
+    /// only has to be registered once.
     ///
-    /// THREADING
-    /// ----------
-    /// Handlers that touch city state go through <see cref="RunOnGameThread"/>, which
-    /// hands the work to the CS1 simulation thread and blocks the HTTP worker until the
+    /// Handlers that touch city state go through <see cref="OnGameThread"/>, which hands
+    /// the work to the CS1 simulation thread and blocks the HTTP worker until the
     /// simulation thread has finished it. Handlers that do not touch city state
     /// (/health, /debug/threads) answer immediately.
     /// </summary>
@@ -262,8 +255,6 @@ namespace SkylinesAgentBridge
 
         /// <summary>
         /// Finds the handler for a request and runs it.
-        /// Returns 404 for an unknown path and 405-ish behaviour for a known path with the
-        /// wrong verb (also 404, because the bridge has no other verbs).
         /// </summary>
         public HttpResponse Resolve(HttpRequest request)
         {
@@ -286,7 +277,6 @@ namespace SkylinesAgentBridge
 
         /// <summary>
         /// A one-line human description of a request, used by the in-game console.
-        /// Falls back to "METHOD /path" for unknown routes.
         /// </summary>
         public string Describe(HttpRequest request)
         {
@@ -329,8 +319,7 @@ namespace SkylinesAgentBridge
         /// This is the ONLY way city state may be read or written. See
         /// <see cref="SkylinesAgentBridge.Threading.SimulationDispatcher"/>.
         /// </summary>
-        private HttpResponse OnGameThread(Func<CommandResult> action)
-        {
+        private HttpResponse OnGameThread(Func<CommandResult> action)        {
             if (!bridge.LevelLoaded)
             {
                 return HttpResponse.Json(409, "{\"ok\":false,\"error\":\"No city is loaded.\"}");

@@ -12,16 +12,8 @@ namespace SkylinesAgentBridge
     /// The loopback HTTP listener that exposes the city to the MCP server.
     ///
     /// This class owns the socket and nothing else. The routing table lives in
-    /// <see cref="ApiRoutes"/>, and every game-state read or write is funnelled through
-    /// the simulation thread by that class.
-    ///
-    /// THREADING
-    /// ---------
-    ///   * the accept loop runs on its own background thread ("Skylines Agent Bridge API")
-    ///   * each connection is handled on a thread-pool worker
-    ///   * neither thread ever touches game state directly
-    ///
-    /// The server binds to 127.0.0.1 only. It is not reachable from the network.
+    /// <see cref="ApiRoutes"/>, which is also where every game-state read and write is
+    /// funnelled through the simulation thread.
     /// </summary>
     public sealed class ApiServer
     {
@@ -105,9 +97,8 @@ namespace SkylinesAgentBridge
                     HttpResponse.Json(500, "{\"ok\":false,\"error\":\"" + JsonUtil.Escape(ex.Message) + "\"}")
                         .Write(client.GetStream());
                 }
-                catch (Exception)
+                catch
                 {
-                    // The socket is already gone. Nothing useful left to do.
                 }
             }
             finally
