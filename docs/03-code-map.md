@@ -73,7 +73,8 @@ silently reintroduced exactly the race the design exists to prevent, and it was 
 | `BuildingCommands.cs` | 209 | `place-building`, `move-building`, `set-building-active` | Placing, moving and toggling buildings. |
 | `ZoneCommands.cs` | 571 | `set-zone`, `repair-zones-to-growables`, `repair-zone-clusters` | Painting zones and the two zone-repair algorithms. |
 | `BulldozeCommands.cs` | 73 | `bulldoze` | Removing a building, a segment or a node. |
-| `EconomyCommands.cs` | 349 | `set-tax-rate` | Reading and writing tax rates across every service target. |
+| `EconomyCommands.cs` | 524 | `set-tax-rate`, `/state/budgets`, `set-budget` | Reading and writing tax rates across every service target, plus service day/night budgets. |
+| `PolicyCommands.cs` | 405 | `/state/policies`, `set-policy` | The 127-policy catalogue (name, game group, loaded state, city-wide and per-district state) and setting/unsetting policies city-wide, per district or per park. |
 | `SaveCommands.cs` | 132 | `save` | Saving the city and listing `.crp` files on disk. |
 | `SimulationCommands.cs` | 32 | `set-simulation-speed` | Pause and speed 1–3. |
 | `AssetCommands.cs` | 60 | `disable-blocked-assets` | Disabling prefabs the game ships broken. |

@@ -85,6 +85,16 @@ public sealed class CityTools
     public Task<JsonNode?> CityEconomy(CancellationToken cancellationToken)
         => Get("/state/economy", cancellationToken);
 
+    [System.ComponentModel.Description("GET /state/budgets. Per-service day/night budget percentages (100 = baseline spending). Day is 05:00-20:00 and night is a separate value. The 101% trick buys one extra vehicle per service building for ~1% more money.")]
+    [McpServerTool(Name = "city_budgets", Title = "Service Budgets")]
+    public Task<JsonNode?> CityBudgets(CancellationToken cancellationToken)
+        => Get("/state/budgets", cancellationToken);
+
+    [System.ComponentModel.Description("GET /state/policies. The full DistrictPolicies.Policies catalogue (127 values): name, game group (Services/Taxation/CityPlanning/Park/Event/Specialization), whether each is loaded yet, and current state city-wide plus per district. Use these exact names with city_set_policy.")]
+    [McpServerTool(Name = "city_policies", Title = "Policy Catalogue")]
+    public Task<JsonNode?> CityPolicies(CancellationToken cancellationToken)
+        => Get("/state/policies", cancellationToken);
+
     [System.ComponentModel.Description("GET /state/facilities. Service facilities (power, water, police, ...) with coverage data.")]
     [McpServerTool(Name = "city_facilities", Title = "Service Facilities")]
     public async Task<JsonNode?> CityFacilities(
@@ -330,6 +340,52 @@ public sealed class CityTools
         {
             ["service"] = service,
             ["rate"] = rate,
+        }, cancellationToken).ConfigureAwait(false);
+
+    [System.ComponentModel.Description("POST /commands/set-budget. Set a service's day and/or night budget as a percentage (0-300, 100 = baseline). Day is 05:00-20:00; omit nightBudget to leave night alone. Example: 101% on a service buys one extra vehicle per building. The response reports before/after as the game accepted them.")]
+    [McpServerTool(Name = "city_set_budget", Title = "Set Budget")]
+    public async Task<JsonNode?> CitySetBudget(
+        [System.ComponentModel.Description("Service name from city_budgets, e.g. 'Electricity'.")] string service,
+        [System.ComponentModel.Description("Day budget percentage (0-300, 100 = baseline).")] int? budget = null,
+        [System.ComponentModel.Description("Night budget percentage; omit to leave night unchanged.")] int? nightBudget = null,
+        [System.ComponentModel.Description("Optional SubService refinement; default 'None' (the service's own slider).")] string? subService = null,
+        [System.ComponentModel.Description("Validate only, do not set (default false).")] bool dryRun = false,
+        CancellationToken cancellationToken = default)
+    {
+        var body = new Dictionary<string, object?>
+        {
+            ["service"] = service,
+            ["dryRun"] = dryRun,
+        };
+        if (budget.HasValue)
+        {
+            body["budget"] = budget.Value;
+        }
+        if (nightBudget.HasValue)
+        {
+            body["nightBudget"] = nightBudget.Value;
+        }
+        if (!string.IsNullOrWhiteSpace(subService))
+        {
+            body["subService"] = subService;
+        }
+        return await Post("/commands/set-budget", body, cancellationToken).ConfigureAwait(false);
+    }
+
+    [System.ComponentModel.Description("POST /commands/set-policy. Set or unset a policy by exact name from city_policies. Setting an unloaded policy is refused (it would be a silent no-op). district=0 or omitted means city-wide; a district id targets that district. Park-group policies with a district id actually target the park id space (parks arrive with the districts release).")]
+    [McpServerTool(Name = "city_set_policy", Title = "Set Policy")]
+    public async Task<JsonNode?> CitySetPolicy(
+        [System.ComponentModel.Description("Policy name from city_policies, e.g. 'Recycling', 'FreeTransport', 'TaxRaiseResLow'.")] string policy,
+        [System.ComponentModel.Description("True to set, false to unset (default true).")] bool set = true,
+        [System.ComponentModel.Description("District id, or 0 for city-wide (default).")] int district = 0,
+        [System.ComponentModel.Description("Validate only, do not set (default false).")] bool dryRun = false,
+        CancellationToken cancellationToken = default)
+        => await Post("/commands/set-policy", new Dictionary<string, object?>
+        {
+            ["policy"] = policy,
+            ["set"] = set,
+            ["district"] = district,
+            ["dryRun"] = dryRun,
         }, cancellationToken).ConfigureAwait(false);
 
     [System.ComponentModel.Description("POST /commands/save. Save the city to a named slot (.crp on disk).")]
