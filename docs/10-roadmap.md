@@ -140,9 +140,16 @@ read back); see `docs/07-verification.md`.
       `TransportManager.AssignSelectedLineVehicle` + `GetVehicleIndex`, and
       `SetLineName` is a one-shot `IEnumerator<bool>` coroutine.]**
 - [x] MCP tools `city_transport`, `city_transport_prefabs`, `city_transport_line`
-- [ ] **Verify live**: a bus line runs, picks up passengers, and the city reads it back
-      *(mod DLL installed 2026-11-11; plan in `docs/07-verification.md` §1f — needs a
-      game restart with the new DLL, check #1 for the end-to-end flow)*
+- [x] **Verify live** (2026-11-11, results in `docs/07-verification.md` §1f): catalogue,
+      create, stop-chain, loop-close → `complete:true`, remove-stop, activate (day/night),
+      rename, set-vehicle, state reads — all pass on the live game; city saved as
+      `R2-verify-transport`. Two documented blockers are **city-state, not bridge**: the
+      depot cannot stay active (no sewage outlet reachable on the bare map) so no vehicle
+      spawned, and population 0 means `passengers` cannot move. Key game behaviour found
+      and documented: the game re-snaps non-fixed stop nodes to lane midpoints
+      (`TransportLineAI.CheckNodePosition`) — place stops near road-edge midpoints.
+- [ ] *Follow-up: re-run vehicle spawn + ridership on a city that has residents and a
+      working depot (power + water + sewage).*
 - [x] *No `ICities` transport interface exists — confirmed; this is the one big family
       with no supported API.*
 
@@ -163,7 +170,11 @@ read back); see `docs/07-verification.md`.
 - [ ] `GET /state/resources` — ore, oil, forest, fertility per cell
       **[verified: `ICities.IResource.GetResource` / `SetResource`]**
 - [ ] `POST /commands/render-view` — camera framing + PNG capture
-      **[verified: `ICities.ICamera.SetCameraTarget` / `GetCameraPosition`]**
+      **[verified: `ICities.ICamera.SetCameraTarget` / `GetCameraPosition`]** — should
+      also include the user-reported ergonomics fix: disable/toggle **edge scrolling**
+      (`CameraController` reads the live `SavedBool edgeScrolling` in the game settings
+      file; toggling it needs no restart) so the camera stays put for screenshots
+      *(user request 2026-11-11, scheduled after R2 wrap-up together with the area check)*
 - [ ] `POST /commands/load` — load a save **[verified: `ISerializableData.LoadGame`]**
 - [ ] A **named main-thread queue** in `SimulationDispatcher` — the one sanctioned
       exception to the simulation-thread rule, for rendering only
@@ -190,6 +201,19 @@ read back); see `docs/07-verification.md`.
 - [ ] `city_ui` tool — the escape hatch for anything with no API
 - [ ] **Verify**: an agent action that only the UI can perform changes the game state
 
+### R7 — placement area validation (Tier 0, hardening) — *user-reported 2026-11-11*
+
+- [ ] `GET /state/game-areas` — unlocked map tiles from `GameAreaManager`, so the agent
+      can **check the areas before building anything**
+- [ ] `place-building` / `build-road` / `place-prop` refuse points outside unlocked tiles
+      (fail cleanly, spend nothing); `dryRun` answers "buildable **and** in-area?"
+      *(gap: the bridge calls `BuildingManager`/`NetManager` directly and skips the UI's
+      unlocked-tile check — the R2 test loop, depot and utilities were placed without any
+      area check)*
+- [ ] MCP: area read + a note on `city_place_building` / `city_build_road` descriptions
+- [ ] **Verify**: a placement in an unlocked tile passes, the same point in a locked one
+      is refused before any money moves
+
 ## Verification discipline (stands in place of the old evaluation phase)
 
 Each new command is verified the same way the Phase 2 list was: **act → re-read →
@@ -204,7 +228,7 @@ a command that corrupts the save has failed, no matter what its response says.
 | Does the simulation thread step while the game is paused? | **Answered empirically (R0 verification): yes** — `simulationTick` advanced across two reads while paused, so queued commands are drained even paused. Game time itself stays frozen. |
 | Can a command be cancelled once running? | `IThreading` has no cancellation hook. Cancellation is best-effort: queued jobs can be dropped, running jobs finish. |
 | Is `System.IO.Pipes` worth it after all? | Measured ~12.6 µs vs ~139 µs. Not worth it. Revisit only if HTTP ever becomes a bottleneck (it will not). |
-| Does `PrefabCollection<TransportInfo>` enumerate the bus/metro assets? | Almost certainly — same generic as the road catalogue — but unverified. |
+| Does `PrefabCollection<TransportInfo>` enumerate the bus/metro assets? | **Answered (R2): yes** — `GET /prefabs/transport` lists all `TransportInfo` assets with economics and vehicle lists. |
 | How is the industry area represented? | `DistrictPark.ParkType` shows campus / airport / pedestrian, not industry. |
-| Can a transport line be built without the UI? | If `NetManager` refuses to attach a transport segment to an existing road node, the UI route becomes mandatory. There is no `ICities` transport interface. |
+| Can a transport line be built without the UI? | **Answered (R2): yes** — `TransportManager.CreateLine` + `TransportLine.AddStop` work headless; the game even re-snaps stops to lane positions afterwards (`TransportLineAI.CheckNodePosition`). |
 | Does `ISerializableData.LoadGame` work while the dispatcher holds a pending job? | Must be answered before exposing `/commands/load`. Safest rule: refuse to load unless the dispatcher is idle. |

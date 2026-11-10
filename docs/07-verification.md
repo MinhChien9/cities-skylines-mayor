@@ -210,30 +210,49 @@ is on disk after the run.
 
 ---
 
-## 1f. R2 verification — transport lines — ⏳ IMPLEMENTED, LIVE RUN PENDING
+## 1f. R2 verification — transport lines — ✅ LIVE RUN DONE 2026-11-11
 
-*(Code shipped 2026-11-11; the mod DLL is installed and the endpoints compile against
-the live game assemblies. The live run below follows the same act → re-read → compare
-discipline, and needs the game restarted with the new DLL first.)*
+*(Code shipped 2026-11-11; run on the live `cities-resume` bare map, build 4628,
+bridge on `127.0.0.1:32123`, thread gate `runsOnSimulationThread:true` passed before
+every mutation. City saved as `R2-verify-transport.crp` (5,447,158 bytes).)*
 
-| Check | How |
+| Check | Result |
 |---|---|
-| Prefab catalogue | `GET /prefabs/transport` enumerates the `TransportInfo` assets (the R2 open question about `PrefabCollection<TransportInfo>`) — bus, metro, tram … with their classes, economics and vehicle lists. |
-| Create | `transport-line create` → the response `line` id plus `lineData`; an **independent** `GET /state/transport` shows the line with `complete:false`, default `selectedVehicle`. |
-| Stop-chain | `add-stop` → `lineData.stopCount` grows; the stop node positions read back from `NetManager`. `dryRun` answers `CanAddStop` and mutates nothing. |
-| Loop closing | A stop within ~2.5 units of the first stop → `complete:true` (the game closes the chain itself). |
-| Stop removal | `remove-stop` → `stopCount` drops, the chain reconnects. |
-| Day/night service | `activate` day/night → `GetActive` readback flips, independently confirmed in `/state/transport`. |
-| Rename | `rename` → `GetLineName` before/after in the same response. |
-| Vehicle | `set-vehicle` → `GetLineVehicle` readback flips; `GetVehicleIndex` refuses unknown names with the compatible list. |
-| Ridership | With a complete line and its depot connected, let simulated time run (speed 3, unpaused) → `vehicleCount` leaves from 0 and `passengers` counters start climbing. |
-| Unemployment effects | Optional cross-check: `/state/growables` and land value in the zoned blocks the line serves. |
-| Save the state | `city_save R2-verify-transport` once the line runs. |
+| Prefab catalogue | ✅ `GET /prefabs/transport?type=Bus` → 2 `TransportInfo` prefabs, real JSON (`Bus` first: `ticketPrice 100`, `maintenanceCostPerVehicle 20`, 11 compatible vehicle assets incl. `Bus01`, `ArticulatedBus01`). |
+| Create | ✅ `create` → line id (186 in the final run; ids are per-session, never hardcode them), `GET /state/transport` confirms it independently. |
+| Stop-chain | ✅ 4 stops added; `stopCount` grows 0→4. `dryRun` answers the game's own `CanAddStop` without mutating. |
+| Loop closing | ✅ a stop requested within 2.5 units of the first stop's node → `complete:true`. The close branch adds the closing **segment**, not a stop (4 requested, 4 reported — correct game semantics). |
+| Stop removal | ✅ `remove-stop index:-1` emptied two test lines (5 and 8 stops) cleanly, `stopCount` → 0. |
+| Day/night service | ✅ `activate day:false,night:true` → state flips; a **daytime**-active-disabled line receives no depot vehicles (observed), `activate day:true,night:true` restored. |
+| Rename | ✅ `rename` → `Verify Loop A`, confirmed in `/state/transport`. |
+| Vehicle | ✅ `set-vehicle` `Bus`→`Bus01` (`prefabIndex 32→44`); unknown names refused with the compatible list echoed. |
+| Depot power | ✅ unpowered depot showed `Electricity, Water` and `active:false`; wind turbine + `Power Line` network (buildable through `/commands/build-road`) cleared `Electricity`. |
+| Depot water | ✅ the `Water Tower` (2×2) asset is a **self-producing** water source: placed adjacent to the depot + one `Water Pipe` segment (also buildable via `/commands/build-road`) → tower `active:true`, depot `active:true`. |
+| Depot sewage | ❌ **blocked**: with no sewage outlet the depot filled and deactivated (`Sewage, MajorProblem`). Sewage outlets need a shoreline; on this bare map the nearest is the west map edge ~7.5 km away and cash ran out — see the cash note below. |
+| Vehicle spawning | ⛔ **blocked by city utilities, not by the bridge**: a complete, active line with `selectedVehicle` stayed at `vehicleCount 0` because the depot never stayed active long enough for a transfer pass (sewage). Every bridge-side precondition was verified independently. |
+| Ridership | ⛔ population is 0 on this map — `passengers` counters structurally cannot move. Needs a city with residents. |
+| Save the state | ✅ `POST /commands/save` → `R2-verify-transport` confirmed on disk via `GET /state/saves`. |
 
-Because a bus depot must exist for vehicles to spawn (the game's spawn AI needs a depot
-of the same service/starvation class), the live run starts on a save that has a bus depot
-or builds one first with `city_place_building` — if `vehicleCount` stays 0 with a
-`complete` line, `city_facilities?service=PublicTransport` is the next read, not a retry.
+**Cash note.** The run ended the city at **−₡951, paused** (started ₡65,002; ~ₘ30k was
+road + depot + utility placement, the rest operating expenses at 3× with zero tax
+income). Pausing was deliberate to avoid the −₡10k one-time bail-out, which forfeits
+achievements. Unpausing this city requires an income source or a fresh map.
+
+### Verified game behaviours worth remembering
+
+1. **The game re-snaps non-fixed stop nodes.** `TransportLineAI.CheckNodePosition`
+   runs when a stop-chain segment's pathfind completes: it `MoveNode`s the stop node
+   onto the found lane's stop position and sets `NetNode.Flags.Fixed`. `StartPathFind`
+   forces the anchor to lane offset 128 — the **lane midpoint** — for vehicle lines.
+   Practical rule: **place stops near the midpoint of a road edge** (within ~32 units
+   of it), not at corners. Corners snap onto whichever neighbouring lane the pathfinder
+   picks first, and two stops can collapse onto the same point (zero-length chain
+   segments — a broken line; remove them).
+2. **Stops without a road within 32 units never move** and stay exactly where placed
+   (verified: a stop at `(0,200)` far from the loop kept its position).
+3. `TransportLine` is a struct — mutating calls (`AddStop`/`RemoveStop`/`SetActive`)
+   must run on `m_lines.m_buffer[line]` in place; reads on a copy are fine. This bug
+   was caught live (stops counted in `NetManager` but never linked into the chain).
 
 ---
 

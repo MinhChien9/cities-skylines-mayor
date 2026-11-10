@@ -129,7 +129,9 @@ namespace SkylinesAgentBridge.Commands
                 {
                     items.Append(",");
                 }
-                AppendPrefab(items, infos[i], vehicleInfos);
+                items.Append("{");
+                AppendPrefabFields(items, infos[i], vehicleInfos, false);
+                items.Append("}");
                 emitted++;
             }
 
@@ -211,7 +213,7 @@ namespace SkylinesAgentBridge.Commands
                 StringBuilder dry = new StringBuilder();
                 dry.Append("{\"ok\":true,\"dryRun\":true,\"action\":\"create\"");
                 dry.Append(",\"message\":\"Create-line validation passed; no line was created.\"");
-                AppendPrefab(dry, info, null);
+                AppendPrefabFields(dry, info, null, true);
                 dry.Append("}");
                 return CommandResult.FromJson(dry.ToString());
             }
@@ -231,7 +233,7 @@ namespace SkylinesAgentBridge.Commands
 
             StringBuilder json = new StringBuilder();
             json.Append("{\"ok\":true,\"dryRun\":false,\"action\":\"create\",\"line\":").Append(lineId);
-            AppendPrefab(json, info, null);
+            AppendPrefabFields(json, info, null, true);
             json.Append(",\"lineData\":");
             AppendLine(json, manager, lineId, manager.m_lines.m_buffer[lineId], 0, 0);
             json.Append("}");
@@ -268,8 +270,9 @@ namespace SkylinesAgentBridge.Commands
                 return CommandResult.FromJson(dry.ToString());
             }
 
-            // The game flags the returned bool but never says why when it refuses.
-            bool added = data.AddStop(line, index, position, fixedPlatform);
+            // TransportLine is a struct: every mutating call must run on the live array
+            // element, not a copy, or the mutation is lost with the stack variable.
+            bool added = manager.m_lines.m_buffer[line].AddStop(line, index, position, fixedPlatform);
 
             if (!added)
             {
@@ -313,7 +316,7 @@ namespace SkylinesAgentBridge.Commands
             }
 
             Vector3 removedPosition;
-            bool removed = data.RemoveStop(line, index, out removedPosition);
+            bool removed = manager.m_lines.m_buffer[line].RemoveStop(line, index, out removedPosition);
 
             if (!removed)
             {
@@ -530,7 +533,7 @@ namespace SkylinesAgentBridge.Commands
             try { name = manager.GetLineName(id); } catch (Exception) { }
             json.Append(",\"name\":").Append(name == null ? "null" : "\"" + JsonUtil.Escape(name) + "\"");
 
-            AppendPrefab(json, data.Info, null);
+            AppendPrefabFields(json, data.Info, null, true);
 
             json.Append(",\"complete\":").Append(JsonUtil.Bool((data.m_flags & TransportLine.Flags.Complete) != 0));
             json.Append(",\"temporary\":").Append(JsonUtil.Bool((data.m_flags & TransportLine.Flags.Temporary) != 0));
@@ -649,9 +652,19 @@ namespace SkylinesAgentBridge.Commands
             return "{\"temp\":" + temp + ",\"final\":" + final + ",\"average\":" + average + "}";
         }
 
-        /// <summary>The fields every prefab row carries: name, classes, economics, vehicles.</summary>
-        private static void AppendPrefab(StringBuilder json, TransportInfo info, List<VehicleInfo> vehicleInfos)
+        /// <summary>
+        /// The prefab fields shared by the catalogue rows and the line readbacks.
+        /// With <paramref name="leadingComma"/> the block is comma-prefixed so it can be
+        /// appended mid-object; the catalogue passes false and wraps the fields in braces.
+        /// </summary>
+        private static void AppendPrefabFields(StringBuilder json, TransportInfo info, List<VehicleInfo> vehicleInfos,
+            bool leadingComma)
         {
+            if (leadingComma)
+            {
+                json.Append(",");
+            }
+
             if (info == null)
             {
                 json.Append("\"transportInfo\":null,\"transportType\":null,\"vehicleType\":null");
