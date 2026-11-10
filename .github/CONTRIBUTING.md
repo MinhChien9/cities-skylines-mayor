@@ -50,7 +50,7 @@ Scopes are optional. Use the affected area when it helps: `src`, `mcp`, `docs`, 
 docs: reorganise the documentation into a reading order
 refactor(src): split game state builders into focused modules
 fix(dispatch): never execute game work off the simulation thread
-feat(mcp): expose city_services coverage numbers
+feat(mcp): relay /state/external-connections as city_external_connections
 ```
 
 Keep the summary in the imperative mood and under ~70 characters.

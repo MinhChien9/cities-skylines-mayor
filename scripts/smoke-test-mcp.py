@@ -25,19 +25,39 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_DLL = os.path.join(REPO, "mcp-server", "bin", "Debug", "net10.0", "Cs1Mayor.Mcp.dll")
 
 EXPECTED_TOOLS = {
-    "city_snapshot",
+    "city_health",
+    "city_threads",
+    "city_summary",
     "city_problems",
-    "city_districts",
-    "city_infrastructure",
-    "city_services",
-    "city_prefabs",
+    "city_demand",
+    "city_chirps",
+    "city_zones",
+    "city_economy",
+    "city_facilities",
+    "city_growables",
+    "city_networks",
+    "city_road_anomalies",
+    "city_building_anomalies",
+    "city_zone_anomalies",
+    "city_external_connections",
+    "city_saves",
+    "city_building_prefabs",
+    "city_road_prefabs",
+    "city_network_prefabs",
     "city_build_road",
     "city_zone",
     "city_place_building",
+    "city_move_building",
+    "city_set_building_active",
     "city_bulldoze",
-    "city_economy",
+    "city_set_simulation_speed",
+    "city_set_tax_rate",
     "city_save",
-    "city_health",
+    "city_repair_zones_to_growables",
+    "city_repair_zone_clusters",
+    "city_disable_blocked_assets",
+    "city_batch",
+    "city_request",
 }
 
 
@@ -176,7 +196,7 @@ def main():
                 failures.append(f"tool {tool.get('name')} has a non-object inputSchema")
 
         # 3. a tool call with the game NOT running must degrade gracefully
-        client.send("tools/call", {"name": "city_snapshot", "arguments": {}})
+        client.send("tools/call", {"name": "city_health", "arguments": {}})
         resp = client.read()
         if "error" in resp:
             failures.append(f"tools/call returned a protocol error: {resp['error']}")

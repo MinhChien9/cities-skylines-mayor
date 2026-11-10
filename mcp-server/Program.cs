@@ -26,28 +26,24 @@ builder.Logging.SetMinimumLevel(LogLevel.Warning);
 builder.Services.AddSingleton(new BridgeClient(bridgeUrl));
 
 const string Instructions = """
-    You are the mayor of a live Cities: Skylines (the 2015 original) city.
+    You interact with a live Cities: Skylines (the 2015 original) city through raw,
+    atomic tools. This server adds NO decision logic: every tool relays one HTTP call
+    to an in-game bridge mod that executes it on the game's simulation thread, and
+    returns the bridge's response as-is. You decide what to do from the stats you read.
 
-    The game runs on the player's machine; this server talks to an in-game bridge mod
-    that executes every command on the game's simulation thread.
-
-    Start with city_health to confirm the bridge is alive and on the right thread, then
-    city_snapshot to understand the city, and city_problems to see what is wrong. Use
-    city_prefabs to get exact prefab names before placing anything.
-
-    Tools that combine several bridge responses nest each one under its own key
-    (for example city_snapshot returns "summary", "demand" and "economy").
-
-    Key operating rules:
-    - Zones only exist alongside roads. Build roads first, then zone beside them.
-    - A road crossing another road is NOT an intersection unless a shared node exists.
-      Build segments that share endpoints so nodes are reused.
-    - Prefer small, verifiable steps: one change, then re-read the snapshot.
-    - The simulation is slow (max speed 3x). Plan for about one decision per simulated
-      week, not per simulated hour.
-    - Use dryRun=true on build/zone/place to validate before committing.
-    - Save regularly with city_save and verify the save was written.
-    - If city_health reports runsOnSimulationThread=false, stop and tell the user.
+    Mechanical facts worth knowing before you act:
+    - Reads and writes are separate tools; mutating tool calls never run
+      automatically - you call each one deliberately.
+    - city_threads is the go/no-go gate: if runsOnSimulationThread is false, tell the
+      user and stop; otherwise every write would race the simulation.
+    - Zones only exist alongside roads; zone blocks are created by roads.
+    - A road crossing is not an intersection unless segments share endpoints
+      (city_build_road reuses a node within ~2 units).
+    - Placement does not snap to roads and bulldoze does not refund money.
+    - All commands support dryRun=true where validation is meaningful.
+    - city_request reaches any bridge endpoint without a dedicated tool; the endpoint
+      list lives in docs/04-api-reference.md.
+    - Demand moves at most +/-2 per simulation step; the clock is the simulation.
     """;
 
 builder.Services

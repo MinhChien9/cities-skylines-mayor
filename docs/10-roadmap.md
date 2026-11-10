@@ -1,5 +1,9 @@
 # Roadmap
 
+The product is the **command surface**: every action the game can perform is one bridge
+endpoint, exposed to the agent as one raw MCP tool. The master table — and the unlocked
+"next releases" below in table form — lives in [`12-command-surface.md`](12-command-surface.md).
+
 ## Done
 
 - [x] **Research** — CS1 internals decompiled with ILSpy, all API signatures verified
@@ -9,28 +13,29 @@
 - [x] **Threading fix** — `SimulationDispatcher` routes all game work to the simulation
       thread; the upstream's reflection bypass and `CommandQueue` are deleted
 - [x] **`/debug/threads`** — runtime proof of which thread executes commands
-- [x] **MCP server** — C# / .NET 10, `ModelContextProtocol` 2.4.0, 13 tools, stdio
+- [x] **MCP server** — C# / .NET 10, `ModelContextProtocol` 2.4.0, stdio
+- [x] **Raw 1:1 tool surface** — 33 tools, one per bridge endpoint, each relaying one
+      HTTP call with no server-side logic; `city_request` reaches *any* endpoint, so new
+      bridge work is agent-callable before a dedicated tool exists
 - [x] **Protocol smoke test** — initialize → tools/list → tools/call verified
 - [x] **Knowledge base** — `docs/05-game-mechanics.md`, `docs/06-expansions.md`
-- [x] **Agent operating manual** — `AGENTS.md`
+- [x] **Agent operating manual** — `AGENTS.md` (raw tools; decisions are the agent's)
 - [x] **Documentation** — architecture, API reference, verification, opencode setup
 - [x] **Project structure** — `src/` split into `Bridge` / `Dispatch` / `Commands` / `State` /
       `Support`; `GameState.cs` split into focused collectors; HTTP types and the route
       table extracted from `ApiServer.cs`
 - [x] **Real project files** — `src/SkylinesAgentBridge.csproj`, `mcp-server/*.csproj`,
       `tests/*.csproj` and a `Cs1Mayor.sln`; the mod is now an ordinary MSBuild project
-- [x] **Automated tests** — 42 xunit tests over the MCP server and the bridge's JSON reader
+- [x] **Automated tests** — xunit tests over the MCP server and the bridge's JSON reader
 - [x] **CI** — build, test, MCP protocol smoke test and an API-docs/route-table consistency
       check on every push
-- [x] **Contributor conventions** — branch naming, conventional commits, PR and issue
-      templates copied from the opencode project
-- [x] **Product design** — the play loop and the parity target are specified in
-      [`11-play-loop.md`](11-play-loop.md) and [`12-capability-parity.md`](12-capability-parity.md);
-      the CS1 API surface they depend on is verified against the live assemblies
+- [x] **API-surface research** — verified game APIs catalogued in
+      [`12-command-surface.md`](12-command-surface.md), including the `ICities.dll`
+      discovery (see below)
 - [x] **`ICities` found** — the game ships a supported modding API (`ICities.dll`)
       covering terrain, resources, save/load, map tiles, milestones, camera, buildings
       and the simulation clock. The bridge already implements `ThreadingExtensionBase`,
-      so `IManagers` is one field away. Most of the parity target is Tier 0.
+      so `IManagers` is one field away.
 
 ## Phase 1 — the go/no-go gate
 
@@ -65,60 +70,14 @@ Two real bugs were found by this phase and fixed — see
 
 - [x] Add the server to `~/.config/opencode/opencode.json`
 - [x] `opencode mcp list` → `✓ cs1-mayor connected`
-- [x] Agent can call `city_snapshot` and get real data
+- [x] Agent can call the read tools and get real data
 - [x] Agent can place a road and verify it
 
-## Phase 4 — the play loop
+## Next — full command surface
 
-*The point of the product: the user states a goal, the agent plays until it is met.*
-Design: [`11-play-loop.md`](11-play-loop.md).
-
-### 4a. Session memory — MCP server only, no game restart
-
-- [ ] `SessionStore` — file-backed under `%LOCALAPPDATA%\cs1-mayor\sessions\`
-      (goal, checklist, journal, last snapshot, settings)
-- [ ] `city_goal` — set / get / update the goal and its checklist / check whether the
-      target metrics are met
-- [ ] `city_journal` — append a decision entry; read the last N
-- [ ] Unit tests for the store, the journal format and the goal checker
-
-### 4b. Waiting and deltas — MCP server only
-
-- [ ] `city_wait(days | until, timeoutSeconds)` — poll `/state/summary` server-side,
-      never block the simulation thread
-- [ ] Curated metric set (population, cash, income, expenses, demand, happiness,
-      problem counts, milestone) and a diff against the last snapshot
-- [ ] Detect `paused` / `no-game` and report them instead of spinning
-- [ ] Auto-resume (speed 3) when the session says so
-- [ ] Fold the delta into `city_snapshot`'s sibling so the agent has **one** way to
-      check progress
-
-### 4c. The agent's operating system
-
-- [ ] Rewrite the server `instructions` in `Program.cs` for goal mode
-- [ ] Rewrite `AGENTS.md` for goal mode: goal → plan → batch → wait → verify → record
-- [ ] Rewrite the `AGENTS.md` in-game equivalent (the notifier panel shows the agent's
-      intent, so it should show the current goal and step)
-
-### 4d. Delta quality
-
-- [ ] Problem deltas resolve *which* problems went away, not just how many
-- [ ] Milestone progress in the delta
-- [ ] Coverage percentage per service in the delta
-
-## Phase 5 — capability parity
-
-*The agent can do anything a player can do.* Matrix and API notes:
-[`12-capability-parity.md`](12-capability-parity.md).
-
-> **The `ICities` discovery.** Cities: Skylines ships a **supported** modding API in
-> `ICities.dll` — terrain, natural resources, save/load, map tiles, milestones, the
-> camera, building placement, the simulation clock. The bridge already implements
-> `ICities.ThreadingExtensionBase`, so capturing `IManagers` is a one-field change that
-> unlocks most of the parity surface with **no reflection and no UI automation**.
-> That is release **R0**, and it comes first.
-
-Grouped by bridge release, because **every bridge change costs a game restart**.
+Grouped by bridge release, because **every bridge change costs a game restart**. The
+verified API signatures for every row are in [`12-command-surface.md`](12-command-surface.md).
+Each release also adds its MCP tools (or relies on `city_request` in the interim).
 
 ### R0 — capture `ICities` (Tier 0)
 
@@ -126,7 +85,6 @@ Grouped by bridge release, because **every bridge change costs a game restart**.
 - [ ] `GET /state/capabilities` — what this running game supports: expansions, version,
       the milestone names, the unlocked `Feature`s
 - [ ] Read the simulation clock from `IThreading` instead of parsing the date
-- [ ] MCP tool `city_progress` starts here
 
 ### R1 — budgets & policies (Tier 1, easy)
 
@@ -135,7 +93,7 @@ Grouped by bridge release, because **every bridge change costs a game restart**.
 - [ ] `GET /state/policies` — the 127-value `Policies` enum, grouped, with city-wide and
       per-district state and whether each is loaded **[verified]**
 - [ ] `POST /commands/set-policy` — `SetCityPolicy` / `SetDistrictPolicy` **[verified]**
-- [ ] MCP tools `city_budget`, `city_policy`
+- [ ] MCP tools `city_budgets`, `city_set_budget`, `city_policies`, `city_set_policy`
 
 ### R2 — transport lines (Tier 1 + Tier 3)
 
@@ -160,7 +118,7 @@ Grouped by bridge release, because **every bridge change costs a game restart**.
 - [ ] MCP tool `city_district`
 - [ ] **Verify**: `GetDistrict(worldPos)` returns the painted district
 
-### R4 — terrain, resources, view, saves (Tier 0)
+### R4 — terrain, resources, view, load (Tier 0)
 
 - [ ] `POST /commands/edit-terrain` — raise / lower / flatten / smooth
       **[verified: `ICities.ITerrain.GetHeights` / `SetHeights` / `RawToHeight`]**
@@ -180,10 +138,11 @@ Grouped by bridge release, because **every bridge change costs a game restart**.
 - [ ] `POST /commands/place-prop` — `PropManager.CreateProp` **[verified]**
 - [ ] `GET /state/progress` — current milestone, progress, unlocked `Feature`s
       **[verified: `UnlockManager.GetCurrentMilestone`, `Unlocked(Feature)]**
+- [ ] `POST /commands/unlock-milestone` / `POST /commands/unlock-area` — exposed as
+      ordinary commands (Tier 0, verified) because the server does not make judgement
+      calls; `AGENTS.md` flags them as cheats to avoid without the user's say-so
 - [ ] `GET /state/industry` — industrial buildings, their production and inputs
-- [ ] Milestone unlock command — **built for parity, refused by the server** (§6 of
-      [`11-play-loop.md`](11-play-loop.md))
-- [ ] MCP tools `city_progress`, `city_industry`
+- [ ] MCP tools `city_props`, `city_place_prop`, `city_progress`, `city_unlock`
 
 ### R6 — UI automation fallback (tier 3)
 
@@ -193,16 +152,12 @@ Grouped by bridge release, because **every bridge change costs a game restart**.
 - [ ] `city_ui` tool — the escape hatch for anything with no API
 - [ ] **Verify**: an agent action that only the UI can perform changes the game state
 
-## Phase 6 — evaluation
+## Verification discipline (stands in place of the old evaluation phase)
 
-- [ ] Headless-ish harness: run at 3× for N simulated months, then score
-- [ ] Metrics: population, cash curve, service coverage %, road connectivity, problem
-      icons by type, milestone progress
-- [ ] **Save integrity check** — reload the save and diff the snapshot. A city that scores
-      well but produces a corrupt save has failed.
-- [ ] Compare against a hand-built reference city
-- [ ] Goal-completion harness: give the agent a goal, run it unattended, score the
-      result — this is the product's acceptance test
+Each new command is verified the same way the Phase 2 list was: **act → re-read →
+compare → expect**, on a live city, before the row in [`12-command-surface.md`](12-command-surface.md)
+moves to "Done". The save-integrity rule stays: reload the save and diff the readbacks —
+a command that corrupts the save has failed, no matter what its response says.
 
 ## Known open questions
 
@@ -210,7 +165,6 @@ Grouped by bridge release, because **every bridge change costs a game restart**.
 |---|---|
 | Does the simulation thread step while the game is paused? | `SimulationStep()` drains the action queue **before** the pause check, and `FixedUpdate()` keeps pulsing the lock — so it likely does. **Verify empirically.** If it does not, paused-mode commands need the game unpaused. |
 | Can a command be cancelled once running? | `IThreading` has no cancellation hook. Cancellation is best-effort: queued jobs can be dropped, running jobs finish. |
-| Should milestones be unlockable? | **Decided: no.** The agent earns them. The capability exists for player parity and the server refuses it by default. See [`11-play-loop.md`](11-play-loop.md) §6. |
 | Is `System.IO.Pipes` worth it after all? | Measured ~12.6 µs vs ~139 µs. Not worth it. Revisit only if HTTP ever becomes a bottleneck (it will not). |
 | Does `PrefabCollection<TransportInfo>` enumerate the bus/metro assets? | Almost certainly — same generic as the road catalogue — but unverified. |
 | How is the industry area represented? | `DistrictPark.ParkType` shows campus / airport / pedestrian, not industry. |

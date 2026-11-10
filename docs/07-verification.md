@@ -155,11 +155,11 @@ agent should diff against what it expected.
 
 | After this action | Re-read this |
 |---|---|
-| `city_build_road` | `city_infrastructure` — is the new segment present? Any new anomaly? |
-| `city_zone` | `city_districts` — did occupancy change? |
+| `city_build_road` | `city_road_anomalies` — is the new segment present? Any new anomaly? |
+| `city_zone` | `city_zones` — did occupancy change? |
 | `city_place_building` | `city_problems` — did the building immediately acquire a problem (no power, no road)? |
-| `city_economy` | `city_economy` — did the tax rate and cash actually change? |
-| `city_bulldoze` | `city_infrastructure` — is the object gone? Did it leave orphaned nodes? |
+| `city_set_tax_rate` | `city_economy` — did the tax rate and cash actually change? |
+| `city_bulldoze` | `city_road_anomalies` / `city_building_anomalies` — is the object gone? Did it leave orphaned nodes? |
 
 ### The anomaly checks the bridge provides
 

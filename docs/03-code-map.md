@@ -111,41 +111,47 @@ C#, .NET 10, `ModelContextProtocol` 2.4.0. Namespace `Cs1Mayor.Mcp`.
 | File | Lines | Owns |
 |------|-------|------|
 | `Program.cs` | 67 | Host setup, the stdio transport, and the operating instructions sent to the agent. |
-| `CityTools.cs` | 335 | The 13 tools. Each one is a thin wrapper over one or two HTTP calls. |
+| `CityTools.cs` | ~500 | The 33 raw tools — one per bridge endpoint, plus `city_request`. Each is a thin relay of one HTTP call. |
 | `BridgeClient.cs` | 181 | The HTTP client, the error translation, and body truncation so errors stay small in the agent's context. |
 
-### The 13 tools
+### The tool surface (one tool per endpoint)
 
-| Tool | Bridge calls |
-|------|--------------|
-| `city_snapshot` | `/state/summary` + `/state/demand` + `/state/economy` |
-| `city_problems` | `/state/problems` |
-| `city_districts` | `/state/zones` + `/state/growables` |
-| `city_infrastructure` | `/state/road-anomalies` + `/state/building-anomalies` + `/state/zone-anomalies` |
-| `city_services` | `/state/facilities` |
-| `city_prefabs` | `/prefabs/roads` \| `/prefabs/networks` \| `/prefabs/buildings` |
+| Tool | Bridge call |
+|------|-------------|
+| `city_health` | `/health` |
+| `city_threads` | `/debug/threads` |
+| `city_summary` · `city_demand` · `city_problems` · `city_chirps` | `/state/summary` · `/demand` · `/problems` · `/chirps` |
+| `city_zones` · `city_economy` · `city_facilities` · `city_growables` · `city_networks` | the matching `/state/*` read |
+| `city_road_anomalies` · `city_building_anomalies` · `city_zone_anomalies` | the matching `/state/*-anomalies` read |
+| `city_external_connections` · `city_saves` | `/state/external-connections` · `/state/saves` |
+| `city_building_prefabs` · `city_road_prefabs` · `city_network_prefabs` | `/prefabs/buildings` · `/roads` · `/networks` |
 | `city_build_road` | `POST /commands/build-road` |
 | `city_zone` | `POST /commands/set-zone` |
 | `city_place_building` | `POST /commands/place-building` |
+| `city_move_building` | `POST /commands/move-building` |
+| `city_set_building_active` | `POST /commands/set-building-active` |
 | `city_bulldoze` | `POST /commands/bulldoze` |
-| `city_economy` | `POST /commands/set-tax-rate` / `set-simulation-speed` + `/state/economy` |
-| `city_save` | `POST /commands/save` + `/state/saves` |
-| `city_health` | `/health` + `/debug/threads` |
+| `city_set_simulation_speed` | `POST /commands/set-simulation-speed` |
+| `city_set_tax_rate` | `POST /commands/set-tax-rate` |
+| `city_save` | `POST /commands/save` |
+| `city_repair_zones_to_growables` | `POST /commands/repair-zones-to-growables` |
+| `city_repair_zone_clusters` | `POST /commands/repair-zone-clusters` |
+| `city_disable_blocked_assets` | `POST /commands/disable-blocked-assets` |
+| `city_batch` | `POST /commands/batch` |
+| `city_request` | any endpoint — raw GET/POST passthrough |
 
-Tools that combine several calls nest each response under its own key (`summary`,
-`demand`, `economy`, …) rather than flattening them. Flattening would drop every key
-but the last, because the bridge payloads all start with the same ones.
+Reads and writes are separate tools so the agent never mutates the city when it only
+wanted information.
 
-### The planned `mcp-server/` layout
+### The future `mcp-server/` layout
 
-The play loop ([`11-play-loop.md`](11-play-loop.md)) adds three files. They are listed
-here so the next contributor knows where things go.
+No files are planned beyond what exists: a new bridge endpoint only needs a new thin
+tool in `CityTools.cs` — and `city_request` already reaches it before that tool lands.
 
 | File | Owns |
 |------|------|
-| `SessionStore.cs` | The file-backed goal, checklist, journal, last snapshot and settings. |
-| `WaitEngine.cs` | Polls the bridge for the simulated clock, computes the metric delta, detects `paused` / `no-game`. |
-| `PolicyGuard.cs` | The refusals the agent may not override — milestone and tile unlocking. |
+| `CityTools.cs` | grows with the bridge: one tool per new endpoint |
+| `src/Dispatch/MainThreadQueue.cs` (bridge) | Render-only work (camera framing, screenshot capture). It may not mutate city state. The one named exception to the thread rule. |
 
 And the bridge gains one named exception to the thread rule:
 
@@ -199,7 +205,7 @@ game. That is what [`07-verification.md`](07-verification.md) is for.
 | Change how a session remembers things | `mcp-server/SessionStore.cs` (goal, journal, checklist) |
 | Change how the agent waits or what a delta contains | `mcp-server/WaitEngine.cs` |
 | Change what the agent is forbidden to do | `mcp-server/PolicyGuard.cs` |
-| Add a capability a player has but the agent does not | [`12-capability-parity.md`](12-capability-parity.md) — pick a tier, then work the matrix row |
+| Add a capability a player has but the agent does not | [`12-command-surface.md`](12-command-surface.md) — pick a tier, then work the matrix row |
 | Change the threading model | `src/Dispatch/SimulationDispatcher.cs` — read [`01-architecture.md`](01-architecture.md) first |
 | Change how the game is built | `src/SkylinesAgentBridge.csproj` and `scripts/build-mod.ps1` |
 | Change the AI's mayorial knowledge | `docs/05-game-mechanics.md`, `docs/06-expansions.md` |

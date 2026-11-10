@@ -166,8 +166,8 @@ thread proof before you let the agent touch anything.
 
 Open opencode in this directory and say something like:
 
-> You are the mayor. Start with `city_health` and `city_snapshot`. Tell me what is
-> wrong with this city before you change anything.
+> You are the mayor. Start with `city_health`, `city_threads` and `city_summary`. Tell
+> me what is wrong with this city before you change anything.
 
 The agent's operating manual is [`../AGENTS.md`](../AGENTS.md). Read it if you want to
 know what it is allowed to do, and why.

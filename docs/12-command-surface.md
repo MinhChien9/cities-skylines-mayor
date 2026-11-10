@@ -1,7 +1,11 @@
-# Capability Parity — everything a player can do, an agent can do
+# Command Surface — every action in the game, reachable by the agent
 
-> **Status: target design.** None of the endpoints below exist yet. The API names marked
-> **[V]** were verified by reflection-only inspection of the live game's
+> **Status: master table + implementation plan.** The bridge today covers roads, zoning,
+> buildings, bulldozing, saves, taxes, simulation speed and a rich set of state reads —
+> exposed to the agent as **raw 1:1 MCP tools** (`mcp-server/CityTools.cs`, one tool per
+> endpoint, plus the `city_request` passthrough). Everything else below is the target:
+> every action the game itself can perform becomes one bridge endpoint + one raw tool.
+> API names marked **[V]** were verified by reflection-only inspection of the live game's
 > `Cities_Data\Managed\Assembly-CSharp.dll` and `ICities.dll` (Windows PowerShell
 > `ReflectionOnlyLoadFrom`), so the signatures quoted are the real ones, not remembered
 > ones. **[?]** marks anything that still needs confirming at implementation time.
@@ -10,11 +14,13 @@
 
 ## 1. The promise
 
-> A player can do anything to a Cities: Skylines city. So can the agent.
+> Everything the player can do, the agent can do — as raw commands.
 
-That is the whole requirement. It is deliberately stronger than "the agent can build a
-city" — it means the transport-line editor, the policy panel, the terrain tool, the
-milestone tree, the district brush and the airport-area painter are all reachable.
+The server adds **no decision logic on top**: one bridge endpoint, one tool, the response
+passed through untouched. It is deliberately stronger than "the agent can build a city" —
+it means the transport-line editor, the policy panel, the terrain tool, the milestone
+tree, the district brush and the airport-area painter are all reachable. The agent
+decides *what to do with them* from the stats the read endpoints return.
 
 **How parity is judged:** for each row in the matrix below, the agent can perform the
 action and the game state changes in the way the player's action would have changed it —
@@ -109,22 +115,22 @@ Is it a UI-driven feature?            → Tier 3
 | # | Capability | Tier | Bridge endpoint | MCP tool | Difficulty |
 |---|---|---|---|---|---|
 | 1 | Roads, zoning, buildings, bulldoze | **1** (today) | `/commands/*` | `city_build_road`, `city_zone`, `city_place_building`, `city_bulldoze` | Done |
-| 2 | **Service budgets** | **1** | `POST /commands/set-budget` | `city_budget` | Easy |
-| 3 | **Policies** (127) | **1** | `POST /commands/set-policy` | `city_policy` | Easy |
-| 4 | **Transport lines** | **1** + **3** | `POST /commands/transport-line` | `city_transport_line` | Hard |
-| 5 | **Districts** (create / paint / specialise) | **2** + **3** | `POST /commands/district` | `city_district` | Hard |
+| 2 | **Service budgets** | **1** | `GET /state/budgets`, `POST /commands/set-budget` | `city_budgets`, `city_set_budget` | Easy |
+| 3 | **Policies** (127) | **1** | `GET /state/policies`, `POST /commands/set-policy` | `city_policies`, `city_set_policy` | Easy |
+| 4 | **Transport lines** | **1** + **3** | `GET /state/transport`, `POST /commands/transport-line` | `city_transport` | Hard |
+| 5 | **Districts** (create / paint / specialise) | **2** + **3** | `GET /state/parks`, `POST /commands/district` | `city_district` | Hard |
 | 6 | **Special areas** (airport / campus / pedestrian / industry) | **2** + **3** | `POST /commands/district` | `city_district` | Hard |
-| 7 | **Milestones & map tiles** | **0** (forbidden by policy) | `/state/progress`, `POST /commands/unlock-milestone` | `city_progress` | Easy to build, **never used** |
-| 8 | **Props & landscaping** (trees, benches, lamps) | **1** | `POST /commands/place-prop` | `city_place_building` | Easy |
+| 7 | **Milestones & map tiles** | **0** | `GET /state/progress`, `POST /commands/unlock-milestone`, `POST /commands/unlock-area` | `city_progress`, `city_unlock` | Easy to build; **a cheat** (§4.6) |
+| 8 | **Props & landscaping** (trees, benches, lamps) | **1** | `GET /prefabs/props`, `POST /commands/place-prop` | `city_props`, `city_place_prop` | Easy |
 | 9 | **Parks & plazas** | **1** (they are buildings) | `POST /commands/place-building` | `city_place_building` | Done |
-| 10 | **Industry chains & cargo** | **1** + **2** | `/state/industry`, `POST /commands/set-industry` | `city_industry` | Medium |
-| 11 | **Terrain edits & natural resources** | **0** | `POST /commands/edit-terrain` | `city_terrain` | Easy |
+| 10 | **Industry chains & cargo** | **1** + **2** | `GET /state/industry`, cargo transport lines | `city_industry` | Medium |
+| 11 | **Terrain edits & natural resources** | **0** | `POST /commands/edit-terrain`, `GET /state/resources` | `city_terrain` | Easy |
 | 12 | **Screenshot & camera** | **0** | `POST /commands/render-view` | `city_view` | Easy |
-| 13 | **Save & load, rename** | **0** + **1** | `/state/saves`, `POST /commands/save`, `POST /commands/load` | `city_save` | Easy |
-| 14 | **Loans & tariff panels** | **1** + **2** | `POST /commands/set-loan` | `city_economy` | Easy |
-| 15 | **Game speed / pause / simulation clock** | **0** + **1** | `POST /commands/set-simulation-speed` | `city_economy` | Done |
+| 13 | **Save & load, rename** | **0** + **1** | `/state/saves`, `POST /commands/save`, `POST /commands/load` | `city_save`, `city_load` | Easy (load pending §7) |
+| 14 | **Loans & tariff panels** | **1** + **2** | `POST /commands/set-loan` | `city_set_loan` | Medium |
+| 15 | **Game speed / pause / simulation clock** | **0** + **1** | `POST /commands/set-simulation-speed` | `city_set_simulation_speed` | Done |
 | 16 | **Disasters on demand** | **0** | `POST /commands/spawn-disaster` | `city_disaster` | Easy |
-| 17 | **Citizen chatter / notifications** | **0** | `/state/chirps` | `city_problems` | Done |
+| 17 | **Citizen chatter / notifications** | **0** | `GET /state/chirps` | `city_chirps` | Done |
 
 ---
 
@@ -287,7 +293,7 @@ Whether the industry area uses a `ParkType` at all **[?]** — the enum grep did
 an `Industry` member, so the industry area may be a distinct mechanism. Confirm before
 implementing.
 
-### 4.6 Milestones and map tiles — Tier 0, but forbidden
+### 4.6 Milestones and map tiles — Tier 0, but a cheat
 
 Reading is open and cheap. Through `ICities` **[V]**:
 
@@ -327,9 +333,11 @@ IAreas.unlockedAreaCount / get_startTileX / get_startTileZ
 > latter does not find it. `GameAreaManager.UnlockArea(int tileIndex)` **[V]** is the
 > game's internal equivalent.
 
-**The policy stands: the agent never calls any of these.** The bridge exposes them for
-player parity; the MCP server refuses them unless the session sets `allowCheats`, which
-the agent may not do. See [`11-play-loop.md`](11-play-loop.md) §6.
+**The policy: these are exposed as ordinary commands — the server does not refuse
+anything.** Milestone and map-tile unlocks are cheats that invalidate the city's
+economics and forfeit achievements; `AGENTS.md` §4 rule 16 tells the agent to avoid them
+unless the user explicitly asks. The commands exist, because the server's job is reach-
+ability, not judgement.
 
 ### 4.7 Props and landscaping — Tier 1
 
@@ -446,9 +454,9 @@ ISerializableData.EnumerateData() / LoadData(id) / SaveData(id, bytes) / EraseDa
 
 **[V]** — loading a save is a *supported* call, not a UI automation problem. (The
 first draft of this document rated it Tier 3; it is not.) `LoadGame` still needs care:
-the mod's `LevelLoaded` flag, the dispatcher's pending jobs and the MCP server's cached
-snapshot all have to be invalidated around it. The `ISerializableDataExtensionBase.OnLoadData`
-hook **[V]** is where that invalidation belongs.
+the mod's `LevelLoaded` flag and the dispatcher's pending jobs have to be invalidated
+around it. The `ISerializableDataExtensionBase.OnLoadData` hook **[V]** is where that
+invalidation belongs.
 
 Renaming and duplicating a `.crp` are plain file operations.
 
@@ -475,9 +483,10 @@ IThreading.get_renderTime / get_renderFrame / get_renderDayTimeHour
 IThreading.QueueMainThread() / QueueSimulationThread()
 ```
 
-**[V]** The wait engine (§4 of [`11-play-loop.md`](11-play-loop.md)) needs the
-simulation clock to know when the target date has passed — `simulationTime` is a
-first-class supported read, which is better than parsing the date out of the snapshot.
+**[V]** The simulation clock matters for pacing: the agent can measure how much simulated
+time elapsed between two reads and avoid drawing conclusions after zero sim-days.
+`simulationTime` is a first-class supported read, which is better than parsing the date
+out of the snapshot.
 
 ---
 
@@ -490,21 +499,21 @@ Two consequences:
 
 1. **Batch bridge work.** A feature that needs three endpoints should land in one
    bridge build, not three. The matrix rows are grouped into *bridge releases* below.
-2. **Ship server-side work first.** `city_wait`, `city_delta`, `city_goal`,
-   `city_journal`, and the session store are all **MCP-server-only** — no game restart,
-   no bridge change. They are the play loop's backbone and they can ship immediately.
+2. **New endpoints are instantly agent-reachable.** The MCP server ships a raw
+   passthrough (`city_request`), so a bridge endpoint added today is callable by the
+   agent today; the dedicated 1:1 tool only adds discoverability. No server-side gate
+   sits between a new endpoint and the agent.
 
 ### Proposed bridge releases
 
 | Release | Contents | Why together |
 |---|---|---|
-| **R0 — ICities** | Capture `IManagers` in `ThreadingExtensionBase.OnCreated`. Expose `/state/capabilities` (what the running game supports) | Prerequisite for R5/R6; one tiny change, huge unlock |
+| **R0 — ICities** | Capture `IManagers` in `ThreadingExtensionBase.OnCreated`. Expose `/state/capabilities` (what the running game supports) and the simulation clock | Prerequisite for R4/R5; one tiny change, huge unlock |
 | **R1 — budgets & policies** | `/state/budgets`, `set-budget`, `/state/policies`, `set-policy` | Both are trivial Tier 1 and unlock the economy levers in `05-game-mechanics.md` |
-| **R2 — the session & wait loop** | *(server only — no bridge)* | The play loop itself |
 | **R3 — transport** | `/state/transport`, `/prefabs/transport`, `transport-line` | The biggest single quality unlock; needs its own verification budget |
 | **R4 — districts & areas** | `/state/parks`, `district` (create / paint / specialise), `game-area` | One implementation covers four feature families (§4.4 + §4.5) |
-| **R5 — terrain, resources, view, saves** | `edit-terrain`, `resource`, `render-view`, `load` | All Tier 0 — one implementation covers all four |
-| **R6 — props, progress, industry** | `/prefabs/props`, `place-prop`, `/state/progress`, `/state/industry` | Cheap Tier 1 work, batched |
+| **R5 — terrain, resources, view, load** | `edit-terrain`, `/state/resources`, `render-view`, `load` | All Tier 0 — one implementation covers all four |
+| **R6 — props, progress, industry** | `/prefabs/props`, `place-prop`, `/state/progress`, `unlock-*`, `/state/industry` | Cheap Tier 1 work, batched |
 | **R7 — UI automation fallback (tier 3)** | Move the `game-ui.ps1` primitives into the MCP server; world→screen projection | The escape hatch for whatever is left |
 
 ---
@@ -520,7 +529,7 @@ have changed it. Per row:
 | Policies | Read the policy state back; confirm the demand/happiness delta over a simulated week. |
 | Transport line | Read the line back: stops, vehicles, active state, and that it is `SetActive`. Then confirm ridership over a simulated week. |
 | District / area | Read `m_districtGrid` back and confirm the cells carry the right district byte; confirm `GetDistrict(worldPos)` returns it. |
-| Milestones | Read `GetCurrentMilestone()` and `Unlocked(Feature)` — **and never call the unlock.** |
+| Milestones | Read `GetCurrentMilestone()` and `Unlocked(Feature)` before and after; the unlock itself is an ordinary command (a cheat — see §4.6). |
 | Props | Confirm the prop id exists and `PropManager` reports it. |
 | Terrain | Compare `ITerrain.GetHeights` before/after; confirm `SampleTerrainHeight` changed where it should and nowhere else. |
 | Resources | Confirm `IResource.GetResource` reports the new value. |
