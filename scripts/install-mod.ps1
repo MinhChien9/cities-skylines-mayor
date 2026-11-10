@@ -1,17 +1,19 @@
 <#
-    Installs the CS1 Mayor Bridge mod into the local Cities: Skylines user mods folder
+.SYNOPSIS
+    Installs the CS1 Mayor bridge mod into the local Cities: Skylines user mods folder
     and verifies the installation.
 
-    The mod is NOT enabled automatically: Cities: Skylines keeps a content-manager
-    database (playsets_mods) that must be updated by the launcher. Enable it once in
-    the game's content manager, or via the Content Manager UI.
+.DESCRIPTION
+    The mod auto-loads: Cities: Skylines picks up any DLL dropped into the Mods folder,
+    so it does not have to be enabled in the content manager. It reports
+    "levelLoaded:false" until a city is loaded.
 
-    Usage:
-        .\scripts\install-mod.ps1
-        .\scripts\install-mod.ps1 -GamePath "D:\Epic Games\CitiesSkylines"
+.EXAMPLE
+    .\scripts\install-mod.ps1
+    .\scripts\install-mod.ps1 -GamePath "D:\Games\CitiesSkylines"
 #>
 param(
-    [string]$GamePath = "D:\Epic Games\CitiesSkylines",
+    [string]$GamePath = "",
     [switch]$SkipBuild
 )
 
@@ -37,10 +39,9 @@ Write-Host "Installed to: $modDir"
 Write-Host ""
 Write-Host "Next steps:"
 Write-Host "  1. Start Cities: Skylines"
-Write-Host "  2. Content Manager -> enable 'Skylines Agent Bridge'"
-Write-Host "  3. Load a city"
-Write-Host "  4. Verify the thread proof:"
+Write-Host "  2. Load a city"
+Write-Host "  3. Verify the thread proof:"
 Write-Host "       Invoke-RestMethod http://127.0.0.1:32123/debug/threads"
 Write-Host ""
 Write-Host "  probeThreadId MUST equal simulationThreadId and MUST NOT equal mainThreadId."
-Write-Host "  If it does not, stop - see docs\ARCHITECTURE.md."
+Write-Host "  If it does not, stop - see docs/01-architecture.md."

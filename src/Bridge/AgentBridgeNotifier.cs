@@ -16,6 +16,12 @@ namespace SkylinesAgentBridge
         private const int MaxEntries = 120;
         private const int VisibleEntries = 9;
         private const int MaxLineLength = 78;
+
+        // `entries` is only ever touched on the Unity main thread (by Update and by the
+        // panel's own button handlers). `pending` is the hand-off point: the HTTP worker
+        // thread calls Notify(), which only enqueues, and the main thread drains it.
+        private static readonly object gate = new object();
+        private static readonly Queue<Entry> pending = new Queue<Entry>();
         private static readonly List<Entry> entries = new List<Entry>();
         private static UIPanel panel;
         private static UILabel titleLabel;
@@ -27,32 +33,76 @@ namespace SkylinesAgentBridge
         private static Vector3 lastMousePosition;
         private static Vector3 savedPanelPosition = new Vector3(18f, 92f);
 
+        /// <summary>
+        /// Records a line for the console.
+        ///
+        /// Called from the HTTP worker thread, so it must not touch any Unity object.
+        /// It only enqueues; <see cref="Update"/> drains the queue on the main thread.
+        /// </summary>
         public static void Notify(string text)
         {
-            EnsurePanel();
-
-            if (panel == null || label == null)
+            if (string.IsNullOrEmpty(text))
             {
                 return;
             }
 
-            entries.Add(new Entry { Text = text, Time = DateTime.Now.ToString("HH:mm:ss") });
+            lock (gate)
+            {
+                pending.Enqueue(new Entry { Text = text, Time = DateTime.Now.ToString("HH:mm:ss") });
+            }
+        }
+
+        /// <summary>
+        /// Called from the game's per-frame hook on the Unity main thread.
+        /// Moves newly recorded lines into the visible log and refreshes the panel.
+        /// </summary>
+        public static void Update(float realTimeDelta)
+        {
+            EnsurePanel();
+            if (DrainPending())
+            {
+                Refresh();
+            }
+            UpdateDrag();
+        }
+
+        /// <summary>
+        /// Moves queued lines into the visible log.
+        /// Returns true when something was added.
+        /// </summary>
+        private static bool DrainPending()
+        {
+            bool added = false;
+
+            lock (gate)
+            {
+                while (pending.Count > 0)
+                {
+                    entries.Add(pending.Dequeue());
+                    added = true;
+                }
+            }
+
+            if (!added)
+            {
+                return false;
+            }
+
             while (entries.Count > MaxEntries)
             {
                 entries.RemoveAt(0);
             }
 
-            Refresh();
-        }
-
-        public static void Update(float realTimeDelta)
-        {
-            EnsurePanel();
-            UpdateDrag();
+            return true;
         }
 
         public static void Destroy()
         {
+            lock (gate)
+            {
+                pending.Clear();
+            }
+
             entries.Clear();
             if (panel != null)
             {

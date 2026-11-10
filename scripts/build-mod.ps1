@@ -1,85 +1,87 @@
 <#
-    Builds the CS1 Mayor Bridge mod DLL and installs it into the local
+.SYNOPSIS
+    Builds the CS1 Mayor bridge mod and installs it into the local
     Cities: Skylines user mods folder.
 
+.DESCRIPTION
     The game ships its own Mono runtime and a full set of reference assemblies in
-    Cities_Data\Managed. We compile against those exact assemblies so the mod links
+    Cities_Data\Managed. The mod compiles against those exact assemblies so it links
     against the same BCL the game loads at runtime.
 
-    NOTE: reference Cities_Data\Managed\System.Core.dll (NOT Mono\lib\mono\unity\).
-    The "unity" compile profile does not contain System.IO.Pipes, while the runtime
-    Managed\ folder does.
+    The build is a normal MSBuild build of src\SkylinesAgentBridge.csproj. That project
+    file disables the default framework references and points at the game's own
+    assemblies instead, which is why the output can be dropped straight into the game.
+
+.PARAMETER GamePath
+    Path to the Cities: Skylines installation. Defaults to $env:CITIES_SKYLINES_PATH,
+    then to "D:\Epic Games\CitiesSkylines".
+
+.PARAMETER Configuration
+    Build configuration. Defaults to Release.
+
+.PARAMETER NoInstall
+    Build only. Do not copy the DLL into the game's mods folder.
+
+.EXAMPLE
+    powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-mod.ps1
+    powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-mod.ps1 -GamePath "D:\Games\CitiesSkylines"
 #>
 param(
-    [string]$GamePath = "D:\Epic Games\CitiesSkylines",
+    [string]$GamePath = "",
     [string]$Configuration = "Release",
     [switch]$NoInstall
 )
 
 $ErrorActionPreference = "Stop"
+
 $repo = Split-Path -Parent $PSScriptRoot
 if ($repo -like "*\scripts") { $repo = Split-Path -Parent $repo }
-$src = Join-Path $repo "src"
+
+$project = Join-Path $repo "src\SkylinesAgentBridge.csproj"
 $out = Join-Path $repo "bin"
+
+# ---- Locate the game --------------------------------------------------------
+if ([string]::IsNullOrWhiteSpace($GamePath)) {
+    if (-not [string]::IsNullOrWhiteSpace($env:CITIES_SKYLINES_PATH)) {
+        $GamePath = $env:CITIES_SKYLINES_PATH
+    }
+    else {
+        $GamePath = "D:\Epic Games\CitiesSkylines"
+    }
+}
 
 $managed = Join-Path $GamePath "Cities_Data\Managed"
 if (!(Test-Path (Join-Path $managed "ICities.dll"))) {
-    throw "Cities: Skylines managed assemblies were not found at $managed. Pass -GamePath."
+    throw @"
+Cities: Skylines managed assemblies were not found at '$managed'.
+
+Pass the install path explicitly:
+    .\scripts\build-mod.ps1 -GamePath "D:\Games\CitiesSkylines"
+
+or set it for the session:
+    `$env:CITIES_SKYLINES_PATH = "D:\Games\CitiesSkylines"
+"@
 }
 
-# The game ships its own C# compiler (Unity's smcs, C# 3.0 era) which cannot build
-# modern language features, so we use the installed .NET SDK's Roslyn compiler and
-# target the game's own reference assemblies explicitly.
-$csc = Get-ChildItem "C:\Program Files\dotnet\sdk" -Recurse -Filter csc.dll -ErrorAction SilentlyContinue |
-    Where-Object { $_.FullName -match "Roslyn\\bincore\\csc.dll$" } |
-    Sort-Object FullName -Descending | Select-Object -First 1 -ExpandProperty FullName
-
-if (!$csc) {
-    throw "Roslyn csc.dll was not found under C:\Program Files\dotnet\sdk. Install the .NET SDK."
+# ---- Build ------------------------------------------------------------------
+if (!(Get-Command dotnet -ErrorAction SilentlyContinue)) {
+    throw "The .NET SDK was not found on PATH. Install it from https://dotnet.microsoft.com/download"
 }
 
-New-Item -ItemType Directory -Force -Path $out | Out-Null
+Write-Host "Game path : $GamePath"
+Write-Host "Building  : $project ($Configuration)"
 
-$target = Join-Path $out "SkylinesAgentBridge.dll"
-if (Test-Path $target) { Remove-Item $target -Force }
-
-# Reference set: the game's OWN runtime assemblies.
-$refs = @(
-    (Join-Path $managed "mscorlib.dll"),
-    (Join-Path $managed "System.dll"),
-    (Join-Path $managed "System.Core.dll"),
-    (Join-Path $managed "ICities.dll"),
-    (Join-Path $managed "Assembly-CSharp.dll"),
-    (Join-Path $managed "Assembly-CSharp-firstpass.dll"),
-    (Join-Path $managed "ColossalManaged.dll"),
-    (Join-Path $managed "UnityEngine.dll")
-)
-
-$missing = $refs | Where-Object { !(Test-Path $_) }
-if ($missing) {
-    throw "Missing reference assemblies: $($missing -join ', ')"
-}
-
-$sources = Get-ChildItem -LiteralPath $src -Filter *.cs | Sort-Object Name | ForEach-Object { $_.FullName }
-
-$argList = @(
-    "exec", $csc,
-    "-noconfig", "-nostdlib", "-nologo",
-    "-target:library",
-    "-optimize+",
-    "-define:TRACE",
-    "-langversion:5",
-    "-out:$target"
-)
-foreach ($r in $refs) { $argList += "-r:$r" }
-$argList += $sources
-
-Write-Host "Building $target"
-& dotnet @argList
+& dotnet build $project -c $Configuration --nologo -p:GamePath="$GamePath"
 if ($LASTEXITCODE -ne 0) {
     throw "Compilation failed with exit code $LASTEXITCODE."
 }
 
+$target = Join-Path $out "SkylinesAgentBridge.dll"
+if (!(Test-Path $target)) {
+    throw "The build succeeded but '$target' was not produced."
+}
+
+# ---- Install ----------------------------------------------------------------
 if (!$NoInstall) {
     $modDir = Join-Path $env:LOCALAPPDATA "Colossal Order\Cities_Skylines\Addons\Mods\SkylinesAgentBridge"
     New-Item -ItemType Directory -Force -Path $modDir | Out-Null

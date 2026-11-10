@@ -1,8 +1,9 @@
 using System.Collections;
 using System.Text;
 using ColossalFramework.Packaging;
+using SkylinesAgentBridge.Support;
 
-namespace SkylinesAgentBridge
+namespace SkylinesAgentBridge.Commands
 {
     public static class AssetCommands
     {

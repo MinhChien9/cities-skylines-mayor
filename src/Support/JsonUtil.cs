@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace SkylinesAgentBridge
+namespace SkylinesAgentBridge.Support
 {
     public static class JsonUtil
     {

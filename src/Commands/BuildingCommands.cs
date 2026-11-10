@@ -3,8 +3,10 @@ using System.Reflection;
 using ColossalFramework;
 using ColossalFramework.Math;
 using UnityEngine;
+using SkylinesAgentBridge.State;
+using SkylinesAgentBridge.Support;
 
-namespace SkylinesAgentBridge
+namespace SkylinesAgentBridge.Commands
 {
     public static class BuildingCommands
     {
@@ -13,7 +15,7 @@ namespace SkylinesAgentBridge
             bool dryRun = JsonUtil.GetBool(body, "dryRun", false);
             string prefabName = JsonUtil.GetString(body, "buildingPrefab", "");
             float angleDegrees = JsonUtil.GetNumber(body, "angleDegrees", 0f);
-            Vector3 position = ReadPoint(body, "position");
+            Vector3 position = CommandInput.ReadPoint(body, "position");
 
             if (prefabName == null || prefabName.Length == 0)
             {
@@ -98,7 +100,7 @@ namespace SkylinesAgentBridge
                 return CommandResult.Fail("Building prefab is blocked and must not be used for move/recreate: " + info.name + " (" + AssetPolicy.BlockReason(info.name) + ")");
             }
 
-            Vector3 position = ReadPoint(body, "position");
+            Vector3 position = CommandInput.ReadPoint(body, "position");
             TerrainManager terrain = TerrainManager.instance;
             position.y = terrain.SampleRawHeightSmoothWithWater(position, false, 0f);
             float angleDegrees = JsonUtil.GetNumber(body, "angleDegrees", oldBuilding.m_angle * Mathf.Rad2Deg);
@@ -202,14 +204,6 @@ namespace SkylinesAgentBridge
             object[] args = new object[] { id, building };
             method.Invoke(ai, args);
             building = (Building)args[1];
-        }
-
-        private static Vector3 ReadPoint(string body, string name)
-        {
-            float x = JsonUtil.GetPointNumber(body, name, "x", 0f);
-            float z = JsonUtil.GetPointNumber(body, name, "z", 0f);
-            float y = JsonUtil.GetPointNumber(body, name, "y", 0f);
-            return new Vector3(x, y, z);
         }
     }
 }

@@ -1,6 +1,7 @@
 using ColossalFramework;
+using SkylinesAgentBridge.Support;
 
-namespace SkylinesAgentBridge
+namespace SkylinesAgentBridge.Commands
 {
     public static class SimulationCommands
     {
