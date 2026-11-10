@@ -141,8 +141,7 @@ Verified against the live game: `population: 0` matches the HUD's population lab
 |---|---|
 | `iManagersCaptured` | `true` |
 | `version` | `1.21.1-f9-epic-win` — matches the installed build |
-| `supportedExpansions` | all 14 installed DLC reported |
-| `milestones` / `currentMilestone` | hundreds of names as the game knows them; `currentMilestone: "Milestone1"` — correct for a fresh city |
+| `supportedExpansions` | all 14 installed DLC reported || `milestones` / `currentMilestone` | hundreds of names as the game knows them; `currentMilestone: "Milestone1"` — correct for a fresh city |
 | `unlockedFeatures` / `lockedFeatures` | `Zoning, Economy, Budget, GameAreas, Bulldozer, InfoViews` unlocked; 47 features locked — matches a city at Milestone 1 |
 | `clock` | `simulationTime`, `simulationFrame`, `simulationTick`, `simulationPaused: true`, `simulationSpeed`, day-time hour |
 
@@ -155,8 +154,7 @@ the game's own public `ManagersWrapper` on the simulation thread as a fallback. 
 game log confirms exactly that path:
 
 ```
-[SkylinesAgentBridge] OnCreated did not run for this install; captured the ICities
-surface via the game's public ManagersWrapper fallback.
+[SkylinesAgentBridge] ICities surface captured via ManagersWrapper (OnCreated did not run).
 ```
 
 **Clock discipline (the point of the `clock` block):**

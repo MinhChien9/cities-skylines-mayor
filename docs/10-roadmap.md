@@ -85,11 +85,10 @@ Each release also adds its MCP tools (or relies on `city_request` in the interim
       `AgentBridge.ICitiesManagers`, served as an opaque handle.
       **Live-game finding:** for a mod dropped into the Mods folder, the game loads the
       assembly and constructs `IUserMod` but never instantiates the extension bases —
-      neither `OnCreated` nor `OnLevelLoaded` fired. So `EnsureICitiesManagers()` lazily
-      constructs the game's own public `ManagersWrapper` on the simulation thread as a
-      fallback. Both wrapper routes treat the interface as opaque — no reflection.
-- [x] `GET /state/capabilities` — version (`IApplication.currentVersion`, which is
-      `""` inside no-city builds but populated at runtime), expansions
+      neither `OnCreated` nor `OnLevelLoaded` fired — so `EnsureICitiesManagers()`
+      lazily constructs the game's own public `ManagersWrapper` on the simulation
+      thread as a fallback.
+- [x] `GET /state/capabilities` — version (`IApplication.currentVersion`), expansions
       (`SupportsExpansion`), milestone names (`IMilestones.EnumerateMilestones`), the
       current milestone, and the unlocked/locked `UnlockManager.Feature` list.
       Tool: `city_capabilities`.

@@ -40,10 +40,10 @@ C# 5, `net35`, compiled against the game's own assemblies. Namespace root:
 
 | File | Lines | Owns |
 |------|-------|------|
-| `AgentBridge.cs` | 119 | The singleton that owns the dispatcher and the server. `Instance`, `LevelLoaded`, `Start()`, `OnLevelLoaded()`, `OnLevelUnloading()`, `CaptureICitiesManagers()`. |
+| `AgentBridge.cs` | 150 | The singleton that owns the dispatcher and the server. `Instance`, `LevelLoaded`, `Start()`, `OnLevelLoaded()`, `OnLevelUnloading()`, `EnsureICitiesManagers()`. |
 | `AgentBridgeMod.cs` | 31 | The `IUserMod` entry point. The game always constructs it, so it is where the server is started. |
 | `AgentBridgeLoading.cs` | 18 | `LoadingExtensionBase` hook — forwards level load/unload to the singleton. |
-| `AgentBridgeThreading.cs` | 36 | `ThreadingExtensionBase` hook — pumps the dispatcher per frame and, in `OnCreated`, captures the `ICities.IManagers` handle (the game's supported modding surface). |
+| `AgentBridgeThreading.cs` | 27 | `ThreadingExtensionBase` hook — pumps the dispatcher per frame and captures the `ICities.IManagers` handle in `OnCreated`. |
 | `ApiServer.cs` | 119 | The TCP listener. Accepts connections, hands each to a thread-pool worker, writes the response. Nothing else. |
 | `ApiRoutes.cs` | 405 | The whole HTTP surface: one table of `(method, path) → handler`, plus the route descriptions shown in the in-game console. |
 | `AgentBridgeNotifier.cs` | 349 | The draggable in-game console panel. Shows what the agent is doing, live. |

@@ -69,26 +69,26 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 
 ### `/state/capabilities` — what the running game supports
 
-Read through the supported `ICities` surface, captured once from
-`ThreadingExtensionBase.OnCreated` (R0 of the roadmap).
+Read through the supported `ICities` surface (R0 of the roadmap). Values below are from
+a verified run on 2026-11-11.
 
 ```json
 {
   "ok": true,
   "iManagersCaptured": true,
-  "version": "1.17.1-f4",
-  "installedExpansions": ["AfterDark", "Snowfall", "..."],
+  "version": "1.21.1-f9-epic-win",
+  "knownExpansions": ["AfterDark", "Snowfall", "..."],
   "supportedExpansions": ["AfterDark", "Snowfall", "..."],
   "milestones": ["Basic City 1", "Basic City 2", "..."],
-  "currentMilestone": "Busy City 1",
-  "unlockedFeatures": ["Zoning", "Districts", "..."],
+  "currentMilestone": "Milestone1",
+  "unlockedFeatures": ["Zoning", "Economy", "..."],
   "lockedFeatures": ["Ferry", "Trolleybus", "..."],
   "clock": {
     "simulationTime": "2027-03-19T13:28:50",
     "simulationFrame": 104233,
     "simulationTick": 52116,
-    "simulationPaused": false,
-    "simulationSpeed": 3,
+    "simulationPaused": true,
+    "simulationSpeed": 1,
     "simulationDayTimeHour": 13.4,
     "simulationNightTime": false,
     "renderDayTimeHour": 13.4
@@ -98,15 +98,13 @@ Read through the supported `ICities` surface, captured once from
 
 | Field | Meaning |
 |---|---|
-| `supportedExpansions` | The `ICities.Expansion` values the loaded install reports as supported. |
-| `milestones` / `currentMilestone` | Milestone names as the game knows them — the exact strings `unlock-milestone` takes. `currentMilestone` is what the city is working towards. |
+| `knownExpansions` / `supportedExpansions` | Every `ICities.Expansion` value except `None`, and the subset the install reports as supported (`SupportsExpansion`). |
+| `milestones` / `currentMilestone` | Milestone names as the game knows them, and what the city is currently working towards. |
 | `unlockedFeatures` / `lockedFeatures` | `UnlockManager.Feature` state: the gate list for milestone-gated gameplay (GameAreas, ParkAreas, CampusAreas, Ferry, Trolleybus, PedestrianZones, …). Ask here before assuming transit or special areas are available. |
-| `clock` | The `ICities.IThreading` simulation clock: a first-class timestamp plus frame/tick counters. Read it twice and diff to know how much **simulated** time actually elapsed mid-build — never conclude anything from a zero-sim-time pair of reads. |
+| `clock` | The `ICities.IThreading` simulation clock. Read it twice and diff to know how much **simulated** time actually elapsed mid-build — never conclude anything from a zero-sim-time pair of reads. |
 
-However, the fallback must be honest in its response: `iManagersCaptured: true` means
-the `ICities` handle is carrying live data for this game session (via `OnCreated` or
-the `ManagersWrapper` fallback); `false` means construction failed and the other
-fields will be missing.
+`iManagersCaptured: false` means the ICities handle could not be constructed; the other
+fields will be missing and the game log has the reason.
 
 ### `/state/economy` — the money block
 

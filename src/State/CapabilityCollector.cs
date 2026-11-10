@@ -8,23 +8,12 @@ using SkylinesAgentBridge.Support;
 namespace SkylinesAgentBridge.State
 {
     /// <summary>
-    /// Builds <c>GET /state/capabilities</c>: what the running game supports, read through
-    /// the supported <c>ICities</c> surface (<see cref="ICities.IManagers"/>) plus
-    /// <c>UnlockManager</c> for the milestone/feature state.
+    /// Builds <c>GET /state/capabilities</c>: game version, expansions, milestones,
+    /// unlocked features and the simulation clock, read through the ICities surface
+    /// (<see cref="ICities.IManagers"/>) plus UnlockManager.
     ///
-    /// Reports:
-    ///   * game version (<see cref="IApplication"/>) and which DLC it can see
-    ///   * the milestone names (<see cref="IMilestones"/>) and the current one
-    ///   * the known milestone-gated features, locked/unlocked (<c>UnlockManager</c>)
-    ///   * the simulation clock (<see cref="IThreading"/>) — a first-class read that
-    ///     replaces estimating progress from the date string in /state/summary
-    ///
-    /// Every section is wrapped in its own guard so one broken surface does not starve the
-    /// others — the same policy the thread probe follows.
-    ///
-    /// IMPORTANT: this runs on the simulation thread, and
-    /// <see cref="AgentBridge.EnsureICitiesManagers"/> may construct the wrapper there on
-    /// first use (OnCreated does not fire for a locally-dropped mod).
+    /// Each section is guarded on its own so one broken surface does not starve the
+    /// others — the same policy the thread probe follows. Runs on the simulation thread.
     /// </summary>
     internal static class CapabilityCollector
     {
@@ -57,8 +46,6 @@ namespace SkylinesAgentBridge.State
             }
             catch (Exception)
             {
-                // The wrapper can throw if application state is not ready yet; the other
-                // sections still have their answer.
             }
         }
 
@@ -71,45 +58,37 @@ namespace SkylinesAgentBridge.State
 
             try
             {
-                Array values = Enum.GetValues(typeof(Expansion));
+                StringBuilder known = new StringBuilder();
                 StringBuilder supported = new StringBuilder();
-                StringBuilder detected = new StringBuilder();
+                bool firstKnown = true;
                 bool firstSupported = true;
-                bool firstDetected = true;
-                foreach (Expansion value in values)
+                foreach (Expansion value in Enum.GetValues(typeof(Expansion)))
                 {
                     if (value == Expansion.None)
                     {
                         continue;
                     }
 
-                    if (firstDetected)
+                    if (!firstKnown)
                     {
-                        firstDetected = false;
+                        known.Append(",");
                     }
-                    else
-                    {
-                        detected.Append(",");
-                    }
-                    detected.Append("\"").Append(JsonUtil.Escape(value.ToString())).Append("\"");
+                    known.Append("\"").Append(value).Append("\"");
+                    firstKnown = false;
 
-                    bool isSupported = managers.application.SupportsExpansion(value);
-                    if (isSupported)
+                    if (managers.application.SupportsExpansion(value))
                     {
-                        if (firstSupported)
-                        {
-                            firstSupported = false;
-                        }
-                        else
+                        if (!firstSupported)
                         {
                             supported.Append(",");
                         }
-                        supported.Append("\"").Append(JsonUtil.Escape(value.ToString())).Append("\"");
+                        supported.Append("\"").Append(value).Append("\"");
+                        firstSupported = false;
                     }
                 }
 
-                json.Append(",\"installedExpansions\":[").Append(detected.ToString()).Append("]");
-                json.Append(",\"supportedExpansions\":[").Append(supported.ToString()).Append("]");
+                json.Append(",\"knownExpansions\":[").Append(known).Append("]");
+                json.Append(",\"supportedExpansions\":[").Append(supported).Append("]");
             }
             catch (Exception)
             {
@@ -126,7 +105,6 @@ namespace SkylinesAgentBridge.State
             try
             {
                 string[] milestones = managers.milestones.EnumerateMilestones();
-                Array.Sort(milestones, StringComparer.Ordinal);
                 json.Append(",\"milestones\":[");
                 for (int i = 0; i < milestones.Length; i++)
                 {
@@ -137,19 +115,19 @@ namespace SkylinesAgentBridge.State
                     json.Append("\"").Append(JsonUtil.Escape(milestones[i])).Append("\"");
                 }
                 json.Append("]");
+            }
+            catch (Exception)
+            {
+            }
 
-                // The milestone the city is currently working towards. Report its internal
-                // name — the same string UnlockMilestone expects.
-                try
+            // The milestone the city is currently working towards. Its internal name is
+            // the same string UnlockMilestone expects.
+            try
+            {
+                MilestoneInfo current = UnlockManager.instance.GetCurrentMilestone();
+                if (current != null && current.m_name != null)
                 {
-                    MilestoneInfo current = UnlockManager.instance.GetCurrentMilestone();
-                    if (current != null && current.m_name != null)
-                    {
-                        json.Append(",\"currentMilestone\":\"").Append(JsonUtil.Escape(current.m_name)).Append("\"");
-                    }
-                }
-                catch (Exception)
-                {
+                    json.Append(",\"currentMilestone\":\"").Append(JsonUtil.Escape(current.m_name)).Append("\"");
                 }
             }
             catch (Exception)
@@ -159,16 +137,14 @@ namespace SkylinesAgentBridge.State
 
         private static void AppendFeatures(StringBuilder json)
         {
-            // UnlockManager.Feature is the gate list for everything milestone-gated:
+            // UnlockManager.Feature is the gate list for milestone-gated gameplay:
             // GameAreas, ParkAreas, CampusAreas, Ferry, Trolleybus, PedestrianZones, ...
-            // This is how the agent asks "can I use metro yet?" instead of guessing.
             try
             {
                 UnlockManager unlock = UnlockManager.instance;
-                Array values = Enum.GetValues(typeof(UnlockManager.Feature));
                 List<string> unlocked = new List<string>();
                 List<string> locked = new List<string>();
-                foreach (UnlockManager.Feature value in values)
+                foreach (UnlockManager.Feature value in Enum.GetValues(typeof(UnlockManager.Feature)))
                 {
                     if (value == UnlockManager.Feature.None)
                     {
@@ -184,8 +160,25 @@ namespace SkylinesAgentBridge.State
                     }
                 }
 
-                AppendStringArray(json, "unlockedFeatures", unlocked);
-                AppendStringArray(json, "lockedFeatures", locked);
+                json.Append(",\"unlockedFeatures\":[");
+                for (int i = 0; i < unlocked.Count; i++)
+                {
+                    if (i > 0)
+                    {
+                        json.Append(",");
+                    }
+                    json.Append("\"").Append(unlocked[i]).Append("\"");
+                }
+                json.Append("],\"lockedFeatures\":[");
+                for (int i = 0; i < locked.Count; i++)
+                {
+                    if (i > 0)
+                    {
+                        json.Append(",");
+                    }
+                    json.Append("\"").Append(locked[i]).Append("\"");
+                }
+                json.Append("]");
             }
             catch (Exception)
             {
@@ -194,10 +187,8 @@ namespace SkylinesAgentBridge.State
 
         private static void AppendClock(StringBuilder json, IManagers managers)
         {
-            // IThreading carries the simulation clock as a first-class read:
-            // simulationTime / simulationFrame / simulationTick. Comparing two reads tells
-            // the agent how much simulated time actually elapsed — the guard against
-            // drawing conclusions after zero sim-days.
+            // simulationTime / frame / tick are first-class ICities reads; diffing two
+            // reads measures how much simulated time actually elapsed.
             if (managers == null)
             {
                 return;
@@ -220,20 +211,6 @@ namespace SkylinesAgentBridge.State
             catch (Exception)
             {
             }
-        }
-
-        private static void AppendStringArray(StringBuilder json, string name, List<string> values)
-        {
-            json.Append(",\"").Append(name).Append("\":[");
-            for (int i = 0; i < values.Count; i++)
-            {
-                if (i > 0)
-                {
-                    json.Append(",");
-                }
-                json.Append("\"").Append(JsonUtil.Escape(values[i])).Append("\"");
-            }
-            json.Append("]");
         }
     }
 }
