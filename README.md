@@ -8,8 +8,8 @@ command on the game's own simulation thread.
 
 ```
 opencode / Claude Code  ──MCP stdio──▶  Cs1Mayor.Mcp (.NET 10)  ──HTTP──▶  SkylinesAgentBridge.dll (in-game)
-                                                                                │
-                                                              Cities: Skylines 1.21.1-f9 · Unity 5.6.7f1
+                                                                                 │
+                                                               Cities: Skylines 1.21.1-f9 · Unity 5.6.7f1
 ```
 
 ---
@@ -22,60 +22,32 @@ opencode / Claude Code  ──MCP stdio──▶  Cs1Mayor.Mcp (.NET 10)  ──
 | Threading fix | ✅ **Verified** — `probeThreadId == simulationThreadId`, `runsOnMainThread: false` |
 | MCP server | ✅ **Verified end-to-end** against the live game |
 | All 13 tools | ✅ Verified: read, build, zone, place, bulldoze, economy, save, health |
-| Knowledge base | ✅ `docs/GAME-MECHANICS.md`, `docs/EXPANSIONS.md` |
+| Knowledge base | ✅ `docs/05-game-mechanics.md`, `docs/06-expansions.md` |
+| Automated tests | ✅ 42 xunit tests over the MCP server and the bridge's JSON reader |
 | opencode wiring | ✅ `✓ cs1-mayor connected` |
 
 **Verified against a live city (10,552 citizens, 1,802 road segments):** state reads,
 road building with node reuse, bulldozing with orphan cleanup, zone painting and reverting,
 building placement, simulation speed control, and anomaly detection — all correct, and
-fully reversible. Full log in `docs/VERIFICATION.md`.
+fully reversible. Full log in [`docs/07-verification.md`](docs/07-verification.md).
 
 ---
 
 ## Quick start
 
-### 1. Build and install the mod
-
 ```powershell
+# 1. Build and install the mod
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-mod.ps1
+
+# 2. Build the MCP server and run the tests
+dotnet build .\Cs1Mayor.sln -c Release
+dotnet test  .\Cs1Mayor.sln
+
+# 3. Smoke test the MCP protocol (works with the game closed)
+python .\scripts\smoke-test-mcp.py
 ```
 
-Compiles `src\*.cs` with Roslyn against the game's own runtime assemblies and copies the
-DLL to:
-
-```
-%LOCALAPPDATA%\Colossal Order\Cities_Skylines\Addons\Mods\SkylinesAgentBridge\
-```
-
-> The mod **auto-loads** — it is picked up as an internal mod without needing to be
-> enabled in the content manager. The bridge starts listening as soon as the game
-> launches, and reports `levelLoaded:false` until a city is loaded.
-
-If your game lives somewhere else:
-
-```powershell
-.\scripts\build-mod.ps1 -GamePath "D:\Epic Games\CitiesSkylines"
-```
-
-### 2. Build the MCP server
-
-```powershell
-dotnet build mcp-server\Cs1Mayor.Mcp.csproj -c Release
-```
-
-### 3. Verify the bridge
-
-```powershell
-Invoke-RestMethod http://127.0.0.1:32123/health
-Invoke-RestMethod http://127.0.0.1:32123/debug/threads
-```
-
-`debug/threads` must report `runsOnSimulationThread: true`. (Call it twice — the Unity
-main thread's id is learned on the next frame.)
-
-### 4. Wire it into opencode
-
-Add to `C:\Users\chichi\.config\opencode\opencode.json`:
+Then wire it into opencode:
 
 ```json
 {
@@ -83,10 +55,7 @@ Add to `C:\Users\chichi\.config\opencode\opencode.json`:
     "servers": {
       "cs1-mayor": {
         "type": "local",
-        "command": [
-          "dotnet",
-          "C:\\Users\\chichi\\Desktop\\projects\\cs1-mayor\\mcp-server\\bin\\Release\\net10.0\\Cs1Mayor.Mcp.dll"
-        ],
+        "command": ["dotnet", "C:\\Users\\chichi\\Desktop\\projects\\cs1-mayor\\mcp-server\\bin\\Release\\net10.0\\Cs1Mayor.Mcp.dll"],
         "environment": { "CS1_BRIDGE_URL": "http://127.0.0.1:32123" },
         "codemode": true
       }
@@ -95,18 +64,8 @@ Add to `C:\Users\chichi\.config\opencode\opencode.json`:
 }
 ```
 
-Then `opencode mcp list` → `✓ cs1-mayor  connected`.
-
-Full details: `docs/OPENCODE-SETUP.md`.
-
-### 5. Smoke test
-
-```powershell
-python scripts\smoke-test-mcp.py
-```
-
-Drives the MCP server over stdio exactly like a real client: initialize → tools/list →
-tools/call. Works with the game closed.
+Full walkthrough, including the game path and the thread gate:
+[`docs/02-getting-started.md`](docs/02-getting-started.md).
 
 ---
 
@@ -132,17 +91,24 @@ tools/call. Works with the game closed.
 
 ## Documentation
 
+Start at **[`docs/README.md`](docs/README.md)** — it lists every document in the order you
+should read it.
+
 | Document | Contents |
 |---|---|
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System design, the two threads, and why the fix matters |
-| [`docs/GAME-MECHANICS.md`](docs/GAME-MECHANICS.md) | **The knowledge base** — demand formulas, tax limits, budgets, coverage, level-up rules, milestones |
-| [`docs/EXPANSIONS.md`](docs/EXPANSIONS.md) | All 14 expansions: Industry, Campus, Sunset Harbor, Airports, Plazas, Financial Districts, Hotels, Parklife, After Dark, Snowfall, Natural Disasters, Green Cities, Race Day |
-| [`docs/API-REFERENCE.md`](docs/API-REFERENCE.md) | Every bridge HTTP endpoint |
-| [`docs/VERIFICATION.md`](docs/VERIFICATION.md) | How to check the agent's work and recover from failure |
-| [`docs/UPSTREAM-NOTES.md`](docs/UPSTREAM-NOTES.md) | What was forked, what was changed, and why |
-| [`docs/OPENCODE-SETUP.md`](docs/OPENCODE-SETUP.md) | Wiring into opencode |
-| [`docs/ROADMAP.md`](docs/ROADMAP.md) | What is built, what is next |
+| [`docs/README.md`](docs/README.md) | The index and the reading path |
+| [`docs/01-architecture.md`](docs/01-architecture.md) | System design, the two threads, and why the fix matters |
+| [`docs/02-getting-started.md`](docs/02-getting-started.md) | Build, run, wire up, smoke test |
+| [`docs/03-code-map.md`](docs/03-code-map.md) | **Which file owns what** |
+| [`docs/04-api-reference.md`](docs/04-api-reference.md) | Every bridge HTTP endpoint |
+| [`docs/05-game-mechanics.md`](docs/05-game-mechanics.md) | **The knowledge base** — demand formulas, tax limits, budgets, coverage, level-up rules, milestones |
+| [`docs/06-expansions.md`](docs/06-expansions.md) | All 14 expansions: Industry, Campus, Sunset Harbor, Airports, Plazas, Financial Districts, Hotels, Parklife, After Dark, Snowfall, Natural Disasters, Green Cities, Race Day |
+| [`docs/07-verification.md`](docs/07-verification.md) | How to check the agent's work and recover from failure |
+| [`docs/08-opencode-setup.md`](docs/08-opencode-setup.md) | Wiring into opencode |
+| [`docs/09-upstream-notes.md`](docs/09-upstream-notes.md) | What was forked, what was changed, and why |
+| [`docs/10-roadmap.md`](docs/10-roadmap.md) | What is built, what is next |
 | [`AGENTS.md`](AGENTS.md) | The operating manual for the AI mayor itself |
+| [`.github/CONTRIBUTING.md`](.github/CONTRIBUTING.md) | Branch naming, commit format, PR rules |
 
 ---
 
@@ -159,7 +125,7 @@ simulation and silently corrupts the city — the symptom being the game's own
 
 This fork deletes that workaround. `GET /debug/threads` proves it at runtime.
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#the-one-thing-you-must-understand-threads).
+See [`docs/01-architecture.md`](docs/01-architecture.md#the-one-thing-you-must-understand-threads).
 
 ---
 
@@ -167,21 +133,23 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#the-one-thing-you-must-underst
 
 ```
 cs1-mayor/
-├─ src/                    in-game bridge mod (C#, .NET 3.5 profile)
-│  ├─ SimulationDispatcher.cs   ← the threading fix
-│  ├─ AgentBridgeThreading.cs   ← thread identity capture
-│  ├─ AgentBridge.cs
-│  ├─ ApiServer.cs              HTTP routing + /debug/threads
-│  ├─ GameState.cs              state views
-│  └─ *Commands.cs              the mutations
-├─ mcp-server/             MCP server (C#, .NET 10, ModelContextProtocol 2.4.0)
-│  ├─ Program.cs
-│  ├─ BridgeClient.cs
-│  └─ CityTools.cs              the 13 tools
-├─ docs/                   architecture, mechanics, expansions, API, verification
-├─ scripts/                build, install, smoke test
-└─ upstream-skyline-agent-skill/   the forked-from source, kept for reference
+├─ src/                       the in-game bridge mod (C# 5, net35)
+│  ├─ Bridge/                 HTTP listener, route table, mod hooks, in-game console
+│  │  └─ Http/                the hand-rolled HTTP request/response types
+│  ├─ Dispatch/               the simulation-thread dispatcher  ← the load-bearing file
+│  ├─ Commands/               every mutation the agent can perform
+│  ├─ State/                  every read of city state, plus the anomaly detectors
+│  └─ Support/                JSON reader and the command result envelope
+├─ mcp-server/                the MCP server (C#, .NET 10) — 13 tools over stdio
+├─ tests/                     xunit tests for the MCP server and the bridge's JSON reader
+├─ scripts/                   build, install, launch, smoke test, doc check
+├─ docs/                      start at docs/README.md
+├─ .github/                   contributing guide, PR template, issue templates, CI
+├─ AGENTS.md                  the operating manual for the AI mayor
+└─ Cs1Mayor.sln               the solution: mod + MCP server + tests
 ```
+
+Every file is explained in [`docs/03-code-map.md`](docs/03-code-map.md).
 
 ---
 
@@ -191,7 +159,7 @@ Forked from
 [`Sunwood-ai-labs/cities-skylines1-agent-skill`](https://github.com/Sunwood-ai-labs/cities-skylines1-agent-skill)
 (MIT, © 2026 Sunwood-ai-labs). The HTTP server, the 121 KB state builder, and the command
 implementations are that project's work; the threading model, the MCP server, and the
-knowledge base are new. Full details in `docs/UPSTREAM-NOTES.md`.
+knowledge base are new. Full details in [`docs/09-upstream-notes.md`](docs/09-upstream-notes.md).
 
 Cities: Skylines is © Colossal Order / Paradox Interactive. This project is not endorsed by
 or affiliated with them.

@@ -7,8 +7,12 @@ Use this when the MCP tool surface does not cover what you need.
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:32123/state/summary
-Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-network -Body $body -ContentType "application/json"
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -Body $body -ContentType "application/json"
 ```
+
+> The route table lives in one place: `src/Bridge/ApiRoutes.cs`. Every row below is
+> registered there, next to a one-line description used by the in-game console.
+> `scripts/check-api-docs.py` fails the build if this table and that file disagree.
 
 ---
 
@@ -29,12 +33,12 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-networ
 | GET | `/state/networks` | Roads and networks. `?limit=`, `?service=`. |
 | GET | `/state/road-anomalies` | Road defects. `?limit=`, `?nearMissDistance=`, `?shortSegmentLength=`, `?includeDeadEnds=`. |
 | GET | `/state/building-anomalies` | Building placement defects. `?limit=`. |
-| GET | `/state/zone-anomalies` | Zone defects. `?limit=`, `?includeUnzonedHoles=`. |
-| GET | `/state/external-connections` | Highway / rail / sea connections. |
+| GET | `/state/zone-anomalies` | Zone defects. `?limit=`, `?minMinorityCells=`, `?minUnzonedCells=`, `?includeUnzonedHoles=`. |
+| GET | `/state/external-connections` | Highway / rail / sea connections. `?limit=`. |
 | GET | `/state/saves` | Saved games on disk. |
-| GET | `/prefabs/buildings` | Available building prefabs. |
+| GET | `/prefabs/buildings` | Available building prefabs. `?service=`. |
 | GET | `/prefabs/roads` | Available road prefabs. |
-| GET | `/prefabs/networks` | Available network prefabs. |
+| GET | `/prefabs/networks` | Available network prefabs. `?service=`. |
 
 ### `/debug/threads` — the thread proof
 
@@ -49,13 +53,21 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-networ
   "runsOnSimulationThread": true,
   "runsOnMainThread": false,
   "pendingJobs": 0,
-  "simulationFrame": 104233,
+  "gameTime": "2026-03-14T09:41:00",
+  "buildIndex": 104233,
   "levelLoaded": true,
   "notes": "probeThreadId must equal simulationThreadId and must NOT equal mainThreadId"
 }
 ```
 
 **`probeThreadId` must equal `simulationThreadId` and must NOT equal `mainThreadId`.**
+
+`pendingJobs` counts the commands currently queued on or running on the simulation
+thread. It should return to zero immediately after a command completes; if it does
+not, the simulation thread is stuck and every later command will time out.
+
+Call this endpoint twice after starting the game: the Unity main thread's id is learned
+on the next frame, so the first call can report `mainThreadId: 0`.
 
 ---
 
@@ -65,8 +77,8 @@ All accept a JSON body. All support `"dryRun": true` where validation is meaning
 
 | Method | Path | Body |
 |---|---|---|
-| POST | `/commands/build-network` | `roadPrefab`, `start:{x,z}`, `end:{x,z}`, `name?`, `dryRun?` |
-| POST | `/commands/build-road` | Alias for `build-network`. |
+| POST | `/commands/build-road` | `roadPrefab`, `start:{x,z}`, `end:{x,z}`, `name?`, `dryRun?` |
+| POST | `/commands/build-network` | Alias for `build-road`, kept for older agent scripts. |
 | POST | `/commands/set-zone` | `zone`, `center:{x,z}`, `radius`, `preserveOccupied?`, `dryRun?` |
 | POST | `/commands/place-building` | `buildingPrefab`, `position:{x,z}`, `angleDegrees?`, `dryRun?` |
 | POST | `/commands/move-building` | `id`, `position:{x,z}`, `angleDegrees?`, `dryRun?` |
@@ -92,7 +104,7 @@ $body = @{
   name  = "Agent Highway Link"
 } | ConvertTo-Json -Depth 5
 
-Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-network -Body $body -ContentType "application/json"
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -Body $body -ContentType "application/json"
 ```
 
 **Paint a zone:**
@@ -161,7 +173,7 @@ Failure:
 
 ## Notes and gotchas
 
-- **`build-network` reuses nodes.** It looks for an existing node within ~2 units of each
+- **`build-road` reuses nodes.** It looks for an existing node within ~2 units of each
   endpoint and attaches to it instead of creating a duplicate. That is how you get real
   intersections.
 - **Zone blocks are created by roads.** If `set-zone` reports it changed nothing, there is
@@ -173,3 +185,8 @@ Failure:
   road access to work; check `city_problems` after placing.
 - **`bulldoze` does not refund money.** The refund is applied by the game's tool path,
   which the bridge deliberately does not use.
+- **A 409 means "no city is loaded", not "wrong endpoint".** Every endpoint that touches
+  city state is refused until a level is loaded. `/health` and `/debug/threads` still work.
+- **A 500 with "the simulation thread is not available" means the game is mid-load or
+  mid-teardown.** It is deliberately *not* a fallback to running the command on the HTTP
+  thread — see `src/Dispatch/SimulationDispatcher.cs`.

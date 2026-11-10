@@ -111,18 +111,32 @@ The MCP tool `city_health` surfaces this. This is the Phase 1 go/no-go gate.
 
 ### `src/` — the in-game bridge mod
 
-C# compiled against the game's **own** runtime assemblies in `Cities_Data\Managed\`, so it
-links against exactly the BCL the game loads.
+C# 5 compiled against the game's **own** runtime assemblies in `Cities_Data\Managed\`, so it
+links against exactly the BCL the game loads. It builds as a normal MSBuild project,
+`src/SkylinesAgentBridge.csproj`, which disables the default framework references and
+points at the game's `mscorlib`, `System`, `System.Core`, `ICities`, `Assembly-CSharp`,
+`ColossalManaged` and `UnityEngine` instead.
 
-| File | Role |
+```
+src/
+├─ Bridge/          the HTTP listener, the route table, the mod hooks, the in-game console
+│  └─ Http/         the hand-rolled HTTP request/response types
+├─ Dispatch/        the simulation-thread dispatcher      ← the load-bearing file
+├─ Commands/        every mutation the agent can perform
+├─ State/           every read of city state, plus the anomaly detectors
+└─ Support/         the JSON reader and the command result envelope
+```
+
+| Folder | Role |
 |---|---|
-| `SimulationDispatcher.cs` | **the fix.** Routes work onto the simulation thread. |
-| `AgentBridgeThreading.cs` | Captures the `IThreading` handle and both thread ids. |
-| `AgentBridge.cs` | Singleton; owns the dispatcher and the HTTP server. |
-| `ApiServer.cs` | HTTP routing; adds `/debug/threads`. |
-| `GameState.cs` | Builds the JSON state views (problems, facilities, networks, …). |
-| `RoadCommands.cs` / `ZoneCommands.cs` / `BuildingCommands.cs` / `EconomyCommands.cs` / … | The actual mutations. |
-| `JsonUtil.cs`, `CommandResult.cs` | Small helpers. |
+| `Dispatch/SimulationDispatcher.cs` | **the fix.** Routes work onto the simulation thread. |
+| `Bridge/ApiRoutes.cs` | The whole HTTP surface: one `(method, path) → handler` table. |
+| `Bridge/ApiServer.cs` | The TCP listener. Accepts, dispatches, writes. Nothing else. |
+| `Bridge/AgentBridge*.cs` | The mod hooks and the singleton that owns the server. |
+| `State/GameState.cs` | Builds the JSON state views (summary, demand, facilities, …). |
+| `State/*Collector.cs` | The anomaly detectors: problems, roads, zones, buildings, connections. |
+| `Commands/*Commands.cs` | The actual mutations. |
+| `Support/JsonUtil.cs`, `Support/CommandResult.cs` | Small helpers with no game dependency. |
 
 Build with `scripts\build-mod.ps1`.
 
@@ -130,6 +144,8 @@ Build with `scripts\build-mod.ps1`.
 > **not** `Mono\lib\mono\unity\System.Core.dll`. The "unity" compile profile has no
 > `System.IO.Pipes`; the runtime `Managed\` copy does. The two files have different
 > SHA-256 hashes.
+
+A file-by-file map is in [`03-code-map.md`](03-code-map.md).
 
 ### `mcp-server/` — the MCP server
 
@@ -140,6 +156,14 @@ C# / .NET 10, `ModelContextProtocol` 2.4.0, stdio transport.
 | `Program.cs` | DI setup, stdio transport, server instructions. |
 | `BridgeClient.cs` | HTTP client for the bridge, with agent-friendly error wrapping. |
 | `CityTools.cs` | The 13 tools. |
+
+### `tests/` — automated checks
+
+`tests/Cs1Mayor.Mcp.Tests/` (xunit) covers the MCP server and the bridge's JSON reader.
+The JSON reader is compiled into the test project straight from `src/Support/`, so the
+tests exercise the same file the game loads. The in-game mod has no automated harness —
+it can only be verified against a running game, which is what
+[`07-verification.md`](07-verification.md) is for.
 
 ## Tool surface
 
@@ -213,10 +237,10 @@ cap at a few hundred rows.
 
 Every mutation should be verifiable. The bridge supports `dryRun=true` on build/zone/place
 to validate without committing, and `city_infrastructure` reports defects after the fact.
-See `docs/VERIFICATION.md`.
+See `docs/07-verification.md`.
 
 ## Upstream
 
 Forked from [`Sunwood-ai-labs/cities-skylines1-agent-skill`](https://github.com/Sunwood-ai-labs/cities-skylines1-agent-skill)
-(MIT), commit `70a5116`. See `docs/UPSTREAM-NOTES.md` for exactly what was kept, changed,
+(MIT), commit `70a5116`. See `docs/09-upstream-notes.md` for exactly what was kept, changed,
 and why.
