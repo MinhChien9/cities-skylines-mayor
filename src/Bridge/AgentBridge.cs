@@ -100,7 +100,7 @@ namespace SkylinesAgentBridge
         public void OnLevelUnloading()
         {
             levelLoaded = false;
-            dispatcher.Dispose();
+            dispatcher.OnLevelUnloaded();
             AgentBridgeNotifier.Destroy();
             Debug.Log("[SkylinesAgentBridge] Level unloading. Pending API commands cleared.");
         }
