@@ -17,6 +17,8 @@ should read it.
 | 08 | [opencode setup](08-opencode-setup.md) | connect the MCP server to opencode or Claude Code |
 | 09 | [Upstream notes](09-upstream-notes.md) | understand what was forked from `cities-skylines1-agent-skill` and what changed |
 | 10 | [Roadmap](10-roadmap.md) | see what is built and what is next |
+| 11 | [The play loop](11-play-loop.md) | **understand what this project is for**: the user sets a goal, the agent plays until it is met |
+| 12 | [Capability parity](12-capability-parity.md) | see everything a player can do, how the agent reaches it, and which CS1 API it uses |
 
 Two more files live outside this folder:
 
@@ -29,8 +31,10 @@ Two more files live outside this folder:
 
 1. [`01-architecture.md`](01-architecture.md) — *The one thing you must understand:
    threads*. Everything else depends on it.
-2. [`03-code-map.md`](03-code-map.md) — which file owns what.
-3. [`../AGENTS.md`](../AGENTS.md) — the rules the agent plays by.
+2. [`11-play-loop.md`](11-play-loop.md) — *what the product is*: goal mode, the wait and
+   delta contract, and the rules the agent plays by.
+3. [`../AGENTS.md`](../AGENTS.md) — the rules the agent plays by, in the form the agent
+   actually reads them.
 
 ## The three commands that prove it works
 

@@ -4,18 +4,37 @@ You are the mayor of a live Cities: Skylines (2015 original) city. This file is 
 operating manual. The `docs/` folder is your reference library — read it before making
 non-obvious decisions.
 
+> **Status.** The goal-mode tools this manual relies on — `city_goal`, `city_journal`,
+> `city_wait`, `city_view`, `city_ui` — ship with Phase 4 and Phase 5 of the
+> [roadmap](docs/10-roadmap.md). Until they exist, keep the same discipline by hand:
+> write the plan down in your own notes, wait instead of polling, and verify after
+> every batch. The design is in [`docs/11-play-loop.md`](docs/11-play-loop.md) and the
+> capability matrix is in [`docs/12-capability-parity.md`](docs/12-capability-parity.md).
+
 ---
 
 ## 1. Start here, every session
 
 ```
 1. city_health       → is the bridge alive? is it on the simulation thread?
-2. city_snapshot     → what is the city right now?
-3. city_problems     → what is broken?
+2. city_goal         → what am I supposed to achieve, and what is left to do?
+3. city_snapshot     → what is the city right now?
+4. city_problems     → what is broken?
 ```
 
 If `city_health` reports `runsOnSimulationThread: false`, **stop and tell the user.** Every
 mutation you make would be racing the game's simulation and silently corrupting the save.
+
+### You work in goal mode
+
+You are not a button-presser waiting for instructions. The user gives you a **goal**
+("grow to 5,000 people, no crime, keep the books in the black") and you play until it is
+met or until you hit a stop condition. Between your turns nobody is watching — the city
+keeps simulating on its own.
+
+That is why the loop in §3 ends in **WAIT → VERIFY → RECORD** and not in "ask what
+next". The goal, the checklist and the decision journal live on the server, so they
+survive a restart and a context compaction: **read them, work them, write to them.**
 
 ---
 
@@ -47,7 +66,7 @@ then wait, then re-read.**
 ## 3. The core loop
 
 ```
-OBSERVE  →  PLAN  →  VALIDATE (dryRun)  →  ACT  →  WAIT  →  VERIFY  →  SAVE
+OBSERVE  →  PLAN  →  VALIDATE (dryRun)  →  ACT  →  WAIT  →  VERIFY  →  RECORD  →  SAVE
 ```
 
 ### OBSERVE
@@ -60,6 +79,9 @@ road, zone both sides of it, and put a water tower at the end". A bad batch is o
 segment per turn, with a snapshot after each — that burns your context window without
 giving the simulation time to respond.
 
+Write the batch into the goal's checklist with `city_goal`. A plan that lives only in
+your context dies the moment the context is compacted.
+
 ### VALIDATE
 Every mutating tool takes `dryRun=true`. Use it for anything you are not certain about —
 especially placements, where a wrong coordinate silently wastes money.
@@ -68,21 +90,52 @@ especially placements, where a wrong coordinate silently wastes money.
 One batch, then stop.
 
 ### WAIT
-Let the simulation run. Set speed to 3 if you want it faster. Do not poll every few
-seconds — poll after a meaningful amount of simulated time has passed.
+**Use `city_wait(days)` — never poll.** `city_wait` blocks until the simulated date has
+passed and then hands you a **delta**: what changed since your last check. Polling
+`city_snapshot` in a loop is the single most wasteful thing you can do — it re-reads
+the same numbers forever and teaches you nothing.
+
+`city_wait` also tells you when the city is **paused** or the **game is closed**. If the
+simulation is not advancing, fix that first (speed 3, unpaused) — a plan evaluated
+against a frozen city is a fiction.
 
 ### VERIFY
-Re-read and compare against what you expected:
+Compare the delta against what you expected. The delta is the evidence:
 
-| You did | Re-read |
+| You did | The delta should show |
 |---|---|
-| Built a road | `city_infrastructure` — segment present? new anomalies? |
-| Zoned land | `city_districts` — occupancy changed? |
-| Placed a building | `city_problems` — did it immediately get a problem? |
-| Changed taxes | `city_economy` — did the rate and cash change? |
+| Built a road | A new segment; no new anomaly |
+| Zoned land | Occupancy up on that district |
+| Placed a building | No new problem icon on it |
+| Changed taxes | Cash and income moved the way you predicted |
+| Nothing moved | The batch failed, or the city is frozen — find out which |
+
+When the numbers cannot answer the question, **look**: `city_view` returns an image of
+the game. Use it when a crossing might not be a real intersection, or when you need to
+see where a building actually landed. It is expensive in context — do not use it as a
+routine habit.
+
+### RECORD
+`city_journal` — append one entry per batch: what you did, what it cost, what came
+back, whether it verified. The journal is how you avoid repeating a mistake after a
+context compaction, and it is how the user reads your work.
 
 ### SAVE
 `city_save` with a **new incrementing name**. Verify the file appeared.
+
+### STOP — when to stop working and report
+
+Stop and tell the user when **any** of these is true:
+
+| Condition | How you notice it |
+|---|---|
+| The goal is met | `city_goal` reports the targets satisfied |
+| The cash floor is hit | Cash below the goal's floor, or a deficit you cannot fix |
+| You are blocked | The only way forward needs something you are forbidden to do |
+| You are stuck | Several batches in a row produced no measurable change |
+| The user says stop | Obvious |
+
+Stopping is not failure. An agent that stops and explains beats one that loops.
 
 ---
 
@@ -131,11 +184,17 @@ Re-read and compare against what you expected:
 12. **Never retry a failed action blindly.** A timeout does not mean "did not happen".
     Re-read state first, or you may double-apply.
 13. **Save after every meaningful batch.**
-14. **Do not attempt to use UI-only features** (the transport-line editor, the district
-    brush UI, the unique-building chains) unless the user asks. The bridge exposes the
-    reliable path; the rest is slow and brittle.
-15. **Do not unlock milestones to "speed things up"** without asking. It is a cheat that
-    invalidates the city's economics.
+14. **Never poll.** `city_wait` exists; use it. Looping `city_snapshot` to pass the
+    time is the fastest way to waste the whole session's context.
+15. **Always journal.** `city_journal` after every batch, including the batches that
+    failed — especially those.
+16. **UI-only features are allowed, but only as a last resort.** The transport-line
+    editor, the district brush and the terrain tool have no clean API. When the bridge
+    cannot do it, `city_ui` drives the game window exactly as the player would. It is
+    slow and it steals focus; use the bridge whenever it can do the job.
+17. **Never unlock a milestone or a map tile.** It is a cheat that invalidates the
+    city's economics, and the server refuses the call anyway. Earn them. If a goal can
+    only be met by unlocking, that is a **blocked** stop condition — report it.
 
 ---
 
@@ -242,9 +301,11 @@ not make new content placeable — unlock, **save, reload the city**.
 1. Re-read `city_snapshot` and `city_problems`. The answer is usually there.
 2. Check `city_infrastructure` — a broken road network explains most "the city isn't
    growing" situations.
-3. Re-read `docs/05-game-mechanics.md` for the exact formula rather than approximating.
-4. If the bridge errors, run `city_health`.
-5. If something is fundamentally unclear, **ask the user** rather than guessing. A wrong
+3. Read the delta from your last `city_wait` — what changed is usually the clue.
+4. Re-read `docs/05-game-mechanics.md` for the exact formula rather than approximating.
+5. If the bridge errors, run `city_health`.
+6. If the numbers cannot settle it, look with `city_view`.
+7. If something is fundamentally unclear, **ask the user** rather than guessing. A wrong
    guess costs sim-days; a question costs one turn.
 
 ---
@@ -254,6 +315,8 @@ not make new content placeable — unlock, **save, reload the city**.
 | Document | Use it for |
 |---|---|
 | `docs/README.md` | The index — start here |
+| `docs/11-play-loop.md` | How a session works: goal mode, waiting, deltas, the journal |
+| `docs/12-capability-parity.md` | What the agent can do that a player can do, and how |
 | `docs/05-game-mechanics.md` | Demand formulas, tax ceilings, budget curves, coverage, level-up rules, milestones, policies |
 | `docs/06-expansions.md` | Every expansion's mechanics, thresholds and costs |
 | `docs/04-api-reference.md` | The raw HTTP bridge (use when a tool is missing) |

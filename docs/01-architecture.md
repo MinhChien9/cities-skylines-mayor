@@ -209,6 +209,27 @@ Agent reasoning latency is **2–60 seconds** per decision. The transport is ~0.
 decision cycle. HTTP wins on debuggability (`curl`, `Invoke-RestMethod`, packet captures),
 which is worth far more than 127 µs.
 
+## The target architecture
+
+The system above is the **skeleton**. The product it exists for is described in
+[`11-play-loop.md`](11-play-loop.md), and it adds three things:
+
+```
+opencode  ──MCP over stdio──▶  mcp-server/
+                                  ├─ CityTools        the game-facing tools
+                                  ├─ SessionStore      goal · checklist · journal · last snapshot
+                                  └─ WaitEngine        polls the bridge, computes deltas
+```
+
+| Addition | Where it lives | Why it is there |
+|---|---|---|
+| **Session store** | MCP server, file-backed | The goal and the journal must survive a restart and a context compaction. The game has no place to keep them. |
+| **Wait engine** | MCP server | Waiting is a *read* of the simulation clock, not a command. It must never hold the simulation thread. |
+| **Main-thread render queue** | In the bridge | The one sanctioned exception to the thread rule — screenshots. It may not mutate city state. |
+
+The rule in this document does not change: **all game-state reads and writes stay on the
+simulation thread.** The render queue is a new, explicitly-named path, not a fallback.
+
 ## Context economy
 
 The agent's context window, not the IPC layer, is the scarce resource.
