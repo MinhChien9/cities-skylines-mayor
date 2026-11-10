@@ -31,6 +31,8 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 | GET | `/state/chirps` | Citizen chatter. `?limit=` (default 50). |
 | GET | `/state/zones` | Zoning summary. |
 | GET | `/state/economy` | Money, income, expenses, tax rates, budgets. |
+| GET | `/state/budgets` | Per-service day/night budget percentages. See below. |
+| GET | `/state/policies` | The policy catalogue with loaded/set state. See below. |
 | GET | `/state/facilities` | Service facilities. `?limit=`, `?service=`, `?includeMapObjects=`. |
 | GET | `/state/growables` | Growable buildings (land available to develop). `?limit=`. |
 | GET | `/state/networks` | Roads and networks. `?limit=`, `?service=`. |
@@ -129,6 +131,61 @@ in hundredths and divides by 100 for display, so the default bailout limit of
 break-even, above 100 means the city is in deficit**. The game stores the raw value in
 units of 1/10000.
 
+### `/state/budgets` — service day/night budgets
+
+```json
+{
+  "ok": true,
+  "cash": 65002, "income": 0, "expenses": 272, "balance": -272, "taxMultiplierPercent": 183,
+  "budgetCount": 10,
+  "budgets": [
+    { "service": "Electricity", "serviceValue": 10, "subService": "None", "day": 100, "night": 100 },
+    { "service": "Water",       "serviceValue": 11, "subService": "None", "day": 100, "night": 100 }
+  ]
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `budgets[].day` / `night` | The service's budget as a percentage, read through the public `EconomyManager.GetBudget`. **100 is the baseline**; 101% buys one extra vehicle per building for ~1% more spend. Day covers 05:00–20:00; night is a separate value the day slider does not touch. |
+| Row filtering | A service with `0` on both sides has no budget entry (it cannot spend) and is not listed. |
+
+### `/state/policies` — the catalogue is the point
+
+```json
+{
+  "ok": true,
+  "policyCount": 127,
+  "loadedCount": 118,
+  "cityWideCount": 1,
+  "districtCount": 0,
+  "districts": [ { "id": 1, "name": "Downtown" } ],
+  "policies": [
+    { "name": "Recycling", "value": 37, "group": "Services",
+      "loaded": true, "cityWide": false, "districts": [] },
+    { "name": "TaxRaiseResLow", "value": 64, "group": "Taxation",
+      "loaded": true, "cityWide": false, "districts": [] },
+    { "name": "Forest", "value": 0, "group": "Specialization",
+      "loaded": true, "cityWide": false, "districts": [] },
+    { "name": "AnimalEthics", "value": 192, "group": "Park",
+      "loaded": false, "cityWide": false, "districts": [] }
+  ]
+}
+```
+
+The enum contains **127 values**: district specializations (`Forest` … `Financial`,
+raw values 0–12), then the game's grouped boolean/level policies. `group` is derived
+from the game's own grouping enums (`Services`, `Taxation`, `CityPlanning`, `Park`,
+`Event`); anything not in a group is reported as `Specialization`, `Reserved` or
+`Other`.
+
+| Field | Meaning |
+|---|---|
+| `loaded` | `IsPolicyLoaded` — the policy exists in this city. Setting an **unloaded** policy is a silent no-op in the game, so `set-policy` refuses it. |
+| `cityWide` | `IsCityPolicySet` — set for the whole city. |
+| `districts` | The district ids where `IsDistrictPolicySet` is true. Park-group policies live in the **park id space** (`m_parks`), which arrives with the districts release. |
+| `districts[]` / `districtCount` | Every created district, with its name. District ids are separate from building ids. |
+
 ### `/debug/threads` — the thread proof
 
 ```json
@@ -175,6 +232,8 @@ All accept a JSON body. All support `"dryRun": true` where validation is meaning
 | POST | `/commands/bulldoze` | `entityType` (`building`\|`netSegment`\|`netNode`), `id`, `keepNodes?`, `dryRun?` |
 | POST | `/commands/set-simulation-speed` | `speed` (1–3), `paused` |
 | POST | `/commands/set-tax-rate` | `service` (`Residential`\|`Commercial`\|`Industrial`\|`Office`), `rate` (0–20) |
+| POST | `/commands/set-budget` | `service`, `budget?` (day, 0–300), `nightBudget?`, `subService?`, `dryRun?` |
+| POST | `/commands/set-policy` | `policy`, `set?` (default true), `district?` (0 = city-wide), `dryRun?` |
 | POST | `/commands/save` | `name` |
 | POST | `/commands/repair-zones-to-growables` | Repair blocks to their growable zone. |
 | POST | `/commands/repair-zone-clusters` | Repair mottled zones. `preferGrowableZone?` |
@@ -230,6 +289,21 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/set-tax-rate
 $body = @{ paused = $false; speed = 3 } | ConvertTo-Json
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/set-simulation-speed -Body $body -ContentType "application/json"
 ```
+
+**The 101% budget trick and a city-wide policy:**
+
+```powershell
+$body = @{ service = "PoliceDepartment"; budget = 101 } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/set-budget -Body $body -ContentType "application/json"
+
+$body = @{ policy = "Recycling" } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/set-policy -Body $body -ContentType "application/json"
+```
+
+Read the budget or policy state straight back to confirm the game accepted it —
+`set-budget` reports `day: {before, after}` and `night: {before, after}`, and
+`set-policy` reports `before` / `after` as the game itself answers `IsCityPolicySet`,
+`IsDistrictPolicySet` or `IsParkPolicySet`. Never trust the "ok" alone.
 
 ---
 

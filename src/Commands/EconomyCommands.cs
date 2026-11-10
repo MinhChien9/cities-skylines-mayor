@@ -51,6 +51,149 @@ namespace SkylinesAgentBridge.Commands
             new UiTaxTarget(ItemClass.Service.Office, ItemClass.SubService.OfficeGeneric, 35)
         };
 
+        public static CommandResult BuildBudgetsJson()
+        {
+            EconomyManager manager = Singleton<EconomyManager>.instance;
+
+            // The day/night budget arrays are indexed by (int)Service; the game only
+            // fills them meaningfully for services that have a budget panel row, so
+            // rows with a 0 budget on both sides are skipped (they cannot spend).
+            StringBuilder rows = new StringBuilder();
+            bool first = true;
+            int emitted = 0;
+
+            foreach (ItemClass.Service service in Enum.GetValues(typeof(ItemClass.Service)))
+            {
+                if (service == ItemClass.Service.None)
+                {
+                    continue;
+                }
+
+                int day;
+                int night;
+                if (!TryGetBudget(manager, service, ItemClass.SubService.None, out day, out night))
+                {
+                    continue;
+                }
+                if (day == 0 && night == 0)
+                {
+                    continue;
+                }
+
+                if (!first)
+                {
+                    rows.Append(",");
+                }
+                rows.Append("{\"service\":\"").Append(service.ToString()).Append("\"");
+                rows.Append(",\"serviceValue\":").Append((int)service);
+                rows.Append(",\"subService\":\"").Append(ItemClass.SubService.None.ToString()).Append("\"");
+                rows.Append(",\"day\":").Append(day);
+                rows.Append(",\"night\":").Append(night).Append("}");
+                first = false;
+                emitted++;
+            }
+
+            return CommandResult.FromJson("{\"ok\":true" + BuildMoneyJson(manager) +
+                ",\"budgetCount\":" + emitted +
+                ",\"budgets\":[" + rows.ToString() + "]}");
+        }
+
+        public static CommandResult SetBudget(string body)
+        {
+            string serviceText = JsonUtil.GetString(body, "service", "").Trim();
+            string subServiceText = JsonUtil.GetString(body, "subService", "").Trim();
+            int budget = (int)JsonUtil.GetNumber(body, "budget", -1f);
+            int nightBudget = (int)JsonUtil.GetNumber(body, "nightBudget", -1f);
+            bool dryRun = JsonUtil.GetBool(body, "dryRun", false);
+
+            if (serviceText.Length == 0)
+            {
+                return CommandResult.Fail("service is required, e.g. \"Electricity\". Read GET /state/budgets for the catalogue.");
+            }
+
+            ItemClass.Service service;
+            if (!TryParseEnum<ItemClass.Service>(serviceText, out service) ||
+                service == ItemClass.Service.None)
+            {
+                return CommandResult.Fail("Unknown service: " + serviceText +
+                    ". Read GET /state/budgets for the exact names.");
+            }
+
+            ItemClass.SubService subService = ItemClass.SubService.None;
+            if (subServiceText.Length > 0 &&
+                subServiceText != "None" &&
+                (!TryParseEnum<ItemClass.SubService>(subServiceText, out subService) ||
+                    subService == ItemClass.SubService.None))
+            {
+                return CommandResult.Fail("Unknown subService: " + subServiceText);
+            }
+
+            if (budget < 0 && nightBudget < 0)
+            {
+                return CommandResult.Fail("Provide budget (day) and/or nightBudget (night), 0-300. 100 is the baseline.");
+            }
+            if (budget > 300 || nightBudget > 300)
+            {
+                return CommandResult.Fail("Budgets are percentages; 0-300 is the accepted range. 100 is the baseline.");
+            }
+
+            EconomyManager manager = Singleton<EconomyManager>.instance;
+
+            // GetBudget is the public read; SetBudget may clamp or defer, so the
+            // response reports what the game now reports, not what was asked.
+            int dayBefore;
+            int nightBefore;
+            TryGetBudget(manager, service, subService, out dayBefore, out nightBefore);
+
+            if (!dryRun)
+            {
+                if (budget >= 0)
+                {
+                    manager.SetBudget(service, subService, budget, false);
+                }
+                if (nightBudget >= 0)
+                {
+                    manager.SetBudget(service, subService, nightBudget, true);
+                }
+            }
+
+            int dayAfter;
+            int nightAfter;
+            TryGetBudget(manager, service, subService, out dayAfter, out nightAfter);
+
+            StringBuilder json = new StringBuilder();
+            json.Append("{\"ok\":true");
+            json.Append(",\"dryRun\":").Append(JsonUtil.Bool(dryRun));
+            json.Append(",\"service\":\"").Append(service.ToString()).Append("\"");
+            json.Append(",\"subService\":\"").Append(subService.ToString()).Append("\"");
+            json.Append(",\"day\":{\"before\":").Append(dayBefore).Append(",\"after\":").Append(dayAfter).Append("}");
+            json.Append(",\"night\":{\"before\":").Append(nightBefore).Append(",\"after\":").Append(nightAfter).Append("}");
+            json.Append(",\"requested\":{\"day\":").Append(budget).Append(",\"night\":").Append(nightBudget).Append("}");
+            json.Append("}");
+            return CommandResult.FromJson(json.ToString());
+        }
+
+        /// <summary>
+        /// Reads the day and night budget through the public
+        /// <c>EconomyManager.GetBudget</c>; a service without a budget entry reports 0.
+        /// </summary>
+        private static bool TryGetBudget(EconomyManager manager, ItemClass.Service service,
+            ItemClass.SubService subService, out int day, out int night)
+        {
+            day = 0;
+            night = 0;
+            try
+            {
+                day = manager.GetBudget(service, subService, false);
+                night = manager.GetBudget(service, subService, true);
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
         public static CommandResult BuildEconomyJson()
         {
             EconomyManager manager = Singleton<EconomyManager>.instance;

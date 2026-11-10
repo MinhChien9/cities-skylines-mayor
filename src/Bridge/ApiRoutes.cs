@@ -78,6 +78,12 @@ namespace SkylinesAgentBridge
             MapGet("/state/economy", "Read economy state",
                 delegate { return OnGameThread(delegate { return GameState.BuildEconomyJson(); }); });
 
+            MapGet("/state/budgets", "Read per-service day/night budget percentages",
+                delegate { return OnGameThread(delegate { return GameState.BuildBudgetsJson(); }); });
+
+            MapGet("/state/policies", "Read the policy catalogue with loaded/set state",
+                delegate { return OnGameThread(delegate { return GameState.BuildPoliciesJson(); }); });
+
             MapGet("/state/facilities", "Read service facilities",
                 delegate(HttpRequest request)
                 {
@@ -232,6 +238,20 @@ namespace SkylinesAgentBridge
                 {
                     string body = request.Body;
                     return OnGameThread(delegate { return EconomyCommands.SetTaxRate(body); });
+                });
+
+            MapPost("/commands/set-budget", "Set a service day/night budget percentage",
+                delegate(HttpRequest request)
+                {
+                    string body = request.Body;
+                    return OnGameThread(delegate { return EconomyCommands.SetBudget(body); });
+                });
+
+            MapPost("/commands/set-policy", "Set or unset a policy (city-wide, per district or per park)",
+                delegate(HttpRequest request)
+                {
+                    string body = request.Body;
+                    return OnGameThread(delegate { return PolicyCommands.SetPolicy(body); });
                 });
 
             MapPost("/commands/bulldoze", "Remove a building, segment or node",

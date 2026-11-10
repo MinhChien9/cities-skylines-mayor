@@ -26,6 +26,8 @@ public class CityToolsTests
     [InlineData("CityDemand", "/state/demand")]
     [InlineData("CityZones", "/state/zones")]
     [InlineData("CityEconomy", "/state/economy")]
+    [InlineData("CityBudgets", "/state/budgets")]
+    [InlineData("CityPolicies", "/state/policies")]
     [InlineData("CitySaves", "/state/saves")]
     [InlineData("CityRoadPrefabs", "/prefabs/roads")]
     [InlineData("CityDisableBlockedAssets", "/commands/disable-blocked-assets")]
@@ -153,6 +155,66 @@ public class CityToolsTests
         Assert.Equal("/commands/set-tax-rate", request.Path);
         Assert.Contains("\"service\":\"Commercial\"", request.Body);
         Assert.Contains("\"rate\":9", request.Body);
+    }
+
+    [Fact]
+    public async Task CitySetBudget_posts_service_and_only_the_budgets_given()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CitySetBudget("Electricity", 101, cancellationToken: CancellationToken.None);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("/commands/set-budget", request.Path);
+        Assert.Contains("\"service\":\"Electricity\"", request.Body);
+        Assert.Contains("\"budget\":101", request.Body);
+        Assert.DoesNotContain("nightBudget", request.Body);
+        Assert.DoesNotContain("subService", request.Body);
+    }
+
+    [Fact]
+    public async Task CitySetBudget_posts_day_and_night_when_both_are_given()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CitySetBudget("PoliceDepartment", 101, 105, dryRun: true, cancellationToken: CancellationToken.None);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Contains("\"budget\":101", request.Body);
+        Assert.Contains("\"nightBudget\":105", request.Body);
+        Assert.Contains("\"dryRun\":true", request.Body);
+    }
+
+    [Fact]
+    public async Task CitySetPolicy_defaults_to_city_wide_set()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CitySetPolicy("Recycling", cancellationToken: CancellationToken.None);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("/commands/set-policy", request.Path);
+        Assert.Contains("\"policy\":\"Recycling\"", request.Body);
+        Assert.Contains("\"set\":true", request.Body);
+        Assert.Contains("\"district\":0", request.Body);
+    }
+
+    [Fact]
+    public async Task CitySetPolicy_posts_district_and_unset()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CitySetPolicy("TaxRaiseResLow", set: false, district: 2, dryRun: true,
+            cancellationToken: CancellationToken.None);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Contains("\"set\":false", request.Body);
+        Assert.Contains("\"district\":2", request.Body);
+        Assert.Contains("\"dryRun\":true", request.Body);
     }
 
     [Fact]
