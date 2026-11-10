@@ -18,14 +18,17 @@ opencode / Claude Code  ──MCP stdio──▶  Cs1Mayor.Mcp (.NET 10)  ──
 
 | Component | State |
 |---|---|
-| In-game bridge mod | ✅ Compiles against the real game assemblies; **awaiting in-game test** |
-| MCP server | ✅ Builds; handshake + 13 tools + offline handling verified by `scripts/smoke-test-mcp.py` |
-| Threading fix | ✅ Implemented; **runtime proof pending** (`/debug/threads`) |
+| In-game bridge mod | ✅ **Verified running in a live city** |
+| Threading fix | ✅ **Verified** — `probeThreadId == simulationThreadId`, `runsOnMainThread: false` |
+| MCP server | ✅ **Verified end-to-end** against the live game |
+| All 13 tools | ✅ Verified: read, build, zone, place, bulldoze, economy, save, health |
 | Knowledge base | ✅ `docs/GAME-MECHANICS.md`, `docs/EXPANSIONS.md` |
-| opencode wiring | ⏳ `docs/OPENCODE-SETUP.md` |
+| opencode wiring | ✅ `✓ cs1-mayor connected` |
 
-**The one thing left to do is Phase 1: start the game and confirm
-`probeThreadId == simulationThreadId`.** See `docs/VERIFICATION.md`.
+**Verified against a live city (10,552 citizens, 1,802 road segments):** state reads,
+road building with node reuse, bulldozing with orphan cleanup, zone painting and reverting,
+building placement, simulation speed control, and anomaly detection — all correct, and
+fully reversible. Full log in `docs/VERIFICATION.md`.
 
 ---
 
@@ -44,7 +47,9 @@ DLL to:
 %LOCALAPPDATA%\Colossal Order\Cities_Skylines\Addons\Mods\SkylinesAgentBridge\
 ```
 
-Then enable **Skylines Agent Bridge** in the game's content manager and load a city.
+> The mod **auto-loads** — it is picked up as an internal mod without needing to be
+> enabled in the content manager. The bridge starts listening as soon as the game
+> launches, and reports `levelLoaded:false` until a city is loaded.
 
 If your game lives somewhere else:
 
@@ -65,7 +70,8 @@ Invoke-RestMethod http://127.0.0.1:32123/health
 Invoke-RestMethod http://127.0.0.1:32123/debug/threads
 ```
 
-`debug/threads` must report `runsOnSimulationThread: true`.
+`debug/threads` must report `runsOnSimulationThread: true`. (Call it twice — the Unity
+main thread's id is learned on the next frame.)
 
 ### 4. Wire it into opencode
 

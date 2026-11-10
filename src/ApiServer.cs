@@ -318,7 +318,8 @@ namespace SkylinesAgentBridge
         {
             SimulationDispatcher dispatcher = bridge.Dispatcher;
             int probeThreadId = 0;
-            int simFrame = 0;
+            string gameTime = "";
+            int buildIndex = 0;
             bool paused = false;
 
             CommandResult probe = dispatcher.RunSync(delegate
@@ -326,12 +327,11 @@ namespace SkylinesAgentBridge
                 probeThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
                 try
                 {
-                    System.Reflection.FieldInfo simField = typeof(SimulationManager).GetField(
-                        "m_currentFrameIndex",
-                        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
-                    if (simField != null)
+                    SimulationManager simulation = ColossalFramework.Singleton<SimulationManager>.instance;
+                    if (simulation != null)
                     {
-                        simFrame = (int)simField.GetValue(ColossalFramework.Singleton<SimulationManager>.instance);
+                        gameTime = simulation.m_currentGameTime.ToString("s");
+                        buildIndex = (int)simulation.m_currentBuildIndex;
                     }
                 }
                 catch
@@ -358,7 +358,8 @@ namespace SkylinesAgentBridge
             sb.Append(",\"runsOnSimulationThread\":").Append(JsonUtil.Bool(probeThreadId != 0 && probeThreadId == dispatcher.SimulationThreadId));
             sb.Append(",\"runsOnMainThread\":").Append(JsonUtil.Bool(probeThreadId != 0 && probeThreadId == dispatcher.MainThreadId));
             sb.Append(",\"pendingJobs\":").Append(dispatcher.PendingCount);
-            sb.Append(",\"simulationFrame\":").Append(simFrame);
+            sb.Append(",\"gameTime\":\"").Append(JsonUtil.Escape(gameTime)).Append("\"");
+            sb.Append(",\"buildIndex\":").Append(buildIndex);
             sb.Append(",\"levelLoaded\":").Append(JsonUtil.Bool(bridge.LevelLoaded));
             sb.Append(",\"notes\":\"probeThreadId must equal simulationThreadId and must NOT equal mainThreadId\"");
             sb.Append("}");

@@ -66,6 +66,18 @@ Expected:
 ✓ cs1-mayor  connected
 ```
 
+> ⚠️ **On this machine the CLI needs `XDG_CONFIG_HOME` set**, otherwise it reports
+> "No MCP servers configured" even though the running session has loaded them fine:
+>
+> ```powershell
+> $env:XDG_CONFIG_HOME = "$env:USERPROFILE\.config"
+> opencode mcp list
+> ```
+>
+> The **running opencode session** resolves the global config correctly either way — the
+> tool catalog shows `cs1-mayor (13 tools)` regardless. The CLI quirk is cosmetic, but it
+> will confuse you while debugging.
+
 In an opencode session, `/mcps` opens the MCP dialog.
 
 ### If it fails to connect

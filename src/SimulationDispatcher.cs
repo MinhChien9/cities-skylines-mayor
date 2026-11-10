@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
-using ICities;
+using ColossalFramework;
+using ColossalFramework.Threading;
 
 namespace SkylinesAgentBridge
 {
@@ -26,10 +28,6 @@ namespace SkylinesAgentBridge
     ///
     /// ...and SimulationManager.SimulationStep() drains that queue on the simulation thread.
     ///
-    /// ICities exposes exactly the two primitives we need:
-    ///     IThreading.QueueMainThread(Action)        -> Unity main thread (dispatcher)
-    ///     IThreading.QueueSimulationThread(Action)  -> simulation thread (AddAction)
-    ///
     /// The upstream project this was forked from drained its command queue from
     /// ThreadingExtensionBase.OnUpdate, which the game calls from SimulationManager.Update()
     /// -- i.e. the **Unity main thread**. That races with the simulation thread over the
@@ -41,6 +39,17 @@ namespace SkylinesAgentBridge
     /// This dispatcher does the opposite: it does the mutation on the thread that owns
     /// the state, so no guard is hit and no reflection is needed.
     ///
+    /// IMPORTANT DESIGN NOTE
+    /// ---------------------
+    /// This dispatcher calls SimulationManager.AddAction directly instead of going through
+    /// ICities.IThreading.QueueSimulationThread. Both end up in the same place, but the
+    /// ICities route depends on the game's plugin/extension plumbing having discovered
+    /// this assembly. That plumbing is not guaranteed for a locally-dropped mod, and if
+    /// it is missing the dispatcher would silently fall back to running game mutations on
+    /// the HTTP worker thread - exactly the race we are trying to eliminate. Calling
+    /// AddAction directly removes that dependency entirely and matches what the game's
+    /// own tools do.
+    ///
     /// Threading rules enforced here:
     ///   * reads  of game state  -> simulation thread (avoids torn reads of struct buffers)
     ///   * writes of game state  -> simulation thread
@@ -50,36 +59,12 @@ namespace SkylinesAgentBridge
     {
         private readonly object gate = new object();
         private readonly Queue<Job> pending = new Queue<Job>();
-        private IThreading threading;
         private volatile bool disposed;
+        private bool mainThreadProbeSent;
 
         /// <summary>
-        /// True when the caller is already on the simulation thread, so work can run inline
-        /// instead of round-tripping through the queue.
-        /// </summary>
-        public bool OnSimulationThread
-        {
-            get
-            {
-                IThreading local = threading;
-                if (local == null)
-                {
-                    return false;
-                }
-                try
-                {
-                    return UnityEngine.Time.frameCount >= 0 && SimulationThreadId == Thread.CurrentThread.ManagedThreadId;
-                }
-                catch
-                {
-                    return false;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Managed id of the game's simulation thread, captured on the first frame after the
-        /// level loads. Zero until then.
+        /// Managed id of the game's simulation thread, resolved on first use.
+        /// Zero if it could not be determined.
         /// </summary>
         public int SimulationThreadId { get; private set; }
 
@@ -99,17 +84,6 @@ namespace SkylinesAgentBridge
         }
 
         /// <summary>
-        /// Called once the level has loaded. Captures the threading handle and the ids of the
-        /// two interesting threads.
-        /// </summary>
-        public void Attach(IThreading threadingHandle, int simulationThreadId, int mainThreadId)
-        {
-            threading = threadingHandle;
-            SimulationThreadId = simulationThreadId;
-            MainThreadId = mainThreadId;
-        }
-
-        /// <summary>
         /// Runs <paramref name="work"/> on the simulation thread and blocks the calling thread
         /// until it completes or the timeout expires.
         ///
@@ -125,24 +99,12 @@ namespace SkylinesAgentBridge
 
             Job job = new Job(work);
 
-            lock (gate)
+            // NOTE: the job is dispatched directly, not queued. Queuing it here as well
+            // would leave it in `pending` forever and leak one entry per request.
+            if (!TryDispatch(job))
             {
-                if (disposed)
-                {
-                    return CommandResult.Fail("The dispatcher has been shut down.");
-                }
-                pending.Enqueue(job);
-            }
-
-            // Hand the job to the game. QueueSimulationThread routes to
-            // SimulationManager.AddAction, which the simulation thread drains at the top of
-            // SimulationStep(). If we are already ON the simulation thread it runs inline.
-            bool dispatched = TryDispatch(job);
-
-            if (!dispatched)
-            {
-                // No threading handle yet (level still loading). Fall back to running on this
-                // worker thread so callers still get an answer instead of hanging.
+                // The game is not running a simulation (no city loaded, or mid-teardown).
+                // Run inline so the caller still gets a result instead of hanging.
                 job.Execute();
             }
 
@@ -156,7 +118,6 @@ namespace SkylinesAgentBridge
 
         /// <summary>
         /// Schedules work to run on the simulation thread without waiting for it.
-        /// Used for fire-and-forget work such as cache refreshes.
         /// </summary>
         public void Post(Func<CommandResult> work)
         {
@@ -176,23 +137,11 @@ namespace SkylinesAgentBridge
         }
 
         /// <summary>
-        /// Called from the game's own per-frame update hook (Unity main thread). Drains the
-        /// pending queue by handing the jobs to the simulation thread.
-        ///
-        /// This is the ONLY place the upstream project used to execute game mutations
-        /// directly. Here we only *transfer* ownership - never mutate state ourselves.
-        /// </summary>
-        public void Pump()
-        {
-            TryDispatch(null);
-        }
-
-        /// <summary>
         /// Schedules work to run on the Unity main thread.
         ///
         /// Use this for anything that touches Unity objects (UI panels, GameObjects, the
         /// camera, Texture2D/RenderTexture for screenshots). Game state must NOT be read or
-        /// written from here - use <see cref="RunSync"/> for that.
+        /// written from here.
         /// </summary>
         public void PostMainThread(Action action)
         {
@@ -201,17 +150,17 @@ namespace SkylinesAgentBridge
                 return;
             }
 
-            IThreading local = threading;
-            if (local == null)
-            {
-                // No handle yet - run inline so the work is not lost.
-                action();
-                return;
-            }
-
             try
             {
-                local.QueueMainThread(action);
+                ThreadHelper.dispatcher.Dispatch(delegate
+                {
+                    // Runs on the Unity main thread - a reliable place to learn its id.
+                    if (MainThreadId == 0)
+                    {
+                        MainThreadId = Thread.CurrentThread.ManagedThreadId;
+                    }
+                    action();
+                });
             }
             catch (Exception)
             {
@@ -221,21 +170,84 @@ namespace SkylinesAgentBridge
         }
 
         /// <summary>
+        /// Called from the game's per-frame hook. Drains the pending queue by handing the
+        /// jobs to the simulation thread.
+        ///
+        /// This is the ONLY place the upstream project used to execute game mutations
+        /// directly. Here we only *transfer* ownership - never mutate state ourselves.
+        /// </summary>
+        public void Pump()
+        {
+            // Pump() is only ever called from the game's per-frame hook, which runs on the
+            // Unity main thread. Capture that id here so /debug/threads can compare against
+            // it. It must NOT be captured from TryDispatch, because that runs on the HTTP
+            // worker thread and would report the worker as the main thread.
+            if (MainThreadId == 0)
+            {
+                MainThreadId = Thread.CurrentThread.ManagedThreadId;
+            }
+
+            DrainQueued();
+        }
+
+        /// <summary>
+        /// Drains a batch of queued jobs onto the simulation thread.
+        /// </summary>
+        private void DrainQueued()
+        {
+            while (true)
+            {
+                Job job;
+                lock (gate)
+                {
+                    if (pending.Count == 0)
+                    {
+                        return;
+                    }
+                    job = pending.Dequeue();
+                }
+
+                SimulationManager simulation = Singleton<SimulationManager>.instance;
+                if (simulation == null)
+                {
+                    job.Execute();
+                    continue;
+                }
+                simulation.AddAction(job.Execute);
+            }
+        }
+
+        /// <summary>
         /// Moves queued jobs onto the simulation thread. Safe to call from any thread.
         /// </summary>
         private bool TryDispatch(Job specific)
         {
-            IThreading local = threading;
-            if (local == null)
+            SimulationManager simulation = Singleton<SimulationManager>.instance;
+            if (simulation == null)
             {
-                return specific != null;
+                // No simulation yet (main menu, or before the city loaded).
+                if (specific != null)
+                {
+                    specific.Execute();
+                    return true;
+                }
+                return false;
             }
 
             try
             {
+                ResolveThreadIds(simulation);
+
+                // Learn the Unity main thread id the first time we can. Dispatching a
+                // no-op runs it on the Unity main thread, which is the only place it can
+                // be observed reliably (the per-frame hook may not fire for a locally
+                // installed mod).
+                EnsureMainThreadId();
+
                 if (specific != null)
                 {
-                    local.QueueSimulationThread(specific.Execute);
+                    // AddAction is exactly what ZoneTool / BuildingTool / NetTool use.
+                    simulation.AddAction(specific.Execute);
                     return true;
                 }
 
@@ -248,19 +260,75 @@ namespace SkylinesAgentBridge
                     }
                     job = pending.Dequeue();
                 }
-                local.QueueSimulationThread(job.Execute);
-                return true;
-            }
+                simulation.AddAction(job.Execute);
+                return true;            }
             catch (Exception)
             {
-                // If the game is mid-teardown the handle can be dead. Fall back to inline
-                // execution so the caller still gets a result.
                 if (specific != null)
                 {
                     specific.Execute();
                     return true;
                 }
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Dispatches a one-shot probe to the Unity main thread to learn its managed id.
+        /// Guarded so it only happens once.
+        /// </summary>
+        private void EnsureMainThreadId()
+        {
+            if (MainThreadId != 0 || mainThreadProbeSent)
+            {
+                return;
+            }
+            mainThreadProbeSent = true;
+            try
+            {
+                ThreadHelper.dispatcher.Dispatch(delegate
+                {
+                    MainThreadId = Thread.CurrentThread.ManagedThreadId;
+                });
+            }
+            catch (Exception)
+            {
+                // The dispatcher is not ready yet; Pump() will capture it later.
+                mainThreadProbeSent = false;
+            }
+        }
+
+        /// <summary>
+        /// Resolves the managed ids of the simulation thread and the Unity main thread so
+        /// that /debug/threads can prove which thread actually ran a command.
+        /// </summary>
+        private void ResolveThreadIds(SimulationManager simulation)
+        {
+            if (SimulationThreadId == 0)
+            {
+                try
+                {
+                    FieldInfo field = typeof(SimulationManager).GetField(
+                        "m_simulationThread",
+                        BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                    Thread thread = field != null ? field.GetValue(simulation) as Thread : null;
+                    if (thread != null)
+                    {
+                        SimulationThreadId = thread.ManagedThreadId;
+                    }
+                }
+                catch (Exception)
+                {
+                    SimulationThreadId = 0;
+                }
+            }
+
+            if (MainThreadId == 0)
+            {
+                // NOTE: deliberately NOT set here. TryDispatch runs on the HTTP worker
+                // thread, so capturing "the current thread" there would mislabel the
+                // worker as the Unity main thread. MainThreadId is captured in Pump(),
+                // which only runs on the Unity main thread.
             }
         }
 
@@ -274,7 +342,6 @@ namespace SkylinesAgentBridge
                     pending.Dequeue().Cancel("The dispatcher was shut down.");
                 }
             }
-            threading = null;
         }
 
         /// <summary>
