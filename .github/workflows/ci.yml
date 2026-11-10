@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main, project-structure]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mcp-server:
+    name: MCP server (build, test, smoke)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore ./Cs1Mayor.sln
+
+      - name: Build
+        run: dotnet build ./Cs1Mayor.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test ./Cs1Mayor.sln -c Release --no-build
+
+      - name: MCP stdio smoke test
+        run: python ./scripts/smoke-test-mcp.py
+
+      # The in-game mod compiles against Cities: Skylines' own runtime assemblies,
+      # which cannot be redistributed. Build it locally with:
+      #   powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-mod.ps1
+      # See docs/02-getting-started.md.
+      - name: Check the mod build script is present and parses
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            "$PWD/scripts/build-mod.ps1", [ref]$null, [ref]$errors) | Out-Null
+          if ($errors) { $errors | ForEach-Object { Write-Error $_ }; exit 1 }
+          Write-Host "build-mod.ps1 parses cleanly"
+
+      - name: Check that every documented bridge endpoint exists in the router
+        run: python ./scripts/check-api-docs.py
