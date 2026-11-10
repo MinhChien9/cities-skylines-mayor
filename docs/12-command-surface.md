@@ -115,8 +115,8 @@ Is it a UI-driven feature?            → Tier 3
 | # | Capability | Tier | Bridge endpoint | MCP tool | Difficulty |
 |---|---|---|---|---|---|
 | 1 | Roads, zoning, buildings, bulldoze | **1** (today) | `/commands/*` | `city_build_road`, `city_zone`, `city_place_building`, `city_bulldoze` | Done |
-| 2 | **Service budgets** | **1** | `GET /state/budgets`, `POST /commands/set-budget` | `city_budgets`, `city_set_budget` | Done (live verification pending) |
-| 3 | **Policies** (127) | **1** | `GET /state/policies`, `POST /commands/set-policy` | `city_policies`, `city_set_policy` | Done (live verification pending) |
+| 2 | **Service budgets** | **1** | `GET /state/budgets`, `POST /commands/set-budget` | `city_budgets`, `city_set_budget` | Done ✅ |
+| 3 | **Policies** (127) | **1** | `GET /state/policies`, `POST /commands/set-policy` | `city_policies`, `city_set_policy` | Done ✅ |
 | 4 | **Transport lines** | **1** + **3** | `GET /state/transport`, `POST /commands/transport-line` | `city_transport` | Hard |
 | 5 | **Districts** (create / paint / specialise) | **2** + **3** | `GET /state/parks`, `POST /commands/district` | `city_district` | Hard |
 | 6 | **Special areas** (airport / campus / pedestrian / industry) | **2** + **3** | `POST /commands/district` | `city_district` | Hard |
@@ -163,12 +163,13 @@ them as opaque handles and never reflect into their implementations.
 
 ### 4.1 Service budgets — Tier 1
 
-*(Built — R1. Endpoints: `GET /state/budgets`, `POST /commands/set-budget`; tools:
-`city_budgets`, `city_set_budget`. Signatures re-verified against the live game's
-`Assembly-CSharp.dll` on 2026-11-11: `GetBudget(Service, SubService, Boolean)` → int,
+*(Built and verified live — R1. Endpoints: `GET /state/budgets`, `POST /commands/set-budget`;
+tools: `city_budgets`, `city_set_budget`. Signatures verified against the live game's
+`Assembly-CSharp.dll` (2026-11-11): `GetBudget(Service, SubService, Boolean)` → int,
 `SetBudget(Service, SubService, Int32, Boolean)`, backing fields
-`m_serviceBudgetDay` / `m_serviceBudgetNight`. Live act → re-read → compare still
-pending — see `07-verification.md`.)*
+`m_serviceBudgetDay` / `m_serviceBudgetNight`. The live act → re-read → compare run
+(`docs/07-verification.md` §1e) confirmed the 101% trick, the day/night split and
+`dryRun` integrity.)*
 
 The economics of the 101% trick are already documented in `05-game-mechanics.md` §3,
 and the game exposes the setter publicly **[V]**:
@@ -186,12 +187,13 @@ return the before/after for every target it touched — the same shape as `set-t
 
 ### 4.2 Policies — Tier 1
 
-*(Built — R1. Endpoints: `GET /state/policies`, `POST /commands/set-policy`; tools:
-`city_policies`, `city_set_policy`. Signatures re-verified against the live game's
-`Assembly-CSharp.dll` on 2026-11-11. The catalogue reports the 127-value enum with the
+*(Built and verified live — R1. Endpoints: `GET /state/policies`, `POST /commands/set-policy`;
+tools: `city_policies`, `city_set_policy`. Signatures verified against the live game's
+`Assembly-CSharp.dll` (2026-11-11). The catalogue reports the 127-value enum with the
 game's own groups derived by name (`Services`, `Taxation`, `CityPlanning`, `Park`,
 `Event`), the loaded flag, and city-wide + per-district state; the setter refuses
-unloaded policies instead of silently no-oping. Live verification still pending.)*
+unloaded policies instead of silently no-oping. Live set/unset cycles confirmed in
+`docs/07-verification.md` §1e.)*
 
 `DistrictPolicies.Policies` is an enum with **127 values** **[V]**, grouped into
 `Services`, `Taxation`, `CityPlanning`, `Park` and `Event` sub-enums. Some are

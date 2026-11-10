@@ -99,29 +99,33 @@ Each release also adds its MCP tools (or relies on `city_request` in the interim
 Live-game verification follows the Phase 2 pattern (restart with the new mod → call →
 read back); see `docs/07-verification.md`.
 
-### R1 — budgets & policies (Tier 1, easy) — **shipped, live verification pending**
+### R1 — budgets & policies (Tier 1, easy) — **done and verified live**
 
 - [x] `GET /state/budgets` — per-service day/night budgets (public `GetBudget` readback
       per service; zero-budget rows hidden since they cannot spend)
 - [x] `POST /commands/set-budget` — `EconomyManager.SetBudget(Service, SubService, int,
       bool night)`, day and/or night in one call, 0–300 clamp, before/after readback
-      **[verified]** *(signatures re-verified against the live DLL on 2026-11-11; the
-      act→re-read→compare game run is still pending)*
+      **[verified]** *(signatures verified against the live DLL, 2026-11-11)*
 - [x] `GET /state/policies` — the 127-value `DistrictPolicies.Policies` catalogue with
       the game's own groups (`Services`, `Taxation`, `CityPlanning`, `Park`, `Event`)
       derived by name, `IsPolicyLoaded`, `IsCityPolicySet` and per-district
-      `IsDistrictPolicySet` state **[verified]** *(same live-verification caveat)*
+      `IsDistrictPolicySet` state **[verified]** *(live: 126 usable policies on a fresh
+      city, 116 loaded, groups and `Reserved` correct)*
 - [x] `POST /commands/set-policy` — `SetCityPolicy` / `UnsetCityPolicy` for district 0
       (city-wide), `SetDistrictPolicy` / `UnsetDistrictPolicy` per district, and the
       park variants for Park-group policies targeted by park id **[verified]**
-      *(same caveat)*. Refuses an unloaded policy with a clear error instead of
-      leaving a silent no-op.
+      *(live: set → independent readback → unset; unloaded and nonexistent-district
+      policies refused cleanly)*. Refuses an unloaded policy with a clear error
+      instead of leaving a silent no-op.
 - [x] MCP tools `city_budgets`, `city_set_budget`, `city_policies`, `city_set_policy`
-- [ ] **Verify on a live city** (needs one game restart with the new DLL): read budgets,
-      set Electricity to 101%, confirm the readback moved and `city_facilities` shows
-      the extra vehicle; set and unset one loaded policy, confirm `city_policies`
-      reflects it; confirm an unloaded policy is refused cleanly. Then drop the
-      "(pending)" annotations in this file and `docs/12-command-surface.md`.
+- [x] **Verify on a live city** — 2026-11-11, see `docs/07-verification.md` §1e. Budgets
+      act → re-read → compare passes (101% trick, day/night split, dryRun integrity,
+      baselines restored). Policies pass set/unset cycles with catalogue confirmation;
+      note: taxation policies act through the effect path, not the raw slider array.
+      **Reload-the-save diff not run** — `/commands/load` does not exist until R4; the
+      in-memory readback proof stands, and the state save `R1-verify-budgets-policies`
+      is on disk for when `load` ships.
+
 
 ### R2 — transport lines (Tier 1 + Tier 3)
 

@@ -305,6 +305,13 @@ Read the budget or policy state straight back to confirm the game accepted it �
 `set-policy` reports `before` / `after` as the game itself answers `IsCityPolicySet`,
 `IsDistrictPolicySet` or `IsParkPolicySet`. Never trust the "ok" alone.
 
+> **Taxation policies do not change `city_economy`'s tax rates.** `TaxRaise*` /
+> `TaxLower*` shift the *effective* rate by ±2 points through
+> `GetTaxRate(service, subService, level, districtTaxPolicies)` (the effect path,
+> `05-game-mechanics.md` §2). The raw slider array that `/state/economy` reports stays
+> untouched, so a set taxation policy plus an unchanged "rate" is the expected state,
+> not a bug.
+
 ---
 
 ## Status codes

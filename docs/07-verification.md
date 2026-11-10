@@ -177,6 +177,39 @@ The city was restored to its exact paused state after the 3-second run.
 
 ---
 
+## 1e. R1 verification — budgets & policies — ✅ VERIFIED LIVE (2026-11-11, PR #7)
+
+Fresh game restart with the new DLL (`cities-resume` save through the Epic DLC launch).
+Thread proof repeated first: `probeThreadId 2 == simulationThreadId 2 != mainThreadId 1`.
+
+### `GET /state/budgets` and `POST /commands/set-budget`
+
+| Check | Result |
+|---|---|
+| Catalogue | 20 services listed, all at `day:100 night:100` — the filtering rule (hide zero-budget services) works: exactly the services that have a budget row appear ✅ |
+| 101% trick | `Electricity` day 100 → 101 via `set-budget`; **independent** `/state/budgets` readback shows `day:101` ✅ |
+| Day/night split | `Water` with `budget:105, nightBudget:90` → `day:105 night:90` ✅ |
+| `dryRun` | Reported `after` equal to `before` (100/100), Water untouched afterwards ✅ |
+| Night untouched by a day-only call | Electricity `night` stayed 100 ✅ |
+| Baselines restored | Electricity and PoliceDepartment back to 100/100; confirmed by readback ✅ |
+
+### `GET /state/policies` and `POST /commands/set-policy`
+
+| Check | Result |
+|---|---|
+| Catalogue | `policyCount:126` (127 minus `None`), `loadedCount:116`, groups derived as designed — `Recycling`→Services, `TaxRaiseResLow`→Taxation, `SmallBusiness`/`EncourageBiking`→CityPlanning, `Forest`→Specialization, `Reserved`→Reserved, `AnimalEthics`→Park ✅ |
+| `loaded:false` set | `Recycling` with `loaded:true` set city-wide: `before:false → after:true`; the **independent** catalogue readback shows `cityWide:true, cityWideCount:1`; unset restored `after:false` ✅ |
+| `dryRun` | Set reported `set:false` and changed nothing ✅ |
+| Unloaded policy refusal | `StuddedTires` (loaded:false) → clean error: *"setting it would be a silent no-op"* — no state touched ✅ |
+| Nonexistent district refusal | `district:1` with 0 districts created → clean error listing every created district ✅ |
+| Taxation policies | `TaxRaiseResLow` set/unset works through the state machine, **but the aggregate tax rate in `/state/economy` stays 9** — by design: taxation policies shift ±2 points through `GetTaxRate(service, subService, level, districtTaxPolicies)` (`05-game-mechanics.md` §2), the *effect* path, not the raw slider array that `city_economy` reads. Do not conclude a tax policy "did not work" from `city_economy` alone. ✅ |
+
+Park-group policies accept a *park* id (`IsParkPolicySet` family), which arrives with the
+R3 districts release. Verified: the state save `R1-verify-budgets-policies.crp` (5.28 MB)
+is on disk after the run.
+
+---
+
 ## 2. Dry runs
 
 Every mutating tool accepts `dryRun=true`:
