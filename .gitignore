@@ -1,0 +1,19 @@
+# Build output
+bin/
+obj/
+*.user
+
+# The forked upstream working copy (kept for reference; see docs/UPSTREAM-NOTES.md).
+# Its content is tracked under src/ and docs/ in this repo.
+upstream-skyline-agent-skill/
+
+# Local agent state
+*.log
+journal/
+.DS_Store
+Thumbs.db
+
+# Editor
+.vs/
+.idea/
+.vscode/
