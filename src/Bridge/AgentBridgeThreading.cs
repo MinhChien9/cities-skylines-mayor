@@ -8,11 +8,8 @@ namespace SkylinesAgentBridge
     /// per-frame update.
     ///
     /// IMPORTANT: OnUpdate runs on the **Unity main thread**. The upstream project executed
-    /// city mutations here, which races with the simulation thread. Here it only transfers
-    /// queued work to the simulation thread, so nothing is ever mutated from this thread.
-    ///
-    /// This hook is optional: the dispatcher also dispatches directly when a request
-    /// arrives. It exists so queued work still drains even if no request is in flight.
+    /// city mutations here, which races with the simulation thread. Here it only learns the
+    /// main thread's id, so nothing is ever mutated from this thread.
     /// </summary>
     public sealed class AgentBridgeThreading : ThreadingExtensionBase
     {

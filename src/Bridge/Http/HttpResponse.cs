@@ -8,7 +8,7 @@ namespace SkylinesAgentBridge.Http
     /// An HTTP response carrying a JSON body.
     ///
     /// Every endpoint in the bridge answers with JSON, including the error paths, so the
-    /// MCP server can parse one shape and never has to guess whether it got HTML.
+    /// MCP server can parse one shape.
     /// </summary>
     public sealed class HttpResponse
     {

@@ -130,8 +130,8 @@ PR.
   explicit types; `mcp-server/` targets .NET 10 and uses modern C#.
 - Prefer many small, well-named files over few large ones. `src/State/GameState.cs` is
   the counter-example that motivated this rule.
-- Every public class gets a short XML doc comment explaining *what it is for* and, when
-  it is not obvious, *what will break if you get it wrong*.
+- A public type whose name does not explain it gets a short XML doc comment saying what
+  it is for and, where it is not obvious, what breaks if you get it wrong.
 - Do not add a dependency without saying why in the PR body.
 
 ## License

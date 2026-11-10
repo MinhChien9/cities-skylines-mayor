@@ -100,15 +100,13 @@ namespace SkylinesAgentBridge
         public void OnLevelUnloading()
         {
             levelLoaded = false;
-            dispatcher.OnLevelUnloaded();
             AgentBridgeNotifier.Destroy();
-            Debug.Log("[SkylinesAgentBridge] Level unloading. Pending API commands cleared.");
+            Debug.Log("[SkylinesAgentBridge] Level unloading.");
         }
 
         /// <summary>
         /// Called from the game's per-frame update hook on the Unity main thread.
-        /// It only *transfers* queued work to the simulation thread - it never mutates
-        /// game state itself.
+        /// It never mutates game state itself.
         /// </summary>
         public void PumpSimulationQueue(float realTimeDelta)
         {

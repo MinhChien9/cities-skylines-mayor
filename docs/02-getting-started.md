@@ -176,26 +176,8 @@ know what it is allowed to do, and why.
 
 ## Repository layout
 
-```
-cs1-mayor/
-├─ src/                       the in-game bridge mod (C# 5, net35)
-│  ├─ Bridge/                 HTTP listener, route table, mod hooks, in-game console
-│  │  └─ Http/                the hand-rolled HTTP request/response types
-│  ├─ Dispatch/               the simulation-thread dispatcher  ← the load-bearing file
-│  ├─ Commands/               every mutation the agent can perform
-│  ├─ State/                  every read of city state, plus the anomaly detectors
-│  └─ Support/                JSON reader and the command result envelope
-│
-├─ mcp-server/                the MCP server (C#, .NET 10) — 13 tools over stdio
-├─ tests/                     xunit tests for the MCP server and the bridge's JSON reader
-├─ scripts/                   build, install, launch, smoke test
-├─ docs/                      this folder — start at docs/README.md
-├─ .github/                   contributing guide, PR template, issue templates, CI
-├─ AGENTS.md                  the operating manual for the AI mayor
-└─ Cs1Mayor.sln               the solution: mod + MCP server + tests
-```
-
-Every file is explained in [`03-code-map.md`](03-code-map.md).
+The tree is in the [README](../README.md); every file is explained in
+[`03-code-map.md`](03-code-map.md).
 
 ---
 
@@ -205,7 +187,8 @@ Every file is explained in [`03-code-map.md`](03-code-map.md).
 |---------|-------|-----|
 | `GET /health` refuses the connection | The game is not running, or the mod DLL is not in the mods folder | Start the game; re-run `build-mod.ps1` |
 | `/health` works but `/state/summary` returns 409 | No city is loaded yet | Load a city |
-| `runsOnSimulationThread` is false | The dispatcher fell back to the wrong thread | This is a bug — see [`07-verification.md`](07-verification.md) |
+| `runsOnSimulationThread` is false | The bridge is not running commands on the simulation thread | This is a bug — see [`07-verification.md`](07-verification.md) |
+| A command fails with "simulation thread is not available" | The game is loading or unloading a map | Wait, then retry |
 | `opencode mcp list` shows the server as failed | The DLL path is wrong, or the build is locked | Rebuild, restart opencode, re-check the path |
 | The build says the managed assemblies were not found | Wrong game path | Pass `-GamePath` or set `$env:CITIES_SKYLINES_PATH` |
 | `dotnet build` fails with "file is locked" | The MCP server is running from that output folder | Restart opencode or build in Debug |

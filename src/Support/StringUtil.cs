@@ -1,4 +1,3 @@
-
 namespace SkylinesAgentBridge.Support
 {
     public static class StringUtil

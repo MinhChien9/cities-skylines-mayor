@@ -1,7 +1,7 @@
+using System.Collections.Generic;
 using UnityEngine;
 using SkylinesAgentBridge.State;
 using SkylinesAgentBridge.Support;
-using System.Collections.Generic;
 
 namespace SkylinesAgentBridge.Commands
 {

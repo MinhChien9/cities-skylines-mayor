@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
@@ -9,9 +10,8 @@ namespace SkylinesAgentBridge.Http
     /// A parsed HTTP request.
     ///
     /// The bridge speaks a deliberately small subset of HTTP/1.1: a request line, headers
-    /// (only Content-Length is read), and an optional JSON body. There is no chunked
-    /// transfer encoding, no keep-alive and no multipart support, because the only client
-    /// is the MCP server running on the same machine.
+    /// (only Content-Length is read), and an optional JSON body. The only client is the
+    /// MCP server running on the same machine.
     /// </summary>
     public sealed class HttpRequest
     {
@@ -50,8 +50,7 @@ namespace SkylinesAgentBridge.Http
             }
 
             float value;
-            return float.TryParse(raw, System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture, out value) ? value : defaultValue;
+            return float.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out value) ? value : defaultValue;
         }
 
         /// <summary>Reads a string query parameter, falling back to <paramref name="defaultValue"/>.</summary>
@@ -100,10 +99,7 @@ namespace SkylinesAgentBridge.Http
         }
 
         /// <summary>
-        /// Reads one request off the socket.
-        ///
-        /// Header size is capped at 64 KB so a malformed or hostile client cannot make the
-        /// bridge allocate without bound.
+        /// Reads one request off the socket. Header size is capped at 64 KB.
         /// </summary>
         public static HttpRequest Read(NetworkStream stream)
         {

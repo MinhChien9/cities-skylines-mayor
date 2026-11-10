@@ -179,7 +179,7 @@ game. That is what [`07-verification.md`](07-verification.md) is for.
 | Change how an anomaly is detected | the matching `src/State/*Collector.cs` |
 | Change a game mutation | the matching `src/Commands/*Commands.cs` |
 | Change how the agent is told to behave | `mcp-server/Program.cs` (the instructions) and `AGENTS.md` (the manual) |
-| Change the threading model | `src/Dispatch/SimulationDispatcher.cs` — read [`01-architecture.md`](01-architecture.md) first, and expect to be asked why |
+| Change the threading model | `src/Dispatch/SimulationDispatcher.cs` — read [`01-architecture.md`](01-architecture.md) first |
 | Change how the game is built | `src/SkylinesAgentBridge.csproj` and `scripts/build-mod.ps1` |
 | Change the AI's mayorial knowledge | `docs/05-game-mechanics.md`, `docs/06-expansions.md` |
 
@@ -192,5 +192,3 @@ game. That is what [`07-verification.md`](07-verification.md) is for.
   `GameInfoHelpers` owns the predicates; `GameState` owns the payloads.
 - Shared helpers live in `Support/` (no game dependency) or `State/GameInfoHelpers.cs`
   (game-dependent), and there is exactly one copy of each.
-- Every public type carries a short XML doc comment saying what it is for and, where it
-  is not obvious, what breaks if you get it wrong.

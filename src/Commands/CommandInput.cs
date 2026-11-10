@@ -5,10 +5,6 @@ namespace SkylinesAgentBridge.Commands
 {
     /// <summary>
     /// Readers for the JSON body of a command request.
-    ///
-    /// Every command receives its arguments as a JSON string. These helpers keep the
-    /// "how do I pull a coordinate out of that string" question in one place instead of
-    /// repeating the same three JsonUtil calls in every command.
     /// </summary>
     internal static class CommandInput
     {
