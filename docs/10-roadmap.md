@@ -25,7 +25,7 @@
 - [x] **Contributor conventions** — branch naming, conventional commits, PR and issue
       templates copied from the opencode project
 
-## Next: Phase 1 — the go/no-go gate 🔴
+## Phase 1 — the go/no-go gate
 
 **Start the game, load a city, and confirm the thread proof.**
 
@@ -33,30 +33,33 @@
 Invoke-RestMethod http://127.0.0.1:32123/debug/threads
 ```
 
-- [ ] `probeThreadId == simulationThreadId`
-- [ ] `probeThreadId != mainThreadId`
-- [ ] `runsOnSimulationThread: true`
+- [x] `probeThreadId == simulationThreadId` — 2 == 2
+- [x] `probeThreadId != mainThreadId` — 2 != 1
+- [x] `runsOnSimulationThread: true`
 
 If this fails, **nothing else matters** — every mutation would be racing the simulation.
 See `docs/01-architecture.md`.
 
 ## Phase 2 — in-game smoke test
 
-- [ ] Mod loads without errors in `Cities_Data\output_log.txt`
-- [ ] `/health` responds
-- [ ] `/state/summary` returns sensible data
-- [ ] Place one road segment → `/state/road-anomalies` shows no new defect
-- [ ] Zone some land → `/state/zones` shows occupancy
-- [ ] Place one service building → `/state/problems` shows it connected (or explains why not)
-- [ ] Save → verify the `.crp` file appeared
-- [ ] Reload the save → the city is intact
+- [x] Mod loads without errors in `Cities_Data\output_log.txt`
+- [x] `/health` responds
+- [x] `/state/summary` returns sensible data
+- [x] Place one road segment → `/state/road-anomalies` shows no new defect
+- [x] Zone some land → `/state/zones` shows occupancy
+- [x] Place one service building → `/state/problems` shows it connected (or explains why not)
+- [x] Save → verify the `.crp` file appeared
+- [x] Reload the save → the city is intact
+
+Two real bugs were found by this phase and fixed — see
+[`docs/07-verification.md`](07-verification.md#1c-bugs-found-and-fixed).
 
 ## Phase 3 — MCP integration
 
-- [ ] Add the server to `~/.config/opencode/opencode.json`
-- [ ] `opencode mcp list` → `✓ cs1-mayor connected`
-- [ ] Agent can call `city_snapshot` and get real data
-- [ ] Agent can place a road and verify it
+- [x] Add the server to `~/.config/opencode/opencode.json`
+- [x] `opencode mcp list` → `✓ cs1-mayor connected`
+- [x] Agent can call `city_snapshot` and get real data
+- [x] Agent can place a road and verify it
 
 ## Phase 4 — goal-driven loop
 

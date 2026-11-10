@@ -109,6 +109,30 @@ in-game mod has no test harness — it is verified by the live-city procedure ab
 
 ---
 
+## 1c. Bugs found and fixed
+
+The Phase 1 and Phase 2 runs were repeated on a fresh map against the live game. Both
+phases pass. The run surfaced two data bugs, now fixed.
+
+| Bug | What was wrong | Fix |
+|---|---|---|
+| `/state/summary` reported the wrong population | It reported `CitizenManager.m_citizenCount`, which counts allocated citizen *objects*. That includes the dummy travellers the outside-connection AI spawns for the map-edge airports and rail heads, so a map with no citizens read 1410 while the HUD, save panel and load panel all read 0. It also drifted on its own between reads of the same map. | Report `District.m_populationData.m_finalCount` as `population` — the exact value the game's own label uses. The raw count stays available as `citizenObjects`. |
+| `/state/economy` had no money in it | It returned tax rates only, so the cash, income, expenses and tax multiplier that AGENTS.md's economy table asks for were unreadable. | Report `cash`, `income`, `expenses`, `balance` and `taxMultiplierPercent`. |
+
+Two unit details had to be got right, and each was checked against the game's own code
+rather than guessed:
+
+- The game stores money in hundredths and divides by 100 for display, so the default
+  bailout limit of `-1000000` shows as **−₡10,000** — the figure AGENTS.md quotes. The
+  bridge divides by 100 to match.
+- The tax multiplier is an integer in units of 1/10000, where 10000 is 100%. It is
+  private, so it is read by reflection, as `m_taxRates` already is.
+
+Verified against the live game: `population: 0` matches the HUD's population label,
+`cash: 65002` and `balance: -272` match the HUD's **−€272**.
+
+---
+
 ## 2. Dry runs
 
 Every mutating tool accepts `dryRun=true`:
