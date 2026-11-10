@@ -11,9 +11,19 @@
 - [x] **`/debug/threads`** — runtime proof of which thread executes commands
 - [x] **MCP server** — C# / .NET 10, `ModelContextProtocol` 2.4.0, 13 tools, stdio
 - [x] **Protocol smoke test** — initialize → tools/list → tools/call verified
-- [x] **Knowledge base** — `docs/GAME-MECHANICS.md`, `docs/EXPANSIONS.md`
+- [x] **Knowledge base** — `docs/05-game-mechanics.md`, `docs/06-expansions.md`
 - [x] **Agent operating manual** — `AGENTS.md`
 - [x] **Documentation** — architecture, API reference, verification, opencode setup
+- [x] **Project structure** — `src/` split into `Bridge` / `Dispatch` / `Commands` / `State` /
+      `Support`; `GameState.cs` split into focused collectors; HTTP types and the route
+      table extracted from `ApiServer.cs`
+- [x] **Real project files** — `src/SkylinesAgentBridge.csproj`, `mcp-server/*.csproj`,
+      `tests/*.csproj` and a `Cs1Mayor.sln`; the mod is now an ordinary MSBuild project
+- [x] **Automated tests** — 42 xunit tests over the MCP server and the bridge's JSON reader
+- [x] **CI** — build, test, MCP protocol smoke test and an API-docs/route-table consistency
+      check on every push
+- [x] **Contributor conventions** — branch naming, conventional commits, PR and issue
+      templates copied from the opencode project
 
 ## Next: Phase 1 — the go/no-go gate 🔴
 
@@ -28,7 +38,7 @@ Invoke-RestMethod http://127.0.0.1:32123/debug/threads
 - [ ] `runsOnSimulationThread: true`
 
 If this fails, **nothing else matters** — every mutation would be racing the simulation.
-See `docs/ARCHITECTURE.md`.
+See `docs/01-architecture.md`.
 
 ## Phase 2 — in-game smoke test
 

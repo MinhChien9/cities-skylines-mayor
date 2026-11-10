@@ -235,7 +235,7 @@ not make new content placeable — unlock, **save, reload the city**.
 1. Re-read `city_snapshot` and `city_problems`. The answer is usually there.
 2. Check `city_infrastructure` — a broken road network explains most "the city isn't
    growing" situations.
-3. Re-read `docs/GAME-MECHANICS.md` for the exact formula rather than approximating.
+3. Re-read `docs/05-game-mechanics.md` for the exact formula rather than approximating.
 4. If the bridge errors, run `city_health`.
 5. If something is fundamentally unclear, **ask the user** rather than guessing. A wrong
    guess costs sim-days; a question costs one turn.
@@ -246,8 +246,10 @@ not make new content placeable — unlock, **save, reload the city**.
 
 | Document | Use it for |
 |---|---|
-| `docs/GAME-MECHANICS.md` | Demand formulas, tax ceilings, budget curves, coverage, level-up rules, milestones, policies |
-| `docs/EXPANSIONS.md` | Every expansion's mechanics, thresholds and costs |
-| `docs/API-REFERENCE.md` | The raw HTTP bridge (use when a tool is missing) |
-| `docs/VERIFICATION.md` | Checking your work, recovering from failure |
-| `docs/ARCHITECTURE.md` | How the system works |
+| `docs/README.md` | The index — start here |
+| `docs/05-game-mechanics.md` | Demand formulas, tax ceilings, budget curves, coverage, level-up rules, milestones, policies |
+| `docs/06-expansions.md` | Every expansion's mechanics, thresholds and costs |
+| `docs/04-api-reference.md` | The raw HTTP bridge (use when a tool is missing) |
+| `docs/07-verification.md` | Checking your work, recovering from failure |
+| `docs/01-architecture.md` | How the system works |
+| `docs/03-code-map.md` | Which file owns which behaviour |

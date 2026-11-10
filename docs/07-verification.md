@@ -48,7 +48,7 @@ Invoke-RestMethod http://127.0.0.1:32123/debug/threads
 Via MCP: `city_health`.
 
 **If `probeThreadId == mainThreadId`, stop.** Every mutation is racing the simulation
-thread and will silently corrupt the city. See `docs/ARCHITECTURE.md`.
+thread and will silently corrupt the city. See `docs/01-architecture.md`.
 
 ---
 
@@ -85,6 +85,27 @@ verified by re-reading state afterwards.
 > restore cells that were `Unzoned` before the first change — they become the reverted
 > zone. In the verified run, 12 cells that were `Unzoned` became `ResidentialLow`. Treat
 > zone changes as one-way unless you snapshot `/state/zones` first.
+
+---
+
+## 1b. Automated checks — ✅ 42 TESTS PASSING
+
+These need no game running:
+
+```powershell
+dotnet test .\Cs1Mayor.sln          # 42 xunit tests
+python .\scripts\smoke-test-mcp.py   # MCP protocol handshake
+python .\scripts\check-api-docs.py  # API reference matches the route table
+```
+
+| Suite | Covers |
+|---|---|
+| `tests/Cs1Mayor.Mcp.Tests/BridgeClientTests.cs` | JSON parsing, error translation, unreachable-bridge handling |
+| `tests/Cs1Mayor.Mcp.Tests/CityToolsTests.cs` | Every tool's endpoint mapping, limit clamping, request bodies, error shape |
+| `tests/Cs1Mayor.Mcp.Tests/JsonUtilTests.cs` | The bridge's regex JSON reader (linked straight from `src/Support/`) |
+
+What automated tests **cannot** cover: anything that touches real game state. The
+in-game mod has no test harness — it is verified by the live-city procedure above.
 
 ---
 
