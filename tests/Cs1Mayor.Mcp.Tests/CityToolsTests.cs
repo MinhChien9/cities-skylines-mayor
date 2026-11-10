@@ -21,6 +21,7 @@ public class CityToolsTests
     [Theory]
     [InlineData("CityHealth", "/health")]
     [InlineData("CityThreads", "/debug/threads")]
+    [InlineData("CityCapabilities", "/state/capabilities")]
     [InlineData("CitySummary", "/state/summary")]
     [InlineData("CityDemand", "/state/demand")]
     [InlineData("CityZones", "/state/zones")]

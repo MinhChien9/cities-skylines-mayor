@@ -24,6 +24,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 |---|---|---|
 | GET | `/health` | Bridge liveness. Works before a city is loaded. |
 | GET | `/debug/threads` | **Thread proof.** See below. |
+| GET | `/state/capabilities` | What the running game supports. See below. |
 | GET | `/state/summary` | Compact city overview. |
 | GET | `/state/problems` | Problem icons. `?limit=` (default 200). |
 | GET | `/state/demand` | RCI demand values. |
@@ -65,6 +66,47 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 | `cash` | City treasury in currency units (₡), the same scale the game HUD shows. Negative means a deficit. |
 | `happiness` | Average citizen happiness, 0–100. |
 | `citizenObjects` | Citizen objects the simulation has allocated. **Not** population — this includes the dummy travellers the outside-connection AI spawns for the map-edge airports, harbours and rail heads, so it reads in the thousands on a map with no citizens at all. Use `population`. |
+
+### `/state/capabilities` — what the running game supports
+
+Read through the supported `ICities` surface, captured once from
+`ThreadingExtensionBase.OnCreated` (R0 of the roadmap).
+
+```json
+{
+  "ok": true,
+  "iManagersCaptured": true,
+  "version": "1.17.1-f4",
+  "installedExpansions": ["AfterDark", "Snowfall", "..."],
+  "supportedExpansions": ["AfterDark", "Snowfall", "..."],
+  "milestones": ["Basic City 1", "Basic City 2", "..."],
+  "currentMilestone": "Busy City 1",
+  "unlockedFeatures": ["Zoning", "Districts", "..."],
+  "lockedFeatures": ["Ferry", "Trolleybus", "..."],
+  "clock": {
+    "simulationTime": "2027-03-19T13:28:50",
+    "simulationFrame": 104233,
+    "simulationTick": 52116,
+    "simulationPaused": false,
+    "simulationSpeed": 3,
+    "simulationDayTimeHour": 13.4,
+    "simulationNightTime": false,
+    "renderDayTimeHour": 13.4
+  }
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `supportedExpansions` | The `ICities.Expansion` values the loaded install reports as supported. |
+| `milestones` / `currentMilestone` | Milestone names as the game knows them — the exact strings `unlock-milestone` takes. `currentMilestone` is what the city is working towards. |
+| `unlockedFeatures` / `lockedFeatures` | `UnlockManager.Feature` state: the gate list for milestone-gated gameplay (GameAreas, ParkAreas, CampusAreas, Ferry, Trolleybus, PedestrianZones, …). Ask here before assuming transit or special areas are available. |
+| `clock` | The `ICities.IThreading` simulation clock: a first-class timestamp plus frame/tick counters. Read it twice and diff to know how much **simulated** time actually elapsed mid-build — never conclude anything from a zero-sim-time pair of reads. |
+
+However, the fallback must be honest in its response: `iManagersCaptured: true` means
+the `ICities` handle is carrying live data for this game session (via `OnCreated` or
+the `ManagersWrapper` fallback); `false` means construction failed and the other
+fields will be missing.
 
 ### `/state/economy` — the money block
 

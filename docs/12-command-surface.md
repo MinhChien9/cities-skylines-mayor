@@ -152,7 +152,10 @@ public void OnCreated(IThreading threading)
 
 Then `m_managers.get_terrain()`, `get_camera()`, `get_serializableData()` and friends
 are available to every command. **Do this first** — it is a prerequisite for rows 7,
-11, 12, 13, 15 and 16, and it costs one bridge build.
+11, 12, 13, 15 and 16, and it costs one bridge build. *(Done — R0 in the roadmap.
+Live-game caveat: for a mod dropped into the Mods folder the game never instantiates
+the extension bases, so `AgentBridge.EnsureICitiesManagers()` falls back to
+constructing the game's public `ManagersWrapper` on the simulation thread.)*
 
 Note that `ICities.ITerrain`, `ICities.IAreas` and friends are **interfaces implemented
 by the game** (`AreasWrapper` implements `IAreas` internally). The bridge must treat

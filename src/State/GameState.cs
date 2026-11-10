@@ -374,6 +374,11 @@ namespace SkylinesAgentBridge.State
             return EconomyCommands.BuildEconomyJson();
         }
 
+        public static CommandResult BuildCapabilitiesJson()
+        {
+            return CapabilityCollector.Build();
+        }
+
         public static CommandResult BuildFacilitiesJson(int limit, string serviceFilter, bool includeMapObjects)
         {
             if (limit < 0)

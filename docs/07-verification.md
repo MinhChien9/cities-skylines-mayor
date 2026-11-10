@@ -88,12 +88,12 @@ verified by re-reading state afterwards.
 
 ---
 
-## 1b. Automated checks — ✅ 42 TESTS PASSING
+## 1b. Automated checks — ✅ 54 TESTS PASSING
 
 These need no game running:
 
 ```powershell
-dotnet test .\tests\Cs1Mayor.Mcp.Tests\Cs1Mayor.Mcp.Tests.csproj   # 42 xunit tests
+dotnet test .\tests\Cs1Mayor.Mcp.Tests\Cs1Mayor.Mcp.Tests.csproj   # 54 xunit tests
 python .\scripts\smoke-test-mcp.py   # MCP protocol handshake
 python .\scripts\check-api-docs.py  # API reference matches the route table
 ```
@@ -130,6 +130,52 @@ rather than guessed:
 
 Verified against the live game: `population: 0` matches the HUD's population label,
 `cash: 65002` and `balance: -272` match the HUD's **−€272**.
+
+---
+
+## 1d. R0 verification — the `ICities` surface — ✅ VERIFIED LIVE (2026-11-11)
+
+`GET /state/capabilities` against a live city (San Vegas, paused at 2027-03-19):
+
+| Check | Result |
+|---|---|
+| `iManagersCaptured` | `true` |
+| `version` | `1.21.1-f9-epic-win` — matches the installed build |
+| `supportedExpansions` | all 14 installed DLC reported |
+| `milestones` / `currentMilestone` | hundreds of names as the game knows them; `currentMilestone: "Milestone1"` — correct for a fresh city |
+| `unlockedFeatures` / `lockedFeatures` | `Zoning, Economy, Budget, GameAreas, Bulldozer, InfoViews` unlocked; 47 features locked — matches a city at Milestone 1 |
+| `clock` | `simulationTime`, `simulationFrame`, `simulationTick`, `simulationPaused: true`, `simulationSpeed`, day-time hour |
+
+**One architecture finding, caught by this verification:** for a mod dropped into the
+Mods folder the game loads the assembly and constructs `IUserMod`, but *never
+instantiates the extension bases* — neither `ThreadingExtensionBase.OnCreated` nor
+`OnLevelLoaded` fired (the game log shows both silent). So the sanctioned capture hook
+cannot be the only route, and `AgentBridge.EnsureICitiesManagers()` lazily constructs
+the game's own public `ManagersWrapper` on the simulation thread as a fallback. The
+game log confirms exactly that path:
+
+```
+[SkylinesAgentBridge] OnCreated did not run for this install; captured the ICities
+surface via the game's public ManagersWrapper fallback.
+```
+
+**Clock discipline (the point of the `clock` block):**
+
+| Read | `simulationTime` | `simulationTick` |
+|---|---|---|
+| paused, read 1 | 2027-03-19T13:28:50 | 2909421 |
+| paused, read 2 | 2027-03-19T13:28:50 (frozen) | 2909424 (still advancing) |
+| running 3× for ~3 s | 2027-03-20T19:10:34 | 2909607 |
+| re-paused | 2027-03-20T19:30:15 | — |
+
+Two conclusions, both measured rather than assumed: a pair of reads with identical
+`simulationTime` means **zero simulated time elapsed** (never conclude anything from
+them), and **the simulation thread does step its action queue while the game is
+paused** — `simulationTick` kept advancing across two paused reads, confirming the
+dispatcher's commands are drained even paused (the first row of the roadmap's known
+open questions).
+
+The city was restored to its exact paused state after the 3-second run.
 
 ---
 
