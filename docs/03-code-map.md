@@ -136,6 +136,23 @@ Tools that combine several calls nest each response under its own key (`summary`
 `demand`, `economy`, …) rather than flattening them. Flattening would drop every key
 but the last, because the bridge payloads all start with the same ones.
 
+### The planned `mcp-server/` layout
+
+The play loop ([`11-play-loop.md`](11-play-loop.md)) adds three files. They are listed
+here so the next contributor knows where things go.
+
+| File | Owns |
+|------|------|
+| `SessionStore.cs` | The file-backed goal, checklist, journal, last snapshot and settings. |
+| `WaitEngine.cs` | Polls the bridge for the simulated clock, computes the metric delta, detects `paused` / `no-game`. |
+| `PolicyGuard.cs` | The refusals the agent may not override — milestone and tile unlocking. |
+
+And the bridge gains one named exception to the thread rule:
+
+| File | Owns |
+|------|------|
+| `src/Dispatch/MainThreadQueue.cs` | Render-only work (camera framing, screenshot capture). It may not mutate city state. |
+
 ---
 
 ## `tests/` — automated checks
@@ -179,6 +196,10 @@ game. That is what [`07-verification.md`](07-verification.md) is for.
 | Change how an anomaly is detected | the matching `src/State/*Collector.cs` |
 | Change a game mutation | the matching `src/Commands/*Commands.cs` |
 | Change how the agent is told to behave | `mcp-server/Program.cs` (the instructions) and `AGENTS.md` (the manual) |
+| Change how a session remembers things | `mcp-server/SessionStore.cs` (goal, journal, checklist) |
+| Change how the agent waits or what a delta contains | `mcp-server/WaitEngine.cs` |
+| Change what the agent is forbidden to do | `mcp-server/PolicyGuard.cs` |
+| Add a capability a player has but the agent does not | [`12-capability-parity.md`](12-capability-parity.md) — pick a tier, then work the matrix row |
 | Change the threading model | `src/Dispatch/SimulationDispatcher.cs` — read [`01-architecture.md`](01-architecture.md) first |
 | Change how the game is built | `src/SkylinesAgentBridge.csproj` and `scripts/build-mod.ps1` |
 | Change the AI's mayorial knowledge | `docs/05-game-mechanics.md`, `docs/06-expansions.md` |
