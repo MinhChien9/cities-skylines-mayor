@@ -1,10 +1,12 @@
 # CS1 Mayor
 
-An MCP server that lets an AI agent be the **mayor of a live Cities: Skylines (2015) city**.
+A thin MCP server that lets an AI agent be the **mayor of a live Cities: Skylines (2015) city**.
 
-The agent reads the city, plans, and acts — building roads, zoning land, placing services,
-setting taxes, and saving — through a purpose-built in-game bridge that executes every
-command on the game's own simulation thread.
+The agent decides what to do and act — building roads, zoning land, placing services,
+setting taxes, and saving — through **raw, atomic commands**: one MCP tool per bridge
+endpoint, responses passed through untouched. The in-game bridge executes every command
+on the game's own simulation thread. The server contains no decision logic; the agent
+reasons from the stats the read endpoints return.
 
 ```
 opencode / Claude Code  ──MCP stdio──▶  Cs1Mayor.Mcp (.NET 10)  ──HTTP──▶  SkylinesAgentBridge.dll (in-game)
@@ -21,9 +23,9 @@ opencode / Claude Code  ──MCP stdio──▶  Cs1Mayor.Mcp (.NET 10)  ──
 | In-game bridge mod | ✅ **Verified running in a live city** |
 | Threading fix | ✅ **Verified** — `probeThreadId == simulationThreadId`, `runsOnMainThread: false` |
 | MCP server | ✅ **Verified end-to-end** against the live game |
-| All 13 tools | ✅ Verified: read, build, zone, place, bulldoze, economy, save, health |
+| Raw 1:1 tool surface | ✅ **33 tools** — one per bridge endpoint, plus the `city_request` passthrough |
 | Knowledge base | ✅ `docs/05-game-mechanics.md`, `docs/06-expansions.md` |
-| Automated tests | ✅ 42 xunit tests over the MCP server and the bridge's JSON reader |
+| Automated tests | ✅ 53 xunit tests over the MCP server and the bridge's JSON reader |
 | opencode wiring | ✅ `✓ cs1-mayor connected` |
 
 **Verified against a live city (10,552 citizens, 1,802 road segments):** state reads,
@@ -71,21 +73,26 @@ Full walkthrough, including the game path and the thread gate:
 
 ## The tools
 
-| Tool | What it does |
+**One raw tool per bridge endpoint (33 today) plus `city_request` (a passthrough to any
+endpoint).** Each mutates the city only when you call a mutating tool; the server adds no
+logic — the agent decides what to do from the read-backs.
+
+| Tool | Bridge endpoint |
 |---|---|
-| `city_snapshot` | Date, population, money, demand, happiness, services, problems. **Start here.** |
-| `city_problems` | Active problem icons with positions and counts. |
-| `city_districts` | Districts, zoning occupancy, growable land. |
-| `city_infrastructure` | Road / building / zone defect audit. |
-| `city_services` | Service facilities and coverage. |
-| `city_prefabs` | Exact prefab names available in the running game. |
-| `city_build_road` | Build a road segment (reuses nearby nodes). |
-| `city_zone` | Paint a zone inside a radius. |
-| `city_place_building` | Place a building by prefab name. |
-| `city_bulldoze` | Remove a building / segment / node. |
-| `city_economy` | Read economy; set tax rates, budgets, speed, pause. |
-| `city_save` | Save and verify the save file was written. |
-| `city_health` | Bridge liveness + the thread proof. |
+| `city_health` · `city_threads` | `/health` · `/debug/threads` |
+| `city_summary` · `city_demand` · `city_problems` · `city_chirps` · `city_zones` | `/state/summary` · `/demand` · `/problems` · `/chirps` · `/zones` |
+| `city_economy` · `city_facilities` · `city_growables` · `city_networks` | matching `/state/*` reads |
+| `city_road_anomalies` · `city_building_anomalies` · `city_zone_anomalies` | matching `/state/*-anomalies` reads |
+| `city_external_connections` · `city_saves` | `/state/external-connections` · `/state/saves` |
+| `city_building_prefabs` · `city_road_prefabs` · `city_network_prefabs` | `/prefabs/*` |
+| `city_build_road` · `city_zone` · `city_place_building` · `city_move_building` | `/commands/build-road` · `set-zone` · `place-building` · `move-building` |
+| `city_set_building_active` · `city_bulldoze` | `/commands/set-building-active` · `/commands/bulldoze` |
+| `city_set_simulation_speed` · `city_set_tax_rate` · `city_save` | `/commands/set-simulation-speed` · `set-tax-rate` · `save` |
+| `city_repair_zones_to_growables` · `city_repair_zone_clusters` · `city_disable_blocked_assets` · `city_batch` | matching `/commands/*` |
+| `city_request` | any endpoint — raw GET/POST passthrough |
+
+Full list with parameters in `mcp-server/CityTools.cs`; the plan to cover the whole game
+in [`docs/12-command-surface.md`](docs/12-command-surface.md).
 
 ---
 
@@ -107,6 +114,7 @@ should read it.
 | [`docs/08-opencode-setup.md`](docs/08-opencode-setup.md) | Wiring into opencode |
 | [`docs/09-upstream-notes.md`](docs/09-upstream-notes.md) | What was forked, what was changed, and why |
 | [`docs/10-roadmap.md`](docs/10-roadmap.md) | What is built, what is next |
+| [`docs/12-command-surface.md`](docs/12-command-surface.md) | The master table of tools and endpoints, and the plan to cover the whole game |
 | [`AGENTS.md`](AGENTS.md) | The operating manual for the AI mayor itself |
 | [`.github/CONTRIBUTING.md`](.github/CONTRIBUTING.md) | Branch naming, commit format, PR rules |
 
@@ -140,7 +148,7 @@ cs1-mayor/
 │  ├─ Commands/               every mutation the agent can perform
 │  ├─ State/                  every read of city state, plus the anomaly detectors
 │  └─ Support/                JSON reader and the command result envelope
-├─ mcp-server/                the MCP server (C#, .NET 10) — 13 tools over stdio
+├─ mcp-server/                the MCP server (C#, .NET 10) — 33 raw 1:1 tools over stdio
 ├─ tests/                     xunit tests for the MCP server and the bridge's JSON reader
 ├─ scripts/                   build, install, launch, smoke test, doc check
 ├─ docs/                      start at docs/README.md

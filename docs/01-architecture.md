@@ -155,7 +155,7 @@ C# / .NET 10, `ModelContextProtocol` 2.4.0, stdio transport.
 |---|---|
 | `Program.cs` | DI setup, stdio transport, server instructions. |
 | `BridgeClient.cs` | HTTP client for the bridge, with agent-friendly error wrapping. |
-| `CityTools.cs` | The 13 tools. |
+| `CityTools.cs` | The 33 raw tools, one per endpoint. |
 
 ### `tests/` — automated checks
 
@@ -167,33 +167,33 @@ it can only be verified against a running game, which is what
 
 ## Tool surface
 
-Thirteen tools, deliberately coarse. opencode runs MCP servers through Code Mode, where a
-namespace listing costs one line of context no matter how many tools exist. The real cost
-of many tools is *retrieval precision* — the agent has to pick the right one out of a long
-list of near-identical descriptions. Eight well-named tools beat forty fuzzy ones.
+Thirty-three tools, deliberately **raw**: one per bridge endpoint (one for `/health`, one
+for `/debug/threads`, one per state read, one per command, one per prefab catalogue), plus
+`city_request`, a passthrough to *any* endpoint. Every tool relays a single HTTP call and
+returns the bridge's response untouched — no merging, no orchestration. The server adds no
+decision logic; what to do with the data is the agent's call. The master tool list lives
+in [`12-command-surface.md`](12-command-surface.md).
 
-### Observe
+### Reads
 
-| Tool | Purpose |
+| Tool | Endpoint |
 |---|---|
-| `city_snapshot` | Date, population, money, demand, happiness, services, problems. **Start here.** |
-| `city_problems` | Active problem icons with positions and counts. |
-| `city_districts` | Districts, zoning occupancy, growable land. |
-| `city_infrastructure` | Road/building/zone defect audit. |
-| `city_services` | Service facilities and coverage. |
-| `city_prefabs` | Exact prefab names available in the running game. |
+| `city_health`, `city_threads` | `/health`, `/debug/threads` |
+| `city_summary`, `city_demand`, `city_problems`, `city_chirps` | `/state/*` |
+| `city_zones`, `city_economy`, `city_facilities`, `city_growables`, `city_networks` | `/state/*` |
+| `city_road_anomalies`, `city_building_anomalies`, `city_zone_anomalies` | `/state/*-anomalies` |
+| `city_external_connections`, `city_saves` | `/state/*` |
+| `city_building_prefabs`, `city_road_prefabs`, `city_network_prefabs` | `/prefabs/*` |
 
-### Act
+### Commands
 
-| Tool | Purpose |
+| Tool | Endpoint |
 |---|---|
-| `city_build_road` | Build a road segment (reuses nearby nodes). |
-| `city_zone` | Paint a zone inside a radius. |
-| `city_place_building` | Place a building by prefab name. |
-| `city_bulldoze` | Remove a building / segment / node. |
-| `city_economy` | Read economy; set tax rates, budgets, speed, pause. |
-| `city_save` | Save and verify the save file was written. |
-| `city_health` | Bridge liveness + the thread proof. |
+| `city_build_road`, `city_zone`, `city_place_building`, `city_move_building` | `/commands/*` |
+| `city_set_building_active`, `city_bulldoze` | `/commands/*` |
+| `city_set_simulation_speed`, `city_set_tax_rate`, `city_save` | `/commands/*` |
+| `city_repair_zones_to_growables`, `city_repair_zone_clusters`, `city_disable_blocked_assets`, `city_batch` | `/commands/*` |
+| `city_request` | any endpoint (GET/POST passthrough) |
 
 ### Why HTTP and not a raw socket
 
@@ -211,20 +211,18 @@ which is worth far more than 127 µs.
 
 ## The target architecture
 
-The system above is the **skeleton**. The product it exists for is described in
-[`11-play-loop.md`](11-play-loop.md), and it adds three things:
+The system above is the **skeleton**. The product it exists for — the full command
+surface — is described in [`12-command-surface.md`](12-command-surface.md), and it adds
+one thing to the bridge:
 
 ```
 opencode  ──MCP over stdio──▶  mcp-server/
-                                  ├─ CityTools        the game-facing tools
-                                  ├─ SessionStore      goal · checklist · journal · last snapshot
-                                  └─ WaitEngine        polls the bridge, computes deltas
+                                  └─ CityTools        one raw tool per endpoint
 ```
 
 | Addition | Where it lives | Why it is there |
 |---|---|---|
-| **Session store** | MCP server, file-backed | The goal and the journal must survive a restart and a context compaction. The game has no place to keep them. |
-| **Wait engine** | MCP server | Waiting is a *read* of the simulation clock, not a command. It must never hold the simulation thread. |
+| **Raw tool per endpoint** | MCP server | One tool per bridge endpoint, response passed through untouched. A new bridge endpoint is agent-callable immediately via `city_request`. |
 | **Main-thread render queue** | In the bridge | The one sanctioned exception to the thread rule — screenshots. It may not mutate city state. |
 
 The rule in this document does not change: **all game-state reads and writes stay on the
@@ -257,8 +255,8 @@ cap at a few hundred rows.
 ## Verification
 
 Every mutation should be verifiable. The bridge supports `dryRun=true` on build/zone/place
-to validate without committing, and `city_infrastructure` reports defects after the fact.
-See `docs/07-verification.md`.
+to validate without committing, and the anomaly reads (`city_road_anomalies` et al.)
+report defects after the fact. See `docs/07-verification.md`.
 
 ## Upstream
 

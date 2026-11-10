@@ -75,7 +75,7 @@ Expected:
 > ```
 >
 > The **running opencode session** resolves the global config correctly either way — the
-> tool catalog shows `cs1-mayor (13 tools)` regardless. The CLI quirk is cosmetic, but it
+> tool catalog shows `cs1-mayor (33 tools)` regardless. The CLI quirk is cosmetic, but it
 > will confuse you while debugging.
 
 In an opencode session, `/mcps` opens the MCP dialog.
@@ -111,8 +111,8 @@ python scripts\smoke-test-mcp.py
 With `codemode: true`, opencode exposes the tools as a namespace in Code Mode:
 
 ```
-- cs1-mayor (13 tools)
-  - tools.cs1_mayor.city_snapshot(query: ...) // Read a compact summary of the whole city...
+- cs1-mayor (33 raw tools — one per bridge endpoint, plus city_request)
+  - tools.cs1_mayor.city_summary() // GET /state/summary. Compact city overview: date, pause...
 ```
 
 - The inline listing has a **2 000-token budget** and shows only the **first line** of each

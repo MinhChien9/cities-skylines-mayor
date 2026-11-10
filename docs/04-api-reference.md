@@ -3,7 +3,9 @@
 The in-game bridge listens on **127.0.0.1:32123**. Every endpoint executes on the game's
 **simulation thread**.
 
-Use this when the MCP tool surface does not cover what you need.
+The MCP tools relay these endpoints one to one (`mcp-server/CityTools.cs`); the
+`city_request` tool is a raw passthrough to any of them, so this document is also the
+reference for what the agent can reach.
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:32123/state/summary
