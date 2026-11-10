@@ -40,21 +40,21 @@ C# 5, `net35`, compiled against the game's own assemblies. Namespace root:
 
 | File | Lines | Owns |
 |------|-------|------|
-| `AgentBridge.cs` | 121 | The singleton that owns the dispatcher and the server. `Instance`, `LevelLoaded`, `Start()`, `OnLevelLoaded()`, `OnLevelUnloading()`. |
-| `AgentBridgeMod.cs` | 32 | The `IUserMod` entry point. The game always constructs it, so it is where the server is started. |
-| `AgentBridgeLoading.cs` | 19 | `LoadingExtensionBase` hook — forwards level load/unload to the singleton. |
-| `AgentBridgeThreading.cs` | 25 | `ThreadingExtensionBase` hook — the game's per-frame call, used to learn the Unity main thread id. |
+| `AgentBridge.cs` | 119 | The singleton that owns the dispatcher and the server. `Instance`, `LevelLoaded`, `Start()`, `OnLevelLoaded()`, `OnLevelUnloading()`. |
+| `AgentBridgeMod.cs` | 31 | The `IUserMod` entry point. The game always constructs it, so it is where the server is started. |
+| `AgentBridgeLoading.cs` | 18 | `LoadingExtensionBase` hook — forwards level load/unload to the singleton. |
+| `AgentBridgeThreading.cs` | 24 | `ThreadingExtensionBase` hook — the game's per-frame call, used to learn the Unity main thread id. |
 | `ApiServer.cs` | 119 | The TCP listener. Accepts connections, hands each to a thread-pool worker, writes the response. Nothing else. |
 | `ApiRoutes.cs` | 405 | The whole HTTP surface: one table of `(method, path) → handler`, plus the route descriptions shown in the in-game console. |
-| `AgentBridgeNotifier.cs` | 350 | The draggable in-game console panel. Shows what the agent is doing, live. |
-| `Http/HttpRequest.cs` | 191 | Parses one HTTP/1.1 request off the socket and reads its query parameters. |
-| `Http/HttpResponse.cs` | 56 | Writes a JSON response with the right status line and headers. |
+| `AgentBridgeNotifier.cs` | 349 | The draggable in-game console panel. Shows what the agent is doing, live. |
+| `Http/HttpRequest.cs` | 190 | Parses one HTTP/1.1 request off the socket and reads its query parameters. |
+| `Http/HttpResponse.cs` | 55 | Writes a JSON response with the right status line and headers. |
 
 ### `src/Dispatch/` — the load-bearing file
 
 | File | Lines | Owns |
 |------|-------|------|
-| `SimulationDispatcher.cs` | 312 | Runs every game-state read and write on the CS1 **simulation thread**. |
+| `SimulationDispatcher.cs` | 311 | Runs every game-state read and write on the CS1 **simulation thread**. |
 
 Read this file before you touch anything else. Its class comment explains the whole
 threading story. The rule it enforces:
@@ -69,38 +69,38 @@ silently reintroduced exactly the race the design exists to prevent, and it was 
 
 | File | Lines | Endpoint(s) | Owns |
 |------|-------|-------------|------|
-| `RoadCommands.cs` | 160 | `build-road`, `build-network` | Building one road segment, reusing a nearby node. |
-| `BuildingCommands.cs` | 213 | `place-building`, `move-building`, `set-building-active` | Placing, moving and toggling buildings. |
-| `ZoneCommands.cs` | 575 | `set-zone`, `repair-zones-to-growables`, `repair-zone-clusters` | Painting zones and the two zone-repair algorithms. |
-| `BulldozeCommands.cs` | 76 | `bulldoze` | Removing a building, a segment or a node. |
-| `EconomyCommands.cs` | 352 | `set-tax-rate` | Reading and writing tax rates across every service target. |
-| `SaveCommands.cs` | 135 | `save` | Saving the city and listing `.crp` files on disk. |
-| `SimulationCommands.cs` | 35 | `set-simulation-speed` | Pause and speed 1–3. |
-| `AssetCommands.cs` | 63 | `disable-blocked-assets` | Disabling prefabs the game ships broken. |
-| `AssetPolicy.cs` | 41 | — | The blocklist itself. |
-| `BatchCommands.cs` | 113 | `batch` | Runs a list of sub-commands in one round trip. |
-| `CommandInput.cs` | 28 | — | Reads a coordinate out of a request body. |
+| `RoadCommands.cs` | 156 | `build-road`, `build-network` | Building one road segment, reusing a nearby node. |
+| `BuildingCommands.cs` | 209 | `place-building`, `move-building`, `set-building-active` | Placing, moving and toggling buildings. |
+| `ZoneCommands.cs` | 571 | `set-zone`, `repair-zones-to-growables`, `repair-zone-clusters` | Painting zones and the two zone-repair algorithms. |
+| `BulldozeCommands.cs` | 73 | `bulldoze` | Removing a building, a segment or a node. |
+| `EconomyCommands.cs` | 349 | `set-tax-rate` | Reading and writing tax rates across every service target. |
+| `SaveCommands.cs` | 132 | `save` | Saving the city and listing `.crp` files on disk. |
+| `SimulationCommands.cs` | 32 | `set-simulation-speed` | Pause and speed 1–3. |
+| `AssetCommands.cs` | 60 | `disable-blocked-assets` | Disabling prefabs the game ships broken. |
+| `AssetPolicy.cs` | 39 | — | The blocklist itself. |
+| `BatchCommands.cs` | 110 | `batch` | Runs a list of sub-commands in one round trip. |
+| `CommandInput.cs` | 27 | — | Reads a coordinate out of a request body. |
 
 ### `src/State/` — everything the agent can read
 
 | File | Lines | Endpoint(s) | Owns |
 |------|-------|-------------|------|
-| `GameState.cs` | 815 | all `/state/*` and `/prefabs/*` | The snapshot builders. One method per payload. |
-| `ProblemCollector.cs` | 345 | `state/problems` | Every active problem icon, with positions and counts. |
-| `RoadAnomalyCollector.cs` | 887 | `state/road-anomalies` | Short stubs, near-miss nodes, dead ends, overlaps, crossings without a node, terrain cliffs. |
-| `ZoneAnomalyCollector.cs` | 369 | `state/zone-anomalies` | Mottled and unzoned blocks, and zoned clusters. |
-| `BuildingAnomalyCollector.cs` | 161 | `state/building-anomalies` | Buildings sitting on top of roads. |
-| `ExternalConnectionCollector.cs` | 232 | `state/external-connections` | The road network split into connected components. |
+| `GameState.cs` | 814 | all `/state/*` and `/prefabs/*` | The snapshot builders. One method per payload. |
+| `ProblemCollector.cs` | 343 | `state/problems` | Every active problem icon, with positions and counts. |
+| `RoadAnomalyCollector.cs` | 885 | `state/road-anomalies` | Short stubs, near-miss nodes, dead ends, overlaps, crossings without a node, terrain cliffs. |
+| `ZoneAnomalyCollector.cs` | 367 | `state/zone-anomalies` | Mottled and unzoned blocks, and zoned clusters. |
+| `BuildingAnomalyCollector.cs` | 159 | `state/building-anomalies` | Buildings sitting on top of roads. |
+| `ExternalConnectionCollector.cs` | 230 | `state/external-connections` | The road network split into connected components. |
 | `GameInfoHelpers.cs` | 93 | — | Shared predicates over game objects (see below). |
-| `ZoneHelpers.cs` | 21 | — | Clamps a zone block's row count to the range the game accepts. |
+| `ZoneHelpers.cs` | 19 | — | Clamps a zone block's row count to the range the game accepts. |
 
 ### `src/Support/` — primitives with no game dependency
 
 | File | Lines | Owns |
 |------|-------|------|
-| `JsonUtil.cs` | 172 | A regex-based JSON reader. The game has no JSON library and the mod must not depend on assemblies the game does not load. |
-| `CommandResult.cs` | 30 | The result envelope every command returns: `Ok`, `Json`, `Error`. |
-| `StringUtil.cs` | 14 | Case-insensitive `Contains`. |
+| `JsonUtil.cs` | 169 | A regex-based JSON reader. The game has no JSON library and the mod must not depend on assemblies the game does not load. |
+| `CommandResult.cs` | 27 | The result envelope every command returns: `Ok`, `Json`, `Error`. |
+| `StringUtil.cs` | 11 | Case-insensitive `Contains`. |
 
 ---
 
@@ -110,8 +110,8 @@ C#, .NET 10, `ModelContextProtocol` 2.4.0. Namespace `Cs1Mayor.Mcp`.
 
 | File | Lines | Owns |
 |------|-------|------|
-| `Program.cs` | 62 | Host setup, the stdio transport, and the operating instructions sent to the agent. |
-| `CityTools.cs` | 339 | The 13 tools. Each one is a thin wrapper over one or two HTTP calls. |
+| `Program.cs` | 67 | Host setup, the stdio transport, and the operating instructions sent to the agent. |
+| `CityTools.cs` | 335 | The 13 tools. Each one is a thin wrapper over one or two HTTP calls. |
 | `BridgeClient.cs` | 181 | The HTTP client, the error translation, and body truncation so errors stay small in the agent's context. |
 
 ### The 13 tools
