@@ -1,0 +1,77 @@
+# Editor configuration for CS1 Mayor.
+#
+# The two C# projects deliberately use different styles, because they target different
+# runtimes:
+#
+#   src/         C# 5, net35, Unity's Mono runtime. No modern syntax is available, so the
+#                style is conservative: explicit types, no `var`, braces on new lines.
+#   mcp-server/  C# 13, .NET 10. Modern style: `var`, file-scoped namespaces, nullable
+#                reference types.
+#   tests/       C# 13, .NET 10, xunit. Same as mcp-server.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+[*.{md,markdown}]
+trim_trailing_whitespace = false
+
+[*.{ps1,psm1}]
+indent_size = 4
+
+[*.{py,yml,yaml,json}]
+indent_size = 2
+
+[*.csproj]
+indent_size = 2
+
+# --- The in-game mod: C# 5 on Unity's Mono -------------------------------
+[src/**/*.cs]
+indent_size = 4
+# The C# sources under src/ were committed with CRLF. Keep them that way until the
+# whole repository is normalised in one dedicated change.
+end_of_line = crlf
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+csharp_prefer_braces = true:warning
+csharp_style_var_elsewhere = false:suggestion
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = false:suggestion
+csharp_style_expression_bodied_methods = false:suggestion
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:suggestion
+dotnet_style_readonly_field = true:suggestion
+dotnet_style_object_initializer = true:suggestion
+# The game assigns to many of its own fields, and the mod does the same on purpose.
+dotnet_diagnostic.CS0649.severity = none
+dotnet_diagnostic.CS0169.severity = none
+
+# --- The MCP server and its tests: modern .NET ----------------------------
+[mcp-server/**/*.cs]
+indent_size = 4
+csharp_style_namespace_declarations = file_scoped:suggestion
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = true:suggestion
+csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+csharp_style_expression_bodied_properties = true:suggestion
+dotnet_style_readonly_field = true:suggestion
+dotnet_style_prefer_conditional_expression_over_assignment = true:suggestion
+dotnet_style_prefer_conditional_expression_over_return = true:suggestion
+dotnet_style_null_check_pattern = true:suggestion
+
+[tests/**/*.cs]
+indent_size = 4
+csharp_style_namespace_declarations = file_scoped:suggestion
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+dotnet_style_readonly_field = true:suggestion
+
+[*.{json,yml,yaml}]
+indent_size = 2
