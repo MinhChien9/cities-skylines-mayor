@@ -59,6 +59,6 @@ if ($threads.runsOnSimulationThread -and !$threads.runsOnMainThread) {
     Write-Host "PASS - commands execute on the simulation thread." -ForegroundColor Green
 } else {
     Write-Host "FAIL - commands are NOT running on the simulation thread." -ForegroundColor Red
-    Write-Host "Do not let the agent act until this is fixed. See docs\ARCHITECTURE.md."
+    Write-Host "Do not let the agent act until this is fixed. See docs\01-architecture.md."
     exit 1
 }

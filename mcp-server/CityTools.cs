@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Text.Json.Nodes;
 using ModelContextProtocol.Server;
 
@@ -47,7 +47,7 @@ public sealed class CityTools
             var demand = await _bridge.GetAsync("/state/demand", cancellationToken).ConfigureAwait(false);
             var economy = await _bridge.GetAsync("/state/economy", cancellationToken).ConfigureAwait(false);
 
-            return Merge(summary, demand, economy);
+            return Merge(("summary", summary), ("demand", demand), ("economy", economy));
         }).ConfigureAwait(false);
     }
 
@@ -72,7 +72,7 @@ public sealed class CityTools
         {
             var zones = await _bridge.GetAsync("/state/zones", cancellationToken).ConfigureAwait(false);
             var growables = await _bridge.GetAsync("/state/growables?limit=300", cancellationToken).ConfigureAwait(false);
-            return Merge(zones, growables);
+            return Merge(("zones", zones), ("growables", growables));
         }).ConfigureAwait(false);
     }
 
@@ -85,7 +85,7 @@ public sealed class CityTools
             var roads = await _bridge.GetAsync("/state/road-anomalies?limit=100&nearMissDistance=18&shortSegmentLength=32&includeDeadEnds=false", cancellationToken).ConfigureAwait(false);
             var buildings = await _bridge.GetAsync("/state/building-anomalies?limit=100", cancellationToken).ConfigureAwait(false);
             var zones = await _bridge.GetAsync("/state/zone-anomalies?limit=100&includeUnzonedHoles=true", cancellationToken).ConfigureAwait(false);
-            return Merge(roads, buildings, zones);
+            return Merge(("roads", roads), ("buildings", buildings), ("zones", zones));
         }).ConfigureAwait(false);
     }
 
@@ -148,7 +148,7 @@ public sealed class CityTools
                 ["name"] = name ?? "",
                 ["dryRun"] = dryRun,
             };
-            return await _bridge.PostAsync("/commands/build-network", body, cancellationToken).ConfigureAwait(false);
+            return await _bridge.PostAsync("/commands/build-road", body, cancellationToken).ConfigureAwait(false);
         }).ConfigureAwait(false);
     }
 
@@ -266,7 +266,7 @@ public sealed class CityTools
             var body = new Dictionary<string, object?> { ["name"] = name };
             var result = await _bridge.PostAsync("/commands/save", body, cancellationToken).ConfigureAwait(false);
             var saves = await _bridge.GetAsync("/state/saves", cancellationToken).ConfigureAwait(false);
-            return Merge(result, saves);
+            return Merge(("save", result), ("saves", saves));
         }).ConfigureAwait(false);
     }
 
@@ -278,7 +278,7 @@ public sealed class CityTools
         {
             var health = await _bridge.GetAsync("/health", cancellationToken).ConfigureAwait(false);
             var threads = await _bridge.GetAsync("/debug/threads", cancellationToken).ConfigureAwait(false);
-            return Merge(health, threads);
+            return Merge(("health", health), ("threads", threads));
         }).ConfigureAwait(false);
     }
 
@@ -314,31 +314,22 @@ public sealed class CityTools
     }
 
     /// <summary>
-    /// Combines several bridge responses into one object, keeping each under its own key.
-    /// Keeps the agent's context small by returning one payload instead of three.
+    /// Combines several bridge responses into one object, each under its own key.
+    ///
+    /// Nesting (rather than flattening) matters: several bridge payloads start with the
+    /// same keys ("ok", "simulation", ...), so a flat merge would silently drop all but
+    /// the last one. It also keeps the agent's context small by returning one payload
+    /// instead of three.
     /// </summary>
-    private static JsonNode? Merge(params JsonNode?[] parts)
+    private static JsonNode? Merge(params (string Key, JsonNode? Value)[] parts)
     {
         var merged = new JsonObject();
-        for (int i = 0; i < parts.Length; i++)
+        foreach (var (key, value) in parts)
         {
-            if (parts[i] is JsonObject obj)
-            {
-                foreach (var kv in obj.ToList())
-                {
-                    merged[kv.Key] = kv.Value?.DeepClone();
-                }
-            }
-            else if (parts[i] is not null)
-            {
-                merged[$"part{i}"] = parts[i]!.DeepClone();
-            }
+            merged[key] = value?.DeepClone();
         }
         return merged;
     }
 
     private static int Clamp(int value, int min, int max) => value < min ? min : (value > max ? max : value);
 }
-
-
-
