@@ -182,12 +182,19 @@ When something is wrong, fix it in this order:
 
 ### Economy
 
+Money is reported in currency units (₡), the same scale the game HUD shows.
+`city_economy` reports `cash`, `income`, `expenses`, `balance` and `taxMultiplierPercent`.
+
 | Reading | Meaning | Action |
 |---|---|---|
 | Cash falling, income < expenses | Deficit | Raise taxes toward the ceiling, cut budgets on non-essentials |
 | Tax multiplier > 100% | City is in deficit | Same as above |
 | Tax multiplier < 100% | Surplus — tax income is *reduced* | Room to spend on services |
 | Service building not replacing | `RateReduced` | Power/water shortage, not budget |
+
+> Read the population from `population`, not `citizenObjects`. The latter counts every
+> allocated citizen object, including travellers spawned for the map-edge airports and
+> rail heads, so it reads in the thousands on a map with no citizens at all.
 
 ---
 
