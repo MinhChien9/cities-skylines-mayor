@@ -31,8 +31,12 @@ const string Instructions = """
     The game runs on the player's machine; this server talks to an in-game bridge mod
     that executes every command on the game's simulation thread.
 
-    Start with city_snapshot to understand the city, and city_problems to see what is
-    wrong. Use city_prefabs to get exact prefab names before placing anything.
+    Start with city_health to confirm the bridge is alive and on the right thread, then
+    city_snapshot to understand the city, and city_problems to see what is wrong. Use
+    city_prefabs to get exact prefab names before placing anything.
+
+    Tools that combine several bridge responses nest each one under its own key
+    (for example city_snapshot returns "summary", "demand" and "economy").
 
     Key operating rules:
     - Zones only exist alongside roads. Build roads first, then zone beside them.
@@ -43,6 +47,7 @@ const string Instructions = """
       week, not per simulated hour.
     - Use dryRun=true on build/zone/place to validate before committing.
     - Save regularly with city_save and verify the save was written.
+    - If city_health reports runsOnSimulationThread=false, stop and tell the user.
     """;
 
 builder.Services

@@ -23,15 +23,38 @@ public sealed class BridgeClient
     private readonly HttpClient _http;
     private readonly JsonSerializerOptions _jsonOptions;
 
-    public BridgeClient(string? baseUrl = null, int timeoutSeconds = 30)
+    /// <param name="baseUrl">
+    /// Where the bridge listens. Falls back to $CS1_BRIDGE_URL, then to the default.
+    /// </param>
+    /// <param name="timeoutSeconds">
+    /// How long to wait for the bridge. Ignored when <paramref name="httpClient"/> is
+    /// supplied, because then the caller owns the timeout.
+    /// </param>
+    /// <param name="httpClient">
+    /// Optional pre-configured client. Used by the tests to talk to a stub handler.
+    /// </param>
+    public BridgeClient(string? baseUrl = null, int timeoutSeconds = 30, HttpClient? httpClient = null)
     {
         _baseUrl = (baseUrl ?? Environment.GetEnvironmentVariable("CS1_BRIDGE_URL")
                     ?? "http://127.0.0.1:32123").TrimEnd('/');
-        _http = new HttpClient
+
+        if (httpClient is null)
         {
-            BaseAddress = new Uri(_baseUrl),
-            Timeout = TimeSpan.FromSeconds(timeoutSeconds),
-        };
+            _http = new HttpClient
+            {
+                BaseAddress = new Uri(_baseUrl),
+                Timeout = TimeSpan.FromSeconds(timeoutSeconds),
+            };
+        }
+        else
+        {
+            _http = httpClient;
+            if (_http.BaseAddress is null)
+            {
+                _http.BaseAddress = new Uri(_baseUrl);
+            }
+        }
+
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
