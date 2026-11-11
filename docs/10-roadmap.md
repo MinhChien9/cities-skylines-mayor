@@ -104,26 +104,49 @@ restart). Verified API signatures for every row are in
 - [x] MCP tool surface restructured: build tools removed, office levers kept,
       `city_request` POST restricted to the office allowlist
 
-### P2 — camera + world→screen projection (bridge, one restart)
+### P2 — camera + world→screen projection (bridge, one restart) — **done and verified live**
 
 The glue between office numbers and cursor clicks: the office reads a problem or
 anomaly at world `(x,z)`, frames the camera there, and converts the world point to a
 screen pixel the cursor can aim at. Without it, every spatial fix starts with the agent
 hunting through screenshots.
 
-- [ ] `POST /commands/set-camera` — frame the camera on a world position / read camera
-      state **[verified: `ICities.ICamera.SetCameraTarget` / `GetCameraPosition`]**
-      — include the user-reported ergonomics fix: disable/toggle **edge scrolling**
-      (`CameraController` reads the live `SavedBool edgeScrolling` in the game settings
-      file; toggling it needs no restart) so the camera stays put
-- [ ] `POST /commands/project-point` — world `(x,z)` → screen pixel + on-screen flag
-      (the projection must run on the **main thread**; plan it with the named
-      main-thread queue below)
-- [ ] A **named main-thread queue** in `SimulationDispatcher` — the one sanctioned
-      exception to the simulation-thread rule, for camera/projection/render only
-- [ ] MCP tools `city_camera` and `city_project`
-- [ ] **Verify**: a world point reported by `city_problems` projects to a pixel; the
-      cursor aimed at that pixel lands on the problem
+**Live-game finding (2026-11-11):** `ICities.ICamera` (`IManagers.camera` →
+`CameraWrapper`) drives the game's **CinematicCameraController** — the photo-mode
+camera. A `SetCameraTarget` call through it changed nothing on screen. The camera the
+cursor sees is **`CameraController`** (the free camera), whose state is private fields
+(`m_targetPosition`/`m_currentPosition`, `m_targetAngle`/`m_currentAngle` as
+`Vector2(vertical°, horizontal°)`, `m_targetSize`/`m_currentSize` = zoom distance, and
+the `m_*Velocity` inertia terms). The bridge writes those fields directly on the main
+thread — snap or glide, caller's choice.
+
+- [x] A **named main-thread queue** in `src/Dispatch/MainThreadQueue.cs` — the one
+      sanctioned exception to the simulation-thread rule, for camera/projection/render
+      only; drained by the game's per-frame hook (works while the clock is paused)
+- [x] `POST /commands/set-camera` — frame the camera on a world position / read camera
+      state via `CameraController` (see the finding above) — includes the ergonomics
+      fix: toggle **edge scrolling** live through the game's own
+      `CameraController.m_edgeScrolling` `SavedBool` (no restart needed) — **verified
+      live both ways**
+- [x] `POST /commands/project-point` — world `(x,z[,y])` → Unity screen pixel, client
+      window pixel and absolute desktop **cursor** pixel (origin top-left, ready for a
+      CUA click) + `onScreen`/`inFront` flags. Runs on the **main thread** through the
+      named queue; window geometry via user32 (`Support/WindowGeometry.cs`,
+      `EnumWindows` first — `Process.MainWindowHandle` returned 0 live)
+- [x] MCP tools `city_camera` and `city_project` (both POST endpoints on the
+      `city_request` office allowlist); unit tests added (73 pass)
+- [x] **Verify live** (2026-11-11, sandbox city, results in `docs/07-verification.md`
+      §1g): camera state read ✓; edge-scroll toggle true→false ✓ (the `SavedBool`
+      persists across restarts — it was still `false` after the reload); frame the
+      wind turbine at `(-1290, 114, -20)` ✓ (snap, position == target, turbine dead
+      centre in the screenshot); project the same point ✓ (`onScreen: true`, cursor
+      pixel `(1280, 686)`); a real CUA click at that pixel landed on the turbine
+      (selection circle) ✓; `/debug/threads` reports `mainThreadJobsCompleted: 2`,
+      `mainThreadLastJobThreadId: 1` (Unity main thread) ≠ `simulationThreadId: 2` ✓.
+      Two bugs found and fixed during verification: the first build framed through
+      `ICities.ICamera` (cinematic camera — see the finding above), and
+      `Process.MainWindowHandle` returned 0 for Cities.exe (replaced by an
+      `EnumWindows` scan).
 
 ### P3 — load + area reads (bridge)
 
@@ -290,4 +313,5 @@ a command that corrupts the save has failed, no matter what its response says.
 | Does `PrefabCollection<TransportInfo>` enumerate the bus/metro assets? | **Answered (R2): yes** — `GET /prefabs/transport` lists all `TransportInfo` assets with economics and vehicle lists. |
 | How is the industry area represented? | `DistrictPark.ParkType` shows campus / airport / pedestrian, not industry. |
 | Can a transport line be built without the UI? | **Answered (R2): yes** — `TransportManager.CreateLine` + `TransportLine.AddStop` work headless; the game even re-snaps stops to lane positions afterwards (`TransportLineAI.CheckNodePosition`). |
+| Does `ICities.ICamera` aim the camera the player sees? | **Answered (P2, 2026-11-11): no** — `IManagers.camera` (`CameraWrapper`) drives the `CinematicCameraController` (photo mode); framing through it changes nothing on screen. The bridge aims the free `CameraController` via its target fields instead. |
 | Does `ISerializableData.LoadGame` work while the dispatcher holds a pending job? | Must be answered before exposing `/commands/load`. Safest rule: refuse to load unless the dispatcher is idle. |

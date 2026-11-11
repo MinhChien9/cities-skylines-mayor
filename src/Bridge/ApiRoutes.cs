@@ -299,6 +299,20 @@ namespace SkylinesAgentBridge
                     return OnGameThread(delegate { return SaveCommands.Save(body); });
                 });
 
+            MapPost("/commands/set-camera", "Frame the camera on a world position or read camera state (main thread)",
+                delegate(HttpRequest request)
+                {
+                    string body = request.Body;
+                    return OnMainThread(delegate { return CameraCommands.SetCamera(body); });
+                });
+
+            MapPost("/commands/project-point", "Project a world position to screen and cursor pixels (main thread)",
+                delegate(HttpRequest request)
+                {
+                    string body = request.Body;
+                    return OnMainThread(delegate { return CameraCommands.ProjectPoint(body); });
+                });
+
             MapPost("/commands/batch", "Run a batch of commands",
                 delegate(HttpRequest request)
                 {
@@ -373,13 +387,31 @@ namespace SkylinesAgentBridge
         /// This is the ONLY way city state may be read or written. See
         /// <see cref="SkylinesAgentBridge.Threading.SimulationDispatcher"/>.
         /// </summary>
-        private HttpResponse OnGameThread(Func<CommandResult> action)        {
+        private HttpResponse OnGameThread(Func<CommandResult> action)
+        {
             if (!bridge.LevelLoaded)
             {
                 return HttpResponse.Json(409, "{\"ok\":false,\"error\":\"No city is loaded.\"}");
             }
 
             CommandResult result = bridge.Dispatcher.RunSync(action, CommandTimeoutMs);
+            return HttpResponse.Json(result.Ok ? 200 : 500, result.Json);
+        }
+
+        /// <summary>
+        /// Runs a render-only action on the Unity main thread (camera framing, world→screen
+        /// projection). The named exception to the simulation-thread rule — see
+        /// <see cref="SkylinesAgentBridge.Threading.MainThreadQueue"/> for what may and may
+        /// not run here. Never route city-state work through this.
+        /// </summary>
+        private HttpResponse OnMainThread(Func<CommandResult> action)
+        {
+            if (!bridge.LevelLoaded)
+            {
+                return HttpResponse.Json(409, "{\"ok\":false,\"error\":\"No city is loaded.\"}");
+            }
+
+            CommandResult result = bridge.MainThreadQueue.RunSync(action, CommandTimeoutMs);
             return HttpResponse.Json(result.Ok ? 200 : 500, result.Json);
         }
 
@@ -437,6 +469,10 @@ namespace SkylinesAgentBridge
             sb.Append(",\"runsOnSimulationThread\":").Append(JsonUtil.Bool(probeThreadId != 0 && probeThreadId == dispatcher.SimulationThreadId));
             sb.Append(",\"runsOnMainThread\":").Append(JsonUtil.Bool(probeThreadId != 0 && probeThreadId == dispatcher.MainThreadId));
             sb.Append(",\"pendingJobs\":").Append(dispatcher.PendingCount);
+            sb.Append(",\"mainThreadJobsQueued\":").Append(bridge.MainThreadQueue.PendingCount);
+            sb.Append(",\"mainThreadJobsCompleted\":").Append(bridge.MainThreadQueue.CompletedCount);
+            sb.Append(",\"mainThreadJobsFailed\":").Append(bridge.MainThreadQueue.FailedCount);
+            sb.Append(",\"mainThreadLastJobThreadId\":").Append(bridge.MainThreadQueue.LastRunThreadId);
             sb.Append(",\"gameTime\":\"").Append(JsonUtil.Escape(gameTime)).Append("\"");
             sb.Append(",\"buildIndex\":").Append(buildIndex);
             sb.Append(",\"levelLoaded\":").Append(JsonUtil.Bool(bridge.LevelLoaded));

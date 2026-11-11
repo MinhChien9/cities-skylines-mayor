@@ -43,7 +43,7 @@ the save.
 | Know the city's pulse | Office | `city_overview` (one call, five reads) |
 | Drill into one number | Office | `city_demand`, `city_economy`, `city_problems`, `city_facilities`, ... |
 | Check the road network for defects | Office | `city_road_anomalies`, `city_zone_anomalies` |
-| Read a position to aim the cursor at | Office | `city_problems` / anomalies carry world `x,z` |
+| Read a position to aim the cursor at | Office | `city_problems` / anomalies carry world `x,z`; `city_camera` frames it, `city_project` turns it into cursor pixels |
 | Pause / resume / speed the clock | Office | `city_set_simulation_speed` |
 | Change taxes, budgets, policies | Office | `city_set_tax_rate`, `city_set_budget`, `city_set_policy` |
 | Save | Office | `city_save` (new incrementing name) |

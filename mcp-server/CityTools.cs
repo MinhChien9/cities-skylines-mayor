@@ -407,6 +407,49 @@ public sealed class CityTools
         return await Post("/commands/district", body, cancellationToken).ConfigureAwait(false);
     }
 
+    [System.ComponentModel.Description("POST /commands/set-camera. The office's eye: frame the game camera on a world position (one from city_problems or an anomaly read), read the current camera state, or toggle edge scrolling so the camera stays put while the cursor works. x/z given -> the camera snaps to the target the same frame (instant: false lets it glide). distance defaults to keeping the current zoom; verticalAngle/horizontalAngle default to the current framing. edgeScroll true/false flips the live edge-scrolling setting (no restart needed). Runs on the Unity main thread - the named exception to the simulation-thread rule.")]
+    [McpServerTool(Name = "city_camera", Title = "Camera")]
+    public async Task<JsonNode?> CityCamera(
+        [System.ComponentModel.Description("World x of the target point.")] double? x = null,
+        [System.ComponentModel.Description("World z of the target point.")] double? z = null,
+        [System.ComponentModel.Description("World height of the target point; omit for sea level.")] double? y = null,
+        [System.ComponentModel.Description("Camera distance to the target (default 400).")] double? distance = null,
+        [System.ComponentModel.Description("Vertical viewing angle in degrees (default: keep current).")] double? verticalAngle = null,
+        [System.ComponentModel.Description("Horizontal viewing angle in degrees (default: keep current).")] double? horizontalAngle = null,
+        [System.ComponentModel.Description("True/false to toggle edge scrolling; omit to leave it alone.")] bool? edgeScroll = null,
+        CancellationToken cancellationToken = default)
+    {
+        var body = new Dictionary<string, object?>();
+        if (x.HasValue) { body["x"] = x.Value; }
+        if (z.HasValue) { body["z"] = z.Value; }
+        if (y.HasValue) { body["y"] = y.Value; }
+        if (distance.HasValue) { body["distance"] = distance.Value; }
+        if (verticalAngle.HasValue) { body["verticalAngle"] = verticalAngle.Value; }
+        if (horizontalAngle.HasValue) { body["horizontalAngle"] = horizontalAngle.Value; }
+        if (edgeScroll.HasValue) { body["edgeScroll"] = edgeScroll.Value; }
+        return await Post("/commands/set-camera", body, cancellationToken).ConfigureAwait(false);
+    }
+
+    [System.ComponentModel.Description("POST /commands/project-point. The office's aiming hand: project a world position (x, z; y optional, default 0) to pixels. Returns the Unity screen coordinates, the game window's client rectangle on the desktop, and the absolute cursor pixel (origin top-left) ready for a CUA click - plus onScreen/inFront flags. Re-project after every camera move. Runs on the Unity main thread.")]
+    [McpServerTool(Name = "city_project", Title = "Project World Point")]
+    public async Task<JsonNode?> CityProject(
+        [System.ComponentModel.Description("World x of the point.")] double x,
+        [System.ComponentModel.Description("World z of the point.")] double z,
+        [System.ComponentModel.Description("World height of the point; omit for sea level.")] double? y = null,
+        CancellationToken cancellationToken = default)
+    {
+        var body = new Dictionary<string, object?>
+        {
+            ["x"] = x,
+            ["z"] = z,
+        };
+        if (y.HasValue)
+        {
+            body["y"] = y.Value;
+        }
+        return await Post("/commands/project-point", body, cancellationToken).ConfigureAwait(false);
+    }
+
     [System.ComponentModel.Description("POST /commands/save. Save the city to a named slot (.crp on disk). Save after every meaningful batch of work.")]
     [McpServerTool(Name = "city_save", Title = "Save City")]
     public async Task<JsonNode?> CitySave(
@@ -419,7 +462,7 @@ public sealed class CityTools
 
     // ------------------------------------------------------------- passthrough
 
-    [System.ComponentModel.Description("Raw passthrough for anything with no dedicated tool. GET reaches any endpoint (endpoint list: docs/04-api-reference.md). POST is restricted to the office allowlist: /commands/set-simulation-speed, set-tax-rate, set-budget, set-policy, set-building-active, transport-line, district, save. The build endpoints (build-road, set-zone, place-building, bulldoze, batch, ...) are deliberately NOT reachable — spatial work is done with the cursor through the game's own UI.")]
+    [System.ComponentModel.Description("Raw passthrough for anything with no dedicated tool. GET reaches any endpoint (endpoint list: docs/04-api-reference.md). POST is restricted to the office allowlist: /commands/set-simulation-speed, set-tax-rate, set-budget, set-policy, set-building-active, transport-line, district, save, set-camera, project-point. The build endpoints (build-road, set-zone, place-building, bulldoze, batch, ...) are deliberately NOT reachable — spatial work is done with the cursor through the game's own UI.")]
     [McpServerTool(Name = "city_request", Title = "Raw Bridge Request")]
     public async Task<JsonNode?> CityRequest(
         [System.ComponentModel.Description("HTTP method: 'GET' or 'POST'.")] string method,
@@ -480,6 +523,8 @@ public sealed class CityTools
         "/commands/transport-line",
         "/commands/district",
         "/commands/save",
+        "/commands/set-camera",
+        "/commands/project-point",
     ];
 
     // ------------------------------------------------------------- internals

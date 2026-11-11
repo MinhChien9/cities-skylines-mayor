@@ -133,7 +133,7 @@ Is it a UI-driven feature?            → Tier 3
 | 9 | **Parks & plazas** | **1** (they are buildings) | `POST /commands/place-building` | *none* — cursor work | **Cursor route** |
 | 10 | **Industry chains & cargo** | **1** + **2** | `GET /state/industry`, cargo transport lines | `city_industry` | Medium |
 | 11 | **Terrain edits & natural resources** | **0** | `POST /commands/edit-terrain` *(dropped)*, `GET /state/resources` | `city_resources` (planned P4); terrain editing → cursor | Read: Easy |
-| 12 | **Screenshot & camera** | **0** | `POST /commands/set-camera` (+ world→screen projection) | `city_camera`, `city_project` (planned P2) — PNG capture dropped, the CUA channel takes screenshots | Easy; **top priority now** |
+| 12 | **Screenshot & camera** | **0** | `POST /commands/set-camera` + `POST /commands/project-point` (P2 — main-thread queue is the named exception) | `city_camera`, `city_project` — PNG capture dropped, the CUA channel takes screenshots | **Built and verified live 2026-11-11** (note: the ICities `ICamera` wrapper drives the *cinematic* camera; aiming uses `CameraController` fields — see §4.10) |
 | 13 | **Save & load, rename** | **0** + **1** | `/state/saves`, `POST /commands/save`, `POST /commands/load` | `city_save`, `city_load` | Easy (load pending §7) |
 | 14 | **Loans & tariff panels** | **1** + **2** | `POST /commands/set-loan` | `city_set_loan` | Medium |
 | 15 | **Game speed / pause / simulation clock** | **0** + **1** | `POST /commands/set-simulation-speed` | `city_set_simulation_speed` | Done |
@@ -500,6 +500,18 @@ ICamera.WaitForNextFrame() / Wait(seconds) / StartRoutine(IEnumerator)
 So framing a shot is a supported API call, not a reflection into `CameraController`'s
 private `m_targetPosition` / `m_targetAngle` / `m_targetSize` fields **[V]** (those
 exist too, but there is no reason to touch them now).
+
+> **CORRECTED LIVE (2026-11-11, P2): the ICamera route aims the WRONG camera.**
+> `IManagers.camera` returns a `CameraWrapper` bound to the game's
+> **CinematicCameraController** — the photo-mode camera. A `SetCameraTarget` call
+> through it changed nothing on screen (verified live: the free camera stayed put).
+> To aim the camera the cursor sees, the bridge writes `CameraController`'s private
+> fields directly on the main thread: `m_targetPosition` / `m_currentPosition`
+> (Vector3), `m_targetAngle` / `m_currentAngle` (Vector2: x = vertical°, y =
+> horizontal°), `m_targetSize` / `m_currentSize` (zoom distance), zeroing
+> `m_velocity` / `m_angleVelocity` / `m_zoomVelocity` for instant moves. The game
+> lerps current → target every frame, so writing only the targets glides; snapping
+> both jumps. See `src/Commands/CameraCommands.cs`.
 
 The capture itself is standard Unity — `Camera.Render()` → `RenderTexture` →
 `ReadPixels` → `Texture2D.EncodeToPNG()` — and it must run on the **Unity main

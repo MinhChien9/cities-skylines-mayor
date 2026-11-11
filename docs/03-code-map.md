@@ -55,6 +55,7 @@ C# 5, `net35`, compiled against the game's own assemblies. Namespace root:
 | File | Lines | Owns |
 |------|-------|------|
 | `SimulationDispatcher.cs` | 311 | Runs every game-state read and write on the CS1 **simulation thread**. |
+| `MainThreadQueue.cs` | ~200 | The ONE named exception: render-only work (camera framing, world→screen projection) drained on the **Unity main thread** by the game's per-frame hook. It must never touch city state. |
 
 Read this file before you touch anything else. Its class comment explains the whole
 threading story. The rule it enforces:
@@ -79,6 +80,7 @@ silently reintroduced exactly the race the design exists to prevent, and it was 
 | `DistrictCommands.cs` | 1118 | `/state/districts`, `district` | Districts and special areas over the game's 512 x 512 cell grid: the two entity lists with names, types, extents and areas, plus create / rename / paint / erase / specialize / release. Painting calls `DistrictTool.ApplyBrush`, the game's own brush. |
 | `SaveCommands.cs` | 132 | `save` | Saving the city and listing `.crp` files on disk. |
 | `SimulationCommands.cs` | 32 | `set-simulation-speed` | Pause and speed 1–3. |
+| `CameraCommands.cs` | ~380 | `set-camera`, `project-point` | Camera framing by writing the free camera's (`CameraController`) target fields directly — the `ICities.ICamera` wrapper drives the *cinematic* camera and cannot aim the player's view — plus the live edge-scrolling toggle and world→screen projection. **Runs on the Unity main thread** through the main-thread queue — see below. |
 | `AssetCommands.cs` | 60 | `disable-blocked-assets` | Disabling prefabs the game ships broken. |
 | `AssetPolicy.cs` | 39 | — | The blocklist itself. |
 | `BatchCommands.cs` | 110 | `batch` | Runs a list of sub-commands in one round trip. |
@@ -105,6 +107,7 @@ silently reintroduced exactly the race the design exists to prevent, and it was 
 | `JsonUtil.cs` | 169 | A regex-based JSON reader. The game has no JSON library and the mod must not depend on assemblies the game does not load. |
 | `CommandResult.cs` | 27 | The result envelope every command returns: `Ok`, `Json`, `Error`. |
 | `StringUtil.cs` | 11 | Case-insensitive `Contains`. |
+| `WindowGeometry.cs` | ~100 | The game window's client rectangle in desktop pixels (user32 `GetClientRect`/`ClientToScreen`) — the translation between Unity screen coordinates and the cursor's desktop coordinates. |
 
 ---
 
@@ -134,6 +137,8 @@ C#, .NET 10, `ModelContextProtocol` 2.4.0. Namespace `Cs1Mayor.Mcp`.
 | `city_set_budget` | `POST /commands/set-budget` |
 | `city_set_policy` | `POST /commands/set-policy` |
 | `city_set_building_active` | `POST /commands/set-building-active` |
+| `city_camera` (frame a world point / read camera state / toggle edge scrolling) | `POST /commands/set-camera` (Unity main thread) |
+| `city_project` (world point → cursor pixels) | `POST /commands/project-point` (Unity main thread) |
 | `city_transport_line` (activate / rename / set-vehicle / remove-stop) | `POST /commands/transport-line` |
 | `city_district` (rename / specialize / release / state) | `POST /commands/district` |
 | `city_save` | `POST /commands/save` |
@@ -152,13 +157,13 @@ tool in `CityTools.cs` — and `city_request` already reaches it before that too
 | File | Owns |
 |------|------|
 | `CityTools.cs` | grows with the bridge: one tool per new read endpoint |
-| `src/Dispatch/MainThreadQueue.cs` (bridge) | Render-only work: camera framing and the world→screen projection (P2). It may not mutate city state. The one named exception to the thread rule. |
+| `src/Dispatch/MainThreadQueue.cs` (bridge) | **built (P2)** — render-only work: camera framing and the world→screen projection. It may not mutate city state. The one named exception to the thread rule. |
 
 And the bridge gains one named exception to the thread rule:
 
 | File | Owns |
 |------|------|
-| `src/Dispatch/MainThreadQueue.cs` | Render-only work: camera framing, projection. It may not mutate city state. |
+| `src/Dispatch/MainThreadQueue.cs` | **built (P2)** — render-only work: camera framing, projection. It may not mutate city state. |
 
 ---
 
