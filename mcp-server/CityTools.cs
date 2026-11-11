@@ -102,6 +102,11 @@ public sealed class CityTools
         CancellationToken cancellationToken = default)
         => await Get($"/state/transport?limit={Clamp(limit, 1, 251)}", cancellationToken).ConfigureAwait(false);
 
+    [System.ComponentModel.Description("GET /state/districts. Districts and special areas. Districts have an id, name, area in cells, population, happiness and specialization; special areas (park, industry, campus, airport, pedestrian zone, ...) have a parkType, parkLevel, group, main gate and whether they are functional. Also reports the 512x512 grid geometry (19.2 m cells) and how many cells are painted, so a paint can be verified by comparing two reads.")]
+    [McpServerTool(Name = "city_districts", Title = "Districts & Areas")]
+    public Task<JsonNode?> CityDistricts(CancellationToken cancellationToken)
+        => Get("/state/districts", cancellationToken);
+
     [System.ComponentModel.Description("GET /state/facilities. Service facilities (power, water, police, ...) with coverage data.")]
     [McpServerTool(Name = "city_facilities", Title = "Service Facilities")]
     public async Task<JsonNode?> CityFacilities(
@@ -463,6 +468,58 @@ public sealed class CityTools
             body["newNumber"] = false;
         }
         return await Post("/commands/transport-line", body, cancellationToken).ConfigureAwait(false);
+    }
+
+    [System.ComponentModel.Description("POST /commands/district. Create, rename, paint, specialize or release a district or a special area. layer='district' (default) or 'park'. action='create' takes name? and, for a park, parkType (Generic, AmusementPark, Zoo, NatureReserve, Industry, Farming, Forestry, Ore, Oil, GenericCampus, TradeSchool, LiberalArts, University, Airport, PedestrianZone) and parkLevel (Level1-5). action='paint' takes id + x/z + radius and uses the game's own district brush (radius is in metres; it paints solid inside radius-38.4 m and fades out to radius). action='erase' takes the same fields and clears the disc (id optional = whole brush). action='rename' takes id + name (empty name clears a custom name). action='specialize' takes id + specialization (Forest/Farming/Oil/Ore/Leisure/Tourist/Organic/Selfsufficient/Hightech/ResidentialWallToWall/CommercialWallToWall/OfficeWallToWall/Financial); the game keeps one per family, and setting a competing one replaces it. action='release' takes id, clears its grid cells and frees it. action='state' reads one entity (or the whole list when no id is given). Every mutation reports the live readback: areaCells before/after, cells in the brush before/after, and the district at the brush centre.")]
+    [McpServerTool(Name = "city_district", Title = "District & Area Editor")]
+    public async Task<JsonNode?> CityDistrict(
+        [System.ComponentModel.Description("Action: 'create', 'rename', 'paint', 'erase', 'specialize', 'release' or 'state'.")] string action,
+        [System.ComponentModel.Description("Layer: 'district' (default) or 'park' (a special area).")] string layer = "district",
+        [System.ComponentModel.Description("District or area id (0 = none; for 'paint' id=0 erases). Omit on 'create'.")] int id = 0,
+        [System.ComponentModel.Description("For 'create' on the park layer: Generic, AmusementPark, Zoo, NatureReserve, Industry, Farming, Forestry, Ore, Oil, GenericCampus, TradeSchool, LiberalArts, University, Airport, PedestrianZone.")] string? parkType = null,
+        [System.ComponentModel.Description("For 'create' on the park layer: Level1 (default) to Level5.")] string? parkLevel = null,
+        [System.ComponentModel.Description("For 'create' / 'rename': the name (empty clears a custom name).")] string? name = null,
+        [System.ComponentModel.Description("For 'paint' / 'erase': brush centre X in world coordinates.")] double? x = null,
+        [System.ComponentModel.Description("For 'paint' / 'erase': brush centre Z in world coordinates.")] double? z = null,
+        [System.ComponentModel.Description("For 'paint' / 'erase': brush radius in metres (must be > 38.4; default 64).")] double? radius = null,
+        [System.ComponentModel.Description("For 'specialize': the specialization name from the tool description.")] string? specialization = null,
+        [System.ComponentModel.Description("For 'specialize': true to set (default), false to clear.")] bool set = true,
+        [System.ComponentModel.Description("Validate only, do not mutate (default false).")] bool dryRun = false,
+        CancellationToken cancellationToken = default)
+    {
+        var body = new Dictionary<string, object?>
+        {
+            ["action"] = action,
+            ["layer"] = layer,
+            ["id"] = id,
+            ["set"] = set,
+            ["dryRun"] = dryRun,
+        };
+        if (!string.IsNullOrWhiteSpace(parkType))
+        {
+            body["parkType"] = parkType;
+        }
+        if (!string.IsNullOrWhiteSpace(parkLevel))
+        {
+            body["parkLevel"] = parkLevel;
+        }
+        if (name != null)
+        {
+            body["name"] = name;
+        }
+        if (x.HasValue || z.HasValue)
+        {
+            body["center"] = new { x = x ?? 0, y = 0, z = z ?? 0 };
+        }
+        if (radius.HasValue)
+        {
+            body["radius"] = radius.Value;
+        }
+        if (!string.IsNullOrWhiteSpace(specialization))
+        {
+            body["specialization"] = specialization;
+        }
+        return await Post("/commands/district", body, cancellationToken).ConfigureAwait(false);
     }
 
     [System.ComponentModel.Description("POST /commands/save. Save the city to a named slot (.crp on disk).")]

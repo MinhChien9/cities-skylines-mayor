@@ -76,6 +76,7 @@ silently reintroduced exactly the race the design exists to prevent, and it was 
 | `EconomyCommands.cs` | 524 | `set-tax-rate`, `/state/budgets`, `set-budget` | Reading and writing tax rates across every service target, plus service day/night budgets. |
 | `PolicyCommands.cs` | 405 | `/state/policies`, `set-policy` | The 127-policy catalogue (name, game group, loaded state, city-wide and per-district state) and setting/unsetting policies city-wide, per district or per park. |
 | `TransportCommands.cs` | 712 | `/state/transport`, `/prefabs/transport`, `transport-line` | The transport line model: prefab catalogue with compatible vehicles, line state (stops, vehicles, active flags, passenger counters), and the six line-editor actions (create / add-stop / remove-stop / activate / rename / set-vehicle). |
+| `DistrictCommands.cs` | 1118 | `/state/districts`, `district` | Districts and special areas over the game's 512 x 512 cell grid: the two entity lists with names, types, extents and areas, plus create / rename / paint / erase / specialize / release. Painting calls `DistrictTool.ApplyBrush`, the game's own brush. |
 | `SaveCommands.cs` | 132 | `save` | Saving the city and listing `.crp` files on disk. |
 | `SimulationCommands.cs` | 32 | `set-simulation-speed` | Pause and speed 1–3. |
 | `AssetCommands.cs` | 60 | `disable-blocked-assets` | Disabling prefabs the game ships broken. |

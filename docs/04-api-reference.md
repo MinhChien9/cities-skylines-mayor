@@ -34,6 +34,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 | GET | `/state/budgets` | Per-service day/night budget percentages. See below. |
 | GET | `/state/policies` | The policy catalogue with loaded/set state. See below. |
 | GET | `/state/transport` | Transport lines: stops, vehicles, active state. `?limit=`. See below. |
+| GET | `/state/districts` | Districts and special areas (names, types, extents, painted cells). See below. |
 | GET | `/state/facilities` | Service facilities. `?limit=`, `?service=`, `?includeMapObjects=`. |
 | GET | `/state/growables` | Growable buildings (land available to develop). `?limit=`. |
 | GET | `/state/networks` | Roads and networks. `?limit=`, `?service=`. |
@@ -231,6 +232,58 @@ from the game's own grouping enums (`Services`, `Taxation`, `CityPlanning`, `Par
 | `districts` | The district ids where `IsDistrictPolicySet` is true. Park-group policies live in the **park id space** (`m_parks`), which arrives with the districts release. |
 | `districts[]` / `districtCount` | Every created district, with its name. District ids are separate from building ids. |
 
+### `/state/districts` — districts and special areas
+
+Districts and the special areas are two id spaces over the same mechanism: a **512 × 512
+grid of 19.2 m cells** (368.64 m² each), where every cell holds up to four `(id, alpha)`
+pairs so the game can blend the edges of two adjacent districts. Districts live in
+`m_districts` / `m_districtGrid`; special areas live in `m_parks` / `m_parkGrid` and are
+told apart by `DistrictPark.ParkType`.
+
+```json
+{
+  "ok": true,
+  "grid": { "resolution": 512, "cellSizeMeters": 19.2, "cellAreaSquareMeters": 368.64,
+            "originMeters": -4915.2, "cellCount": 262144, "brushFadeMeters": 38.4 },
+  "districtCount": 1,
+  "paintedDistrictCells": 118,
+  "districts": [
+    { "id": 1, "name": "Downtown", "customName": true,
+      "areaCells": 96.4, "population": 0, "happiness": 0,
+      "specializations": ["Forest"],
+      "extentCells": { "minX": 262, "minZ": 238, "maxX": 279, "maxZ": 252 },
+      "extent": { "minX": 115.2, "minZ": -345.6, "maxX": 460.8, "maxZ": -76.8 },
+      "center": { "x": 288, "z": -211.2 } }
+  ],
+  "parkCount": 1,
+  "paintedParkCells": 64,
+  "parks": [
+    { "id": 1, "name": "Skyport", "customName": true,
+      "parkType": "Airport", "parkLevel": "Level1", "parkGroup": "Airport",
+      "isPark": false, "isIndustry": false, "isCampus": false, "isAirport": true,
+      "isPedestrianZone": false,
+      "mainGate": 0, "functional": false,
+      "areaCells": 55.2, "sizeInCells": 6, "areaFactor": 0,
+      "extentCells": { "minX": 262, "minZ": 238, "maxX": 279, "maxZ": 252 },
+      "extent": { "minX": 115.2, "minZ": -345.6, "maxX": 460.8, "maxZ": -76.8 },
+      "center": { "x": 288, "z": -211.2 } }
+  ],
+  "notes": "One cell is 19.2 m square (368.64 m2). Districts and special areas are separate id spaces. areaCells is the game's own m_totalAlpha / 255, where one fully painted cell counts as 1."
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `areaCells` | `m_totalAlpha / 255` — how many cells the entity covers, counting partial brush-edge cells as a fraction. The same number the district panel works from. |
+| `paintedDistrictCells` / `paintedParkCells` | Cells on the whole grid that carry any district/area. Compare two reads to prove a paint (or an erase) changed the map. |
+| `extentCells` / `extent` | The bounding box, in grid cells and in world metres. A fully unpainted entity reports `null`. |
+| `specializations` | The district's `m_specializationPolicies` bits, named. The game keeps one specialization per family (resource / commercial / residential / office). |
+| `parkType` / `parkGroup` | `Generic`, `AmusementPark`, `Zoo`, `NatureReserve`, `Industry`, `Farming`, `Forestry`, `Ore`, `Oil`, `GenericCampus`, `TradeSchool`, `LiberalArts`, `University`, `Airport`, `PedestrianZone`. The group is the expansion family (`ParkLife`, `Industry`, `Campus`, `Airport`, `PedestrianZone`). |
+| `functional` | `mainGate != 0`. An area created by the bridge has **no main gate yet**, so it is listed and paintable but does not produce visitors/income until its gate building is placed. |
+
+Districts also appear with their names in `/state/policies`; this endpoint is the one that
+carries the grid extents, so it is the place to confirm a paint.
+
 ### `/debug/threads` — the thread proof
 
 ```json
@@ -280,6 +333,7 @@ All accept a JSON body. All support `"dryRun": true` where validation is meaning
 | POST | `/commands/set-budget` | `service`, `budget?` (day, 0–300), `nightBudget?`, `subService?`, `dryRun?` |
 | POST | `/commands/set-policy` | `policy`, `set?` (default true), `district?` (0 = city-wide), `dryRun?` |
 | POST | `/commands/transport-line` | `action` (`create`\|`add-stop`\|`remove-stop`\|`activate`\|`rename`\|`set-vehicle`), plus action fields. See below. |
+| POST | `/commands/district` | `action` (`create`\|`rename`\|`paint`\|`erase`\|`specialize`\|`release`\|`state`), `layer?` (`district`\|`park`), plus action fields. See below. |
 | POST | `/commands/save` | `name` |
 | POST | `/commands/repair-zones-to-growables` | Repair blocks to their growable zone. |
 | POST | `/commands/repair-zone-clusters` | Repair mottled zones. `preferGrowableZone?` |
@@ -302,6 +356,43 @@ One command, six actions — the same things the in-game transport line editor d
 Every mutating action returns the live game readback for the line (`lineData`), so act →
 re-read → compare happens in one call. Stop positions do **not** snap to roads: pass the
 road node positions you built (the same coordinates `/state/networks` reports).
+
+### `/commands/district` — the district and area editor
+
+One command for both id spaces: `layer` picks `district` (default) or `park` (a special
+area), and `id` is that space's id. `id` may also be sent as `district` or `park`.
+
+| action | fields | effect |
+|---|---|---|
+| `create` | `name?`, `layer?`; for an area also `parkType` + `parkLevel?` | `CreateDistrict` / `CreatePark` (`ParkType`, `ParkLevel`). Ids start at 1; 0 is the city-wide pseudo-district. |
+| `rename` | `id`, `name` | `SetDistrictName` / `SetParkName` (one-step coroutines, enumerated synchronously). An **empty name clears the custom name** and the game falls back to its generated one. |
+| `paint` | `id`, `center:{x,z}`, `radius` | `DistrictTool.ApplyBrush` — the game's own brush. Full strength inside `radius − 38.4 m`, fading to nothing at `radius`; the outer 38.4 m is the two-cell fade. **Practical floor: radius ≥ ~100.** A radius just above 38.4 (e.g. 60) paints *zero* cells because the full-strength core (21.6 m) is smaller than one grid cell; radius 77 is the smallest verified to paint (29.5 cells). |
+| `erase` | `center:{x,z}`, `radius`, `id?` | The same brush with id 0. `id` targets one district/area, which is what `release` uses internally; plain `erase` clears whatever is inside the disc. |
+| `specialize` | `id`, `specialization`, `set?` (default true) | `SetDistrictPolicy` / `UnsetDistrictPolicy`. The game keeps one specialization per family (resource / commercial / residential / office); setting a competing one replaces it. Districts only — an area's specialization is its `parkType`. |
+| `release` | `id` | Removes the entity's cells from the grid (compacting the blended entries, and calling `AreaModified`/`ParksAreaModified`), then `ReleaseDistrict` / `ReleasePark`. The game's release calls do **not** touch the grid themselves. |
+| `state` | `id?` | One entity's readback, or the whole `/state/districts` payload when no id is given. |
+
+```json
+{
+  "ok": true, "dryRun": false, "action": "paint", "layer": "district", "id": 1,
+  "center": { "x": 240, "y": 0, "z": -40 }, "radius": 80,
+  "areaCells": { "before": 0, "after": 12.6 },
+  "cellsInBrush": { "before": 0, "after": 13 },
+  "atCenter": { "district": 1, "park": 0, "sampleMask": 2 }
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `areaCells` | The entity's `m_totalAlpha / 255` before and after — the game's own area counter. |
+| `cellsInBrush` | How many cells inside the brush's bounding box belong to `id` (for `erase`, how many carry any district). A paint that changes nothing shows equal before/after. |
+| `atCenter.district` / `atCenter.park` | `GetDistrict` / `GetPark` at the brush centre — the dominant id of that cell. |
+| `atCenter.sampleMask` | `SampleDistrict` / `SamplePark`, the game's own **bilinear** sample: a bitmask where bit *n* is set when district *n* is present in the four cells around the point. The district overlay and `GetDistrict` read the dominant cell; the mask shows the blend at the edge. |
+
+Every mutating action returns the live readback. A **created area is not functional**: it has
+no main gate (`functional: false`), so place the gate building to give it visitors, income or
+production. Painting does not cost money — the game's tool charges the Landscaping resource,
+not `ApplyBrush`.
 
 ### Examples
 
@@ -346,6 +437,23 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/transport-li
   -Body '{"action":"add-stop","line":1,"position":{"x":420,"z":180}}' -ContentType "application/json"
 
 # 3. ridership leaves after simulated time — compare /state/transport reads
+```
+
+**Create a district, paint it, and check the paint:**
+
+```powershell
+# 1. the district
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/district `
+  -Body '{"action":"create","layer":"district","name":"Downtown"}' -ContentType "application/json"
+# → { ok: true, district: 1, state: { ... } }
+
+# 2. paint a disc around a point (radius in metres; the outer 38.4 m fades)
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/district `
+  -Body '{"action":"paint","id":1,"center":{"x":240,"z":-40},"radius":80}' -ContentType "application/json"
+# → areaCells: { before: 0, after: 12.6 }
+
+# 3. confirm from the grid, not from the paint response
+Invoke-RestMethod http://127.0.0.1:32123/state/districts
 ```
 
 **Place a building:**
