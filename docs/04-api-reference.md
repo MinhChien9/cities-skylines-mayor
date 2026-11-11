@@ -33,6 +33,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 | GET | `/state/economy` | Money, income, expenses, tax rates, budgets. |
 | GET | `/state/budgets` | Per-service day/night budget percentages. See below. |
 | GET | `/state/policies` | The policy catalogue with loaded/set state. See below. |
+| GET | `/state/transport` | Transport lines: stops, vehicles, active state. `?limit=`. See below. |
 | GET | `/state/facilities` | Service facilities. `?limit=`, `?service=`, `?includeMapObjects=`. |
 | GET | `/state/growables` | Growable buildings (land available to develop). `?limit=`. |
 | GET | `/state/networks` | Roads and networks. `?limit=`, `?service=`. |
@@ -44,6 +45,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 | GET | `/prefabs/buildings` | Available building prefabs. `?service=`. |
 | GET | `/prefabs/roads` | Available road prefabs. |
 | GET | `/prefabs/networks` | Available network prefabs. `?service=`. |
+| GET | `/prefabs/transport` | Transport line prefabs (bus, metro, …) and their vehicles. `?type=`. |
 
 ### `/state/summary` — the headline numbers
 
@@ -150,6 +152,49 @@ units of 1/10000.
 | `budgets[].day` / `night` | The service's budget as a percentage, read through the public `EconomyManager.GetBudget`. **100 is the baseline**; 101% buys one extra vehicle per building for ~1% more spend. Day covers 05:00–20:00; night is a separate value the day slider does not touch. |
 | Row filtering | A service with `0` on both sides has no budget entry (it cannot spend) and is not listed. |
 
+### `/state/transport` — the line list
+
+```json
+{
+  "ok": true,
+  "lineCount": 1,
+  "returned": 1,
+  "limit": 251,
+  "lines": [
+    {
+      "id": 1,
+      "lineNumber": 1,
+      "name": "Blue Line",
+      "transportInfo": "Bus",
+      "transportType": "Bus",
+      "vehicleType": "Bus",
+      "service": "PublicTransport",
+      "subService": "PublicTransportBus",
+      "level": "Level1",
+      "complete": true,
+      "dayActive": true,
+      "nightActive": true,
+      "totalLength": 1234.5,
+      "ticketPrice": 10,
+      "stopCount": 4,
+      "stops": [ { "index": 0, "node": 8101, "position": { "x": 240.5, "y": 12, "z": -40.9 } } ],
+      "vehicleCount": 3,
+      "selectedVehicle": "Bus",
+      "vehicles": [ { "id": 10444, "vehicle": "Bus" } ],
+      "passengers": { "temp": 0, "final": 0, "average": 0 }
+    }
+  ]
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `complete` | The line's stop chain is closed (a circular route) — vehicles only run complete lines. |
+| `dayActive` / `nightActive` | The game's service switches (`GetActive` out readback); `false` means the corresponding `DisabledDay`/`DisabledNight` flag is set. |
+| `stops[].node` | The stop's own net node id (also visible in `/state/networks`). |
+| `selectedVehicle` | The vehicle asset the line will deploy; `null` means the game's default for the line type. |
+| `passengers` | The line's own rider counters (temp / final / average), summed over the game's citizen groups. **Ridership accumulates with simulated time** — compare two reads after letting the city run. |
+
 ### `/state/policies` — the catalogue is the point
 
 ```json
@@ -234,11 +279,29 @@ All accept a JSON body. All support `"dryRun": true` where validation is meaning
 | POST | `/commands/set-tax-rate` | `service` (`Residential`\|`Commercial`\|`Industrial`\|`Office`), `rate` (0–20) |
 | POST | `/commands/set-budget` | `service`, `budget?` (day, 0–300), `nightBudget?`, `subService?`, `dryRun?` |
 | POST | `/commands/set-policy` | `policy`, `set?` (default true), `district?` (0 = city-wide), `dryRun?` |
+| POST | `/commands/transport-line` | `action` (`create`\|`add-stop`\|`remove-stop`\|`activate`\|`rename`\|`set-vehicle`), plus action fields. See below. |
 | POST | `/commands/save` | `name` |
 | POST | `/commands/repair-zones-to-growables` | Repair blocks to their growable zone. |
 | POST | `/commands/repair-zone-clusters` | Repair mottled zones. `preferGrowableZone?` |
 | POST | `/commands/disable-blocked-assets` | Disable the broken "Block Services - …" prefab family. |
 | POST | `/commands/batch` | Run several commands in sequence. |
+
+### `/commands/transport-line` — the line editor
+
+One command, six actions — the same things the in-game transport line editor does:
+
+| action | fields | effect |
+|---|---|---|
+| `create` | `transportInfo` (exact name from `/prefabs/transport`), `newNumber?` | Creates an empty line, numbered per type. |
+| `add-stop` | `line`, `position:{x,y,z}` (y optional — terrain is sampled), `index?` (`-1` = append), `fixedPlatform?` | Adds a stop. **A stop placed within ~2.5 units of the line's first stop closes the line into a complete loop.** `dryRun:true` answers the game's own `CanAddStop`. |
+| `remove-stop` | `line`, `index` (`-1` = last) | Removes a stop (and its segments), reconnecting the chain. |
+| `activate` | `line`, `day?`, `night?`, `active?` | The day/night service switches (`SetActive`): `active=false` disables everything. |
+| `rename` | `line`, `name` | Names the line (verified through `GetLineName`). |
+| `set-vehicle` | `line`, `vehicle` (asset name) | Assigns the vehicle the line deploys, mapped through the game's own `GetVehicleIndex`. |
+
+Every mutating action returns the live game readback for the line (`lineData`), so act →
+re-read → compare happens in one call. Stop positions do **not** snap to roads: pass the
+road node positions you built (the same coordinates `/state/networks` reports).
 
 ### Examples
 
@@ -266,6 +329,23 @@ $body = @{
 } | ConvertTo-Json -Depth 5
 
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/set-zone -Body $body -ContentType "application/json"
+```
+
+**Create a bus line with two stops (then close the loop with a third near the first):**
+
+```powershell
+# 1. the empty line
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/transport-line `
+  -Body '{"action":"create","transportInfo":"Bus"}' -ContentType "application/json"
+# → { ok: true, line: 1, ... }
+
+# 2. stops, one call each, positions along a road you built
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/transport-line `
+  -Body '{"action":"add-stop","line":1,"position":{"x":240,"z":-40}}' -ContentType "application/json"
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/transport-line `
+  -Body '{"action":"add-stop","line":1,"position":{"x":420,"z":180}}' -ContentType "application/json"
+
+# 3. ridership leaves after simulated time — compare /state/transport reads
 ```
 
 **Place a building:**

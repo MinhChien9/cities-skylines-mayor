@@ -117,7 +117,7 @@ Is it a UI-driven feature?            → Tier 3
 | 1 | Roads, zoning, buildings, bulldoze | **1** (today) | `/commands/*` | `city_build_road`, `city_zone`, `city_place_building`, `city_bulldoze` | Done |
 | 2 | **Service budgets** | **1** | `GET /state/budgets`, `POST /commands/set-budget` | `city_budgets`, `city_set_budget` | Done ✅ |
 | 3 | **Policies** (127) | **1** | `GET /state/policies`, `POST /commands/set-policy` | `city_policies`, `city_set_policy` | Done ✅ |
-| 4 | **Transport lines** | **1** + **3** | `GET /state/transport`, `POST /commands/transport-line` | `city_transport` | Hard |
+| 4 | **Transport lines** | **1** + **3** | `GET /state/transport`, `GET /prefabs/transport`, `POST /commands/transport-line` | `city_transport`, `city_transport_prefabs`, `city_transport_line` | Done ✅ (built — R2; live ridership run pending) |
 | 5 | **Districts** (create / paint / specialise) | **2** + **3** | `GET /state/parks`, `POST /commands/district` | `city_district` | Hard |
 | 6 | **Special areas** (airport / campus / pedestrian / industry) | **2** + **3** | `POST /commands/district` | `city_district` | Hard |
 | 7 | **Milestones & map tiles** | **0** | `GET /state/progress`, `POST /commands/unlock-milestone`, `POST /commands/unlock-area` | `city_progress`, `city_unlock` | Easy to build; **a cheat** (§4.6) |
@@ -223,21 +223,41 @@ is loaded. 127 policies with no catalogue is unusable; the catalogue is the poin
 
 ### 4.3 Transport lines — Tier 1 for the model, Tier 3 for the authoring
 
+*(Built — R2. Endpoints: `GET /prefabs/transport`, `GET /state/transport`,
+`POST /commands/transport-line`; tools: `city_transport_prefabs`, `city_transport`,
+`city_transport_line`. All signatures re-verified against the live game's
+`Assembly-CSharp.dll` by decompilation (2026-11-11) — three findings changed the plan
+from the first draft:*
+
+1. *`TransportLine.ReplaceVehicles(ushort, VehicleInfo)` — quoted below — is **internal
+   and index-based**. The public route to a line's vehicle is
+   `TransportManager.AssignSelectedLineVehicle(lineID, prefabIndex)`, with
+   `GetVehicleIndex(string)` the game's own name→index mapping, and
+   `TryGetSelectedLineVehicle` / `GetLineVehicle` the readbacks. `CreateLine` itself
+   seeds the default through `GetDefaultLineVehicleIndex`.*
+2. *`TransportManager.SetLineName(ushort, string)` returns `IEnumerator<bool>` that
+   finishes on its first `MoveNext` — the bridge enumerates it synchronously on the
+   simulation thread and verifies with `GetLineName`.*
+3. *Line activation is `TransportLine.SetActive(bool day, bool night)`, which toggles the
+   `DisabledDay`/`DisabledNight` flags; `GetActive(out day, out night)` reads it back.
+   A line only gains vehicles once its stop chain is `Complete` (a new stop within ~2.5
+   units of the first stop closes the loop) and a compatible depot exists.)*
+
 The line model is fully public **[V]**:
 
 ```
 TransportManager.CreateLine(out UInt16 lineID, out Randomizer randomizer,
                             TransportInfo info, Boolean newNumber)
 TransportManager.UpdateLine(UInt16 lineID)
-TransportManager.SetLineName(UInt16 lineID, String name)      // IEnumerator
+TransportManager.SetLineName(UInt16 lineID, String name)      // IEnumerator<bool>, one-shot
 TransportManager.GetLineName(UInt16 lineID)
 TransportLine.AddStop(UInt16 lineID, Int32 index, Vector3 position, Boolean fixedPlatform)
 TransportLine.CanAddStop(UInt16 lineID, Int32 addIndex, Vector3 position)
 TransportLine.RemoveStop(UInt16 lineID, Int32 index)
 TransportLine.CountStops(UInt16 lineID) / GetStop(Int32) / ClearStops(UInt16)
-TransportLine.SetActive(Boolean day, Boolean night)
-TransportLine.ReplaceVehicles(UInt16 lineID, VehicleInfo info)
-TransportLine.CountVehicles(UInt16 lineID)
+TransportLine.SetActive(Boolean day, Boolean night) / GetActive(out day, out night)
+TransportLine.ReplaceVehicles(UInt16 lineID, VehicleInfo info)   // INTERNAL — see note above
+TransportLine.CountVehicles(UInt16 lineID) / GetVehicle(Int32)
 ```
 
 **The hard part is not the API — it is the geometry.** A CS1 transport line is a *path
@@ -564,9 +584,9 @@ Every one of these follows the existing pattern in
 
 | Question | Notes |
 |---|---|
-| Does `PrefabCollection<TransportInfo>` enumerate the bus/metro assets? | Almost certainly — it is the same generic the road catalogue already uses — but the names and the default vehicle per line type are unverified. |
+| Does `PrefabCollection<TransportInfo>` enumerate the bus/metro assets? | The collection API is confirmed (same generic as the road catalogue: `PrefabCount` / `GetPrefab` / `PrefabName` / `FindLoaded`, verified by decompilation) — transport prefabs live in it. Runtime confirmation (that the catalogue endpoint answers with the bus type on a live city) is the pending R2 live run. |
 | How is the industry area represented? | The `ParkType` enum shows campus / airport / pedestrian but not industry. |
-| Can the transport line be built by the agent *without* the UI? | Strategy A (§4.3) says yes. If `NetManager` refuses to attach a transport segment to an existing road node, strategy B becomes mandatory. |
+| Can the transport line be built by the agent *without* the UI? | Strategy A (§4.3) says yes. If `NetManager` refuses to attach a transport segment to an existing road node, strategy B becomes mandatory. The R2 live run answers this. |
 | Does `ICities` expose a transport-line interface? | No `ICities.ITransport` exists **[V]** — transport is the one big family with no supported API, which is why it stays Tier 1 + Tier 3. |
 | Does `LoadGame` work while the mod's dispatcher holds a pending job? | Must be answered before exposing `/commands/load`. The safest rule: refuse to load unless the dispatcher is idle. |
 | Should the tier-3 UI automation live in the MCP server or a helper process? | The MCP server blocks during the call, which is fine for a 1 s action. A helper would avoid blocking but adds a process to supervise. **In the server, for now.** |

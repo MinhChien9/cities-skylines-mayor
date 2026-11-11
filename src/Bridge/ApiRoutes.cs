@@ -143,6 +143,13 @@ namespace SkylinesAgentBridge
                     return OnGameThread(delegate { return GameState.BuildZoneAnomaliesJson(limit, minMinorityCells, minUnzonedCells, includeUnzonedHoles); });
                 });
 
+            MapGet("/state/transport", "Read transport lines (stops, vehicles, active state)",
+                delegate(HttpRequest request)
+                {
+                    int limit = request.GetQueryInt("limit", 251);
+                    return OnGameThread(delegate { return TransportCommands.BuildTransportJson(limit); });
+                });
+
             MapGet("/state/saves", "List save files",
                 delegate { return OnGameThread(delegate { return SaveCommands.ListSaves(); }); });
 
@@ -162,6 +169,13 @@ namespace SkylinesAgentBridge
                 {
                     string service = request.GetQueryString("service", "");
                     return OnGameThread(delegate { return GameState.BuildBuildingPrefabsJson(service); });
+                });
+
+            MapGet("/prefabs/transport", "List transport line prefabs and their vehicles",
+                delegate(HttpRequest request)
+                {
+                    string type = request.GetQueryString("type", "");
+                    return OnGameThread(delegate { return TransportCommands.BuildTransportPrefabsJson(type); });
                 });
 
             // ---- commands ---------------------------------------------------------
@@ -245,6 +259,13 @@ namespace SkylinesAgentBridge
                 {
                     string body = request.Body;
                     return OnGameThread(delegate { return EconomyCommands.SetBudget(body); });
+                });
+
+            MapPost("/commands/transport-line", "Create, edit, activate or re-vehicle a transport line",
+                delegate(HttpRequest request)
+                {
+                    string body = request.Body;
+                    return OnGameThread(delegate { return TransportCommands.TransportLineCommand(body); });
                 });
 
             MapPost("/commands/set-policy", "Set or unset a policy (city-wide, per district or per park)",
