@@ -150,6 +150,9 @@ namespace SkylinesAgentBridge
                     return OnGameThread(delegate { return TransportCommands.BuildTransportJson(limit); });
                 });
 
+            MapGet("/state/districts", "Read districts and special areas (names, types, extents)",
+                delegate { return OnGameThread(delegate { return DistrictCommands.BuildDistrictsJson(); }); });
+
             MapGet("/state/saves", "List save files",
                 delegate { return OnGameThread(delegate { return SaveCommands.ListSaves(); }); });
 
@@ -266,6 +269,13 @@ namespace SkylinesAgentBridge
                 {
                     string body = request.Body;
                     return OnGameThread(delegate { return TransportCommands.TransportLineCommand(body); });
+                });
+
+            MapPost("/commands/district", "Create, rename, paint, specialize or release a district or special area",
+                delegate(HttpRequest request)
+                {
+                    string body = request.Body;
+                    return OnGameThread(delegate { return DistrictCommands.DistrictCommand(body); });
                 });
 
             MapPost("/commands/set-policy", "Set or unset a policy (city-wide, per district or per park)",

@@ -118,8 +118,8 @@ Is it a UI-driven feature?            → Tier 3
 | 2 | **Service budgets** | **1** | `GET /state/budgets`, `POST /commands/set-budget` | `city_budgets`, `city_set_budget` | Done ✅ |
 | 3 | **Policies** (127) | **1** | `GET /state/policies`, `POST /commands/set-policy` | `city_policies`, `city_set_policy` | Done ✅ |
 | 4 | **Transport lines** | **1** + **3** | `GET /state/transport`, `GET /prefabs/transport`, `POST /commands/transport-line` | `city_transport`, `city_transport_prefabs`, `city_transport_line` | Done ✅ (built — R2; live ridership run pending) |
-| 5 | **Districts** (create / paint / specialise) | **2** + **3** | `GET /state/parks`, `POST /commands/district` | `city_district` | Hard |
-| 6 | **Special areas** (airport / campus / pedestrian / industry) | **2** + **3** | `POST /commands/district` | `city_district` | Hard |
+| 5 | **Districts** (create / paint / specialise) | **2** | `GET /state/districts`, `POST /commands/district` | `city_districts`, `city_district` | Done ✅ (built — R3; live run pending) |
+| 6 | **Special areas** (airport / campus / pedestrian / industry) | **2** | `GET /state/districts`, `POST /commands/district` | `city_districts`, `city_district` | Done ✅ (built — R3; same command, `layer:"park"`) |
 | 7 | **Milestones & map tiles** | **0** | `GET /state/progress`, `POST /commands/unlock-milestone`, `POST /commands/unlock-area` | `city_progress`, `city_unlock` | Easy to build; **a cheat** (§4.6) |
 | 8 | **Props & landscaping** (trees, benches, lamps) | **1** | `GET /prefabs/props`, `POST /commands/place-prop` | `city_props`, `city_place_prop` | Easy |
 | 9 | **Parks & plazas** | **1** (they are buildings) | `POST /commands/place-building` | `city_place_building` | Done |
@@ -281,42 +281,61 @@ should enumerate them the same way `PrefabCollection<NetInfo>` already does for 
 then tram, then metro. Cargo lines matter for industry level-ups but are a separate
 vehicle class with different economics.
 
-### 4.4 Districts — Tier 2 + Tier 3
+### 4.4 Districts — Tier 2
 
 Creating a district is public **[V]**:
 
 ```
 DistrictManager.CreateDistrict(out Byte district)
-DistrictManager.SetDistrictName(Int32 district, String name)   // IEnumerator
+DistrictManager.SetDistrictName(Int32 district, String name)   // IEnumerator<bool>
 DistrictManager.GetDistrict(Vector3 worldPos) / SampleDistrict(Vector3)
 DistrictManager.GetDistrictName(Int32 district)
 DistrictManager.ReleaseDistrict(Byte district)
 ```
 
-**Painting** is the hard part. The district map is a private `Cell[] m_districtGrid`
-**[V]** — one byte per cell encoding district + alpha, exactly like the zone grid. The
-game's `DistrictTool` writes into it and then calls
-`DistrictManager.AreaModified(minX, minZ, maxX, maxZ, fullUpdate)` to refresh the
-texture.
+**Painting is not a custom implementation.** The first research pass assumed the bridge
+would write `m_districtGrid` itself; the decompiled game shows the brush is already a
+public static method that does the whole job **[V]**:
 
-So painting is **Tier 2**: write the cells (respecting the game's cell-index bit layout
-`index = (z << 3) | ((x & 1) << 2)`), then call `AreaModified`. Tier 3 (the district
-brush in the UI) is the fallback and the reference implementation to compare against.
+```
+DistrictTool.ApplyBrush(DistrictTool.Layer layer, byte id, float radius,
+                        Vector3 start, Vector3 end)
+```
 
-The MCP tool should mirror the zone tool's shape: `city_district(action, center, radius, …)`
-so the agent's mental model stays "paint a disc".
+It rasterises the disc, writes the grid's four `(id, alpha)` slots, smooths the edge, and
+calls `AreaModified` / `ParksAreaModified` — so the bridge calls it and reports the
+before/after. The grid it writes is still worth knowing, because that is what the read
+endpoint decodes:
+
+| Fact | Value |
+|---|---|
+| Grid | `DistrictManager.Cell[] m_districtGrid` / `m_parkGrid`, 512 × 512, `DISTRICTGRID_CELL_SIZE = 19.2f` (368.64 m² per cell) |
+| Cell | `m_district1..4` + `m_alpha1..4` — up to four `(id, alpha)` pairs, so two adjacent districts can blend |
+| Cell index | `(int)(x / 19.2 + 256)` clamped to `0..511`, same for z; index is `z * 512 + x` |
+| Ids | `1..128` (`MAX_DISTRICT_COUNT`); 0 is the city-wide pseudo-district and the empty value |
+| Brush | full strength inside `radius − 38.4 m`, linear fade to nothing at `radius`; **radius must exceed 38.4** |
+
+`SampleDistrict` / `SamplePark` return a **bitmask** (bit *n* = district *n* is in the
+cell), not an id; `GetDistrict` / `GetPark` return the dominant id. The read endpoint uses
+both: the mask for "which districts touch this cell", the dominant id for "who owns it".
+
+The MCP tools mirror the zone pair: `city_districts` reads, `city_district` writes, with
+the same `center` + `radius` "paint a disc" shape as `city_zone`.
 
 **Specialisation** (Forest / Farming / Oil / Ore / Leisure / Tourist / Hightech /
-Organic / Selfsufficient / WallToWall / Financial) is a district property — the same
-`Policies` enum covers those values, so it is a `SetDistrictPolicy`-style call on the
-district's data **[?]**.
+Organic / Selfsufficient / WallToWall / Financial) is a district policy, so it is
+`DistrictManager.SetDistrictPolicy(policy, district)` **[V]**. The game's own
+`District.SetPolicy` enforces one specialization per family (resource / commercial /
+residential / office), which is why setting `Farming` after `Forest` replaces it — the
+bridge does not clear the old one.
 
-### 4.5 Special areas — airport, campus, pedestrian, industry — Tier 2 + Tier 3
+### 4.5 Special areas — airport, campus, pedestrian, industry — Tier 2
 
-This is the finding that changes the shape of the work: **special areas are districts
-of a different kind.** `DistrictPark.ParkType` **[V]** contains `GenericCampus`,
-`Airport`, `PedestrianZone`, and `DistrictPark.ParkGroup` contains `Campus`, `Airport`,
-`PedestrianZone`. The manager exposes **[V]**:
+This is the finding that kept the work small: **special areas are districts of a
+different kind.** `DistrictPark.ParkType` **[V]** contains `GenericCampus`, `Airport`,
+`PedestrianZone` (and `Industry` as the industry-area family), and
+`DistrictPark.ParkGroup` contains `Campus`, `Airport`, `PedestrianZone`. The manager
+exposes **[V]**:
 
 ```
 DistrictManager.CreatePark(out Byte park, ParkType type, ParkLevel level)
@@ -324,13 +343,16 @@ DistrictManager.AddParkBuilding(Byte park, BuildingInfo info, ParkType type)
 DistrictManager.GetParkArea(Byte park, out minX, minZ, maxX, maxZ)
 ```
 
-So the airport-area painter is the *same mechanism* as the district painter, with a
-different `ParkType`. One implementation covers districts, parks, airport areas, campus
-areas and pedestrian zones.
+So the airport-area painter is the *same mechanism* as the district painter with a
+different id space: one endpoint (`/state/districts`), one command
+(`/commands/district`, `layer: "park"`), one MCP tool pair. The bridge's `create` does
+**not** add a gate building, so a new area reports `functional: false` (`mainGate == 0`)
+and produces no visitors or income until its gate is placed — `/state/districts` says so
+explicitly rather than leaving the agent to guess.
 
-Whether the industry area uses a `ParkType` at all **[?]** — the enum grep did not show
-an `Industry` member, so the industry area may be a distinct mechanism. Confirm before
-implementing.
+`ReleaseDistrict` / `ReleasePark` only set flags and zero `m_totalAlpha`; they do **not**
+clear the grid, which is why `release` strips the entity's cells from the grid itself
+(compacting the blended entries) before calling the game's release.
 
 ### 4.6 Milestones and map tiles — Tier 0, but a cheat
 
@@ -549,11 +571,11 @@ Two consequences:
 |---|---|---|
 | **R0 — ICities** | Capture `IManagers` in `ThreadingExtensionBase.OnCreated`. Expose `/state/capabilities` (what the running game supports) and the simulation clock | Prerequisite for R4/R5; one tiny change, huge unlock |
 | **R1 — budgets & policies** | `/state/budgets`, `set-budget`, `/state/policies`, `set-policy` | Both are trivial Tier 1 and unlock the economy levers in `05-game-mechanics.md` |
-| **R3 — transport** | `/state/transport`, `/prefabs/transport`, `transport-line` | The biggest single quality unlock; needs its own verification budget |
-| **R4 — districts & areas** | `/state/parks`, `district` (create / paint / specialise), `game-area` | One implementation covers four feature families (§4.4 + §4.5) |
-| **R5 — terrain, resources, view, load** | `edit-terrain`, `/state/resources`, `render-view`, `load` | All Tier 0 — one implementation covers all four |
-| **R6 — props, progress, industry** | `/prefabs/props`, `place-prop`, `/state/progress`, `unlock-*`, `/state/industry` | Cheap Tier 1 work, batched |
-| **R7 — UI automation fallback (tier 3)** | Move the `game-ui.ps1` primitives into the MCP server; world→screen projection | The escape hatch for whatever is left |
+| **R2 — transport** | `/state/transport`, `/prefabs/transport`, `transport-line` | The biggest single quality unlock; needs its own verification budget — **built** |
+| **R3 — districts & areas** | `/state/districts`, `district` (create / paint / specialise / release) | One implementation covers four feature families (§4.4 + §4.5) — **built** |
+| **R4 — terrain, resources, view, load** | `edit-terrain`, `/state/resources`, `render-view`, `load` | All Tier 0 — one implementation covers all four |
+| **R5 — props, progress, industry** | `/prefabs/props`, `place-prop`, `/state/progress`, `unlock-*`, `/state/industry` | Cheap Tier 1 work, batched |
+| **R6 — UI automation fallback (tier 3)** | Move the `game-ui.ps1` primitives into the MCP server; world→screen projection | The escape hatch for whatever is left |
 
 ---
 
@@ -567,7 +589,7 @@ have changed it. Per row:
 | Budgets | Read the budget back; confirm the vehicle count moved (`/state/facilities`). |
 | Policies | Read the policy state back; confirm the demand/happiness delta over a simulated week. |
 | Transport line | Read the line back: stops, vehicles, active state, and that it is `SetActive`. Then confirm ridership over a simulated week. |
-| District / area | Read `m_districtGrid` back and confirm the cells carry the right district byte; confirm `GetDistrict(worldPos)` returns it. |
+| District / area | Read `/state/districts` before/after: `paintedDistrictCells` / `paintedParkCells` must move, `areaCells` must grow, `extent` must cover the brush, and `GetDistrict(center)` must return the id. |
 | Milestones | Read `GetCurrentMilestone()` and `Unlocked(Feature)` before and after; the unlock itself is an ordinary command (a cheat — see §4.6). |
 | Props | Confirm the prop id exists and `PropManager` reports it. |
 | Terrain | Compare `ITerrain.GetHeights` before/after; confirm `SampleTerrainHeight` changed where it should and nowhere else. |
@@ -585,7 +607,7 @@ Every one of these follows the existing pattern in
 | Question | Notes |
 |---|---|
 | Does `PrefabCollection<TransportInfo>` enumerate the bus/metro assets? | The collection API is confirmed (same generic as the road catalogue: `PrefabCount` / `GetPrefab` / `PrefabName` / `FindLoaded`, verified by decompilation) — transport prefabs live in it. Runtime confirmation (that the catalogue endpoint answers with the bus type on a live city) is the pending R2 live run. |
-| How is the industry area represented? | The `ParkType` enum shows campus / airport / pedestrian but not industry. |
+| How is the industry area represented? | `DistrictPark.ParkType` **does** carry an `Industry` member (with `Farming` / `Forestry` / `Ore` / `Oil`), and `ParkGroup` has an `Industry` family — so it is the same park id space as the other areas, reachable through `layer:"park"`. What is still open is the *functional* half: the area needs its main gate building to produce anything. |
 | Can the transport line be built by the agent *without* the UI? | Strategy A (§4.3) says yes. If `NetManager` refuses to attach a transport segment to an existing road node, strategy B becomes mandatory. The R2 live run answers this. |
 | Does `ICities` expose a transport-line interface? | No `ICities.ITransport` exists **[V]** — transport is the one big family with no supported API, which is why it stays Tier 1 + Tier 3. |
 | Does `LoadGame` work while the mod's dispatcher holds a pending job? | Must be answered before exposing `/commands/load`. The safest rule: refuse to load unless the dispatcher is idle. |

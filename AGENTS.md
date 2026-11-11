@@ -153,8 +153,18 @@ Stopping is not failure. An agent that stops and explains beats one that loops.
     commands for completeness. They invalidate the city's economics and the game marks
     them as achievements-forfeit. Avoid unless the user explicitly asks.
 
-17. **UI-only features have no clean path yet.** Do not try to drive transport lines,
-    districts or terrain until their tools ship (see `docs/10-roadmap.md`).
+17. **Terrain and camera control have no tool yet.** Do not try to edit terrain or frame
+    the camera until those tools ship (see `docs/10-roadmap.md`). Transport lines and
+    districts/areas **are** covered now: `city_transport_line`, and
+    `city_districts` / `city_district`.
+
+18. **A district is a painted disc on a 512 × 512 grid, not a building.** Nothing exists
+    until you paint it. `paint` uses the game's own brush, so `radius` must exceed
+    **38.4 m** (the outer 38.4 m is the fade) — but that bare minimum paints *nothing*
+    in practice (verified live: radius 60 → 0 cells, radius 77 → 29.5 cells). Use
+    **radius ≥ ~100** so the full-strength core (radius − 38.4 m) spans 2+ cells; always
+    pass `dryRun` first, then compare `areaCells.before/after` from the same call. A
+    created special area is `functional: false` until its gate building exists.
 
 ---
 

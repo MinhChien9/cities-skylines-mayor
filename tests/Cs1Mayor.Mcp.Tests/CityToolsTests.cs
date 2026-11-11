@@ -28,6 +28,7 @@ public class CityToolsTests
     [InlineData("CityEconomy", "/state/economy")]
     [InlineData("CityBudgets", "/state/budgets")]
     [InlineData("CityPolicies", "/state/policies")]
+    [InlineData("CityDistricts", "/state/districts")]
     [InlineData("CitySaves", "/state/saves")]
     [InlineData("CityRoadPrefabs", "/prefabs/roads")]
     [InlineData("CityTransportPrefabs", "/prefabs/transport")]
@@ -376,6 +377,62 @@ public class CityToolsTests
         var vehicle = Assert.Single(handler.Requests);
         Assert.Contains("\"vehicle\":\"Bus\"", vehicle.Body);
         Assert.Contains("\"dryRun\":true", vehicle.Body);
+    }
+
+    [Fact]
+    public async Task CityDistrict_paint_posts_layer_id_centre_and_radius()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityDistrict("paint", layer: "district", id: 3, x: 240, z: -40, radius: 80,
+            dryRun: true, cancellationToken: CancellationToken.None);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("POST", request.Method);
+        Assert.Equal("/commands/district", request.Path);
+        Assert.Contains("\"action\":\"paint\"", request.Body);
+        Assert.Contains("\"layer\":\"district\"", request.Body);
+        Assert.Contains("\"id\":3", request.Body);
+        Assert.Contains("\"center\":{\"x\":240,\"y\":0,\"z\":-40}", request.Body);
+        Assert.Contains("\"radius\":80", request.Body);
+        Assert.Contains("\"dryRun\":true", request.Body);
+        Assert.DoesNotContain("\"parkType\"", request.Body);
+        Assert.DoesNotContain("\"specialization\"", request.Body);
+    }
+
+    [Fact]
+    public async Task CityDistrict_create_area_posts_the_park_type_and_level()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityDistrict("create", layer: "park", parkType: "Airport", parkLevel: "Level2",
+            name: "Skyport", cancellationToken: CancellationToken.None);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Contains("\"action\":\"create\"", request.Body);
+        Assert.Contains("\"layer\":\"park\"", request.Body);
+        Assert.Contains("\"parkType\":\"Airport\"", request.Body);
+        Assert.Contains("\"parkLevel\":\"Level2\"", request.Body);
+        Assert.Contains("\"name\":\"Skyport\"", request.Body);
+    }
+
+    [Fact]
+    public async Task CityDistrict_specialize_posts_the_specialization_and_set_flag()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityDistrict("specialize", id: 2, specialization: "Forest", set: false,
+            cancellationToken: CancellationToken.None);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Contains("\"action\":\"specialize\"", request.Body);
+        Assert.Contains("\"id\":2", request.Body);
+        Assert.Contains("\"specialization\":\"Forest\"", request.Body);
+        Assert.Contains("\"set\":false", request.Body);
+        Assert.DoesNotContain("\"parkType\"", request.Body);
     }
 
     [Fact]

@@ -155,13 +155,36 @@ read back); see `docs/07-verification.md`.
 
 ### R3 — districts & special areas (Tier 2 + Tier 3)
 
-- [ ] `POST /commands/district` — create / rename / paint / specialise **[verified:
-      `DistrictManager.CreateDistrict`, `SetDistrictName`, `m_districtGrid`]**
-- [ ] One implementation covering districts, parks, airport areas, campus areas and
-      pedestrian zones — they are all `DistrictPark` with a `ParkType` **[verified]**
-- [ ] `GET /state/parks` — park/area list with types and extents
-- [ ] MCP tool `city_district`
-- [ ] **Verify**: `GetDistrict(worldPos)` returns the painted district
+- [x] `POST /commands/district` — create / rename / paint / erase / specialise / release /
+      state **[decompiled 2026-11-11: `DistrictManager.CreateDistrict`, `CreatePark`,
+      `SetDistrictName` / `SetParkName` (one-step `IEnumerator<bool>`),
+      `DistrictManager.Cell{m_district1..4,m_alpha1..4}` over a 512 × 512 grid at
+      `DISTRICTGRID_CELL_SIZE = 19.2f`, `MAX_DISTRICT_COUNT = 128`,
+      `GetDistrict(Vector3)` = `cells[z * 512 + x]` of `clamp(x / 19.2 + 256, 0, 511)`.
+      Painting reuses the game's own public
+      `DistrictTool.ApplyBrush(DistrictTool.Layer, byte id, float radius, Vector3 start,
+      Vector3 end)` — it rasterises, does the 4-slot alpha blending and edge smoothing and
+      calls `AreaModified` / `ParksAreaModified` itself, so the bridge does not
+      reimplement the brush.]**
+- [x] One implementation covering districts, parks, airport areas, campus areas and
+      pedestrian zones — they are all `DistrictPark` with a `ParkType` **[verified: one
+      endpoint, one command, `layer: "district" | "park"`]**
+- [x] `GET /state/districts` — both id spaces: names, `parkType` / `parkGroup`, grid and
+      world extents, `areaCells`, savings; plus the grid constants. *(The earlier plan
+      called this `/state/parks`; it returns districts too, so it was named for both.)*
+- [x] MCP tools `city_districts` (read) and `city_district` (write) — reads and writes stay
+      separate tools
+- [x] **Verify live** (2026-11-11, sandbox city): create → readback ✓ (`named: true` through the
+      coroutine); paint → `areaCells.before/after` 51.3→102.7 + `atCenter.district` ✓; specialize
+      Forest → Farming replaces it (one per family) ✓; unset clears ✓; rename ✓; erase clears the
+      disc (`cellsInBrush` 76→0) ✓; release clears the grid (`paintedCells` → 0) ✓; park layer:
+      create NatureReserve (`parkGroup: ParkLife`, `functional: false`) → paint → release ✓.
+      *One bug found and fixed during verification: `paint`/`erase` responses were missing the
+      outer closing `}` (invalid JSON); fixed in `DistrictCommands.Paint`, rebuilt and
+      reinstalled, and re-verified live after a game restart — the response now parses
+      cleanly. Practical paint floor (verified live): radius 60 (> 38.4) paints 0 cells,
+      radius 77 paints 29.5 — use radius ≥ ~100 so the full-strength core spans 2+ cells.*
+- [x] *No `ICities` district interface exists — the whole family is Tier 2.*
 
 ### R4 — terrain, resources, view, load (Tier 0)
 
