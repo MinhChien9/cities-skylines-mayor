@@ -111,7 +111,7 @@ python scripts\smoke-test-mcp.py
 With `codemode: true`, opencode exposes the tools as a namespace in Code Mode:
 
 ```
-- cs1-mayor (33 raw tools — one per bridge endpoint, plus city_request)
+- cs1-mayor (32 office tools — every read, the clock, policies/taxes/budgets, saves; spatial building is the agent's cursor work)
   - tools.cs1_mayor.city_summary() // GET /state/summary. Compact city overview: date, pause...
 ```
 

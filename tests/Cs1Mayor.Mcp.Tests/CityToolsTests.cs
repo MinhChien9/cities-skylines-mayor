@@ -30,9 +30,7 @@ public class CityToolsTests
     [InlineData("CityPolicies", "/state/policies")]
     [InlineData("CityDistricts", "/state/districts")]
     [InlineData("CitySaves", "/state/saves")]
-    [InlineData("CityRoadPrefabs", "/prefabs/roads")]
     [InlineData("CityTransportPrefabs", "/prefabs/transport")]
-    [InlineData("CityDisableBlockedAssets", "/commands/disable-blocked-assets")]
     public async Task Tools_relay_their_endpoint_one_to_one(string toolName, string expectedPath)
     {
         var handler = Always("{\"ok\":true}");
@@ -145,38 +143,30 @@ public class CityToolsTests
         Assert.Equal("/prefabs/transport", handler.Requests[0].Path);
     }
 
+    // ---------------------------------------------------------------- overview
+
+    [Fact]
+    public async Task CityOverview_composes_the_five_pulse_reads()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        var result = await tools.CityOverview(cancellationToken: CancellationToken.None);
+
+        var paths = handler.Requests.Select(r => r.Path).ToList();
+        Assert.Contains("/state/summary", paths);
+        Assert.Contains("/state/demand", paths);
+        Assert.Contains("/state/economy", paths);
+        Assert.Contains("/state/problems?limit=60", paths);
+        Assert.Contains("/state/chirps?limit=15", paths);
+        Assert.NotNull(result!["summary"]);
+        Assert.NotNull(result["demand"]);
+        Assert.NotNull(result["economy"]);
+        Assert.NotNull(result["problems"]);
+        Assert.NotNull(result["chirps"]);
+    }
+
     // ---------------------------------------------------------------- posts
-
-    [Fact]
-    public async Task CityBuildRoad_posts_the_segment_and_dry_run_flag()
-    {
-        var handler = Always("{\"ok\":true}");
-        var tools = Tools(handler);
-
-        await tools.CityBuildRoad("Basic Road", 10, 20, 30, 40, cancellationToken: CancellationToken.None);
-
-        var request = Assert.Single(handler.Requests);
-        Assert.Equal("POST", request.Method);
-        Assert.Equal("/commands/build-road", request.Path);
-        Assert.Contains("\"start\":{\"x\":10,\"z\":20}", request.Body);
-        Assert.Contains("\"end\":{\"x\":30,\"z\":40}", request.Body);
-        Assert.Contains("\"dryRun\":false", request.Body);
-    }
-
-    [Fact]
-    public async Task CityZone_posts_the_zone_type_and_radius()
-    {
-        var handler = Always("{\"ok\":true}");
-        var tools = Tools(handler);
-
-        await tools.CityZone("ResidentialLow", 5, 6, radius: 25, dryRun: true, cancellationToken: CancellationToken.None);
-
-        var request = Assert.Single(handler.Requests);
-        Assert.Equal("/commands/set-zone", request.Path);
-        Assert.Contains("\"zone\":\"ResidentialLow\"", request.Body);
-        Assert.Contains("\"radius\":25", request.Body);
-        Assert.Contains("\"dryRun\":true", request.Body);
-    }
 
     [Fact]
     public async Task CitySetTaxRate_posts_service_and_rate()
@@ -253,21 +243,6 @@ public class CityToolsTests
     }
 
     [Fact]
-    public async Task CityBulldoze_posts_entity_type_and_id()
-    {
-        var handler = Always("{\"ok\":true}");
-        var tools = Tools(handler);
-
-        await tools.CityBulldoze("netSegment", 1234, keepNodes: true, CancellationToken.None);
-
-        var request = Assert.Single(handler.Requests);
-        Assert.Equal("/commands/bulldoze", request.Path);
-        Assert.Contains("\"entityType\":\"netSegment\"", request.Body);
-        Assert.Contains("\"id\":1234", request.Body);
-        Assert.Contains("\"keepNodes\":true", request.Body);
-    }
-
-    [Fact]
     public async Task CitySetSimulationSpeed_posts_speed_and_paused()
     {
         var handler = Always("{\"ok\":true}");
@@ -295,55 +270,34 @@ public class CityToolsTests
     }
 
     [Fact]
-    public async Task CityBatch_posts_a_parsed_commands_array()
+    public async Task CitySetBuildingActive_posts_id_and_active_flag()
     {
         var handler = Always("{\"ok\":true}");
         var tools = Tools(handler);
 
-        await tools.CityBatch(
-            "[{\"type\":\"build-road\",\"roadPrefab\":\"Basic Road\",\"start\":{\"x\":1,\"z\":2},\"end\":{\"x\":3,\"z\":4}}]",
-            stopOnError: false,
-            dryRun: false,
-            CancellationToken.None);
+        await tools.CitySetBuildingActive(42, false, CancellationToken.None);
 
         var request = Assert.Single(handler.Requests);
-        Assert.Equal("/commands/batch", request.Path);
-        Assert.Equal("POST", request.Method);
-        Assert.Contains("\"type\":\"build-road\"", request.Body);
-        Assert.Contains("\"stopOnError\":false", request.Body);
-        Assert.Contains("\"dryRun\":false", request.Body);
+        Assert.Equal("/commands/set-building-active", request.Path);
+        Assert.Contains("\"id\":42", request.Body);
+        Assert.Contains("\"active\":false", request.Body);
     }
 
     // ------------------------------------------------------------ passthrough
 
     [Fact]
-    public async Task CityTransportLine_create_posts_the_transport_info()
+    public async Task CityTransportLine_remove_stop_posts_the_index()
     {
         var handler = Always("{\"ok\":true}");
         var tools = Tools(handler);
 
-        await tools.CityTransportLine("create", transportInfo: "Bus", cancellationToken: CancellationToken.None);
+        await tools.CityTransportLine("remove-stop", 3, index: 2, cancellationToken: CancellationToken.None);
 
         var request = Assert.Single(handler.Requests);
         Assert.Equal("/commands/transport-line", request.Path);
-        Assert.Contains("\"action\":\"create\"", request.Body);
-        Assert.Contains("\"transportInfo\":\"Bus\"", request.Body);
-        Assert.Contains("\"line\":0", request.Body);
-        Assert.DoesNotContain("\"position\"", request.Body);
-    }
-
-    [Fact]
-    public async Task CityTransportLine_add_stop_posts_the_position_and_index()
-    {
-        var handler = Always("{\"ok\":true}");
-        var tools = Tools(handler);
-
-        await tools.CityTransportLine("add-stop", 3, x: 10, z: 20, index: -1, cancellationToken: CancellationToken.None);
-
-        var request = Assert.Single(handler.Requests);
+        Assert.Contains("\"action\":\"remove-stop\"", request.Body);
         Assert.Contains("\"line\":3", request.Body);
-        Assert.Contains("\"position\":{\"x\":10,\"y\":0,\"z\":20}", request.Body);
-        Assert.Contains("\"dryRun\":false", request.Body);
+        Assert.Contains("\"index\":2", request.Body);
     }
 
     [Fact]
@@ -380,42 +334,38 @@ public class CityToolsTests
     }
 
     [Fact]
-    public async Task CityDistrict_paint_posts_layer_id_centre_and_radius()
+    public async Task CityDistrict_rename_posts_the_name_and_layer()
     {
         var handler = Always("{\"ok\":true}");
         var tools = Tools(handler);
 
-        await tools.CityDistrict("paint", layer: "district", id: 3, x: 240, z: -40, radius: 80,
-            dryRun: true, cancellationToken: CancellationToken.None);
+        await tools.CityDistrict("rename", id: 3, name: "Old Town", cancellationToken: CancellationToken.None);
 
         var request = Assert.Single(handler.Requests);
         Assert.Equal("POST", request.Method);
         Assert.Equal("/commands/district", request.Path);
-        Assert.Contains("\"action\":\"paint\"", request.Body);
+        Assert.Contains("\"action\":\"rename\"", request.Body);
         Assert.Contains("\"layer\":\"district\"", request.Body);
         Assert.Contains("\"id\":3", request.Body);
-        Assert.Contains("\"center\":{\"x\":240,\"y\":0,\"z\":-40}", request.Body);
-        Assert.Contains("\"radius\":80", request.Body);
-        Assert.Contains("\"dryRun\":true", request.Body);
-        Assert.DoesNotContain("\"parkType\"", request.Body);
-        Assert.DoesNotContain("\"specialization\"", request.Body);
+        Assert.Contains("\"name\":\"Old Town\"", request.Body);
+        Assert.DoesNotContain("\"center\"", request.Body);
+        Assert.DoesNotContain("\"radius\"", request.Body);
     }
 
     [Fact]
-    public async Task CityDistrict_create_area_posts_the_park_type_and_level()
+    public async Task CityDistrict_release_posts_the_id()
     {
         var handler = Always("{\"ok\":true}");
         var tools = Tools(handler);
 
-        await tools.CityDistrict("create", layer: "park", parkType: "Airport", parkLevel: "Level2",
-            name: "Skyport", cancellationToken: CancellationToken.None);
+        await tools.CityDistrict("release", layer: "park", id: 5, cancellationToken: CancellationToken.None);
 
         var request = Assert.Single(handler.Requests);
-        Assert.Contains("\"action\":\"create\"", request.Body);
+        Assert.Contains("\"action\":\"release\"", request.Body);
         Assert.Contains("\"layer\":\"park\"", request.Body);
-        Assert.Contains("\"parkType\":\"Airport\"", request.Body);
-        Assert.Contains("\"parkLevel\":\"Level2\"", request.Body);
-        Assert.Contains("\"name\":\"Skyport\"", request.Body);
+        Assert.Contains("\"id\":5", request.Body);
+        Assert.DoesNotContain("\"parkType\"", request.Body);
+        Assert.DoesNotContain("\"parkLevel\"", request.Body);
     }
 
     [Fact]
@@ -450,19 +400,57 @@ public class CityToolsTests
     }
 
     [Fact]
-    public async Task CityRequest_relays_post_with_the_json_body()
+    public async Task CityRequest_relays_post_to_an_office_endpoint()
     {
         var handler = Always("{\"ok\":true}");
         var tools = Tools(handler);
 
-        await tools.CityRequest("POST", "/commands/build-network",
-            "{\"roadPrefab\":\"Basic Road\",\"start\":{\"x\":0,\"z\":0},\"end\":{\"x\":1,\"z\":1}}",
+        await tools.CityRequest("POST", "/commands/set-policy",
+            "{\"policy\":\"Recycling\",\"set\":true}",
             CancellationToken.None);
 
         var request = Assert.Single(handler.Requests);
         Assert.Equal("POST", request.Method);
-        Assert.Equal("/commands/build-network", request.Path);
-        Assert.Contains("\"roadPrefab\":\"Basic Road\"", request.Body);
+        Assert.Equal("/commands/set-policy", request.Path);
+        Assert.Contains("\"policy\":\"Recycling\"", request.Body);
+    }
+
+    [Fact]
+    public async Task CityRequest_refuses_post_to_a_build_endpoint()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        var result = await tools.CityRequest("POST", "/commands/build-road",
+            "{\"roadPrefab\":\"Basic Road\",\"start\":{\"x\":0,\"z\":0},\"end\":{\"x\":1,\"z\":1}}",
+            CancellationToken.None);
+
+        Assert.Empty(handler.Requests);
+        Assert.False(result!["ok"]!.GetValue<bool>());
+        Assert.Contains("office allowlist", result["error"]!.GetValue<string>());
+        Assert.Contains("cursor", result["hint"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task CityRequest_post_allowlist_covers_every_office_tool()
+    {
+        // Every mutating office tool must stay reachable through the raw passthrough,
+        // so the allowlist and the dedicated tools cannot drift apart silently.
+        var allowlist = (string[])typeof(CityTools)
+            .GetField("OfficeEndpoints", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
+            .GetValue(null)!;
+
+        Assert.Equal(new[]
+        {
+            "/commands/set-simulation-speed",
+            "/commands/set-tax-rate",
+            "/commands/set-budget",
+            "/commands/set-policy",
+            "/commands/set-building-active",
+            "/commands/transport-line",
+            "/commands/district",
+            "/commands/save",
+        }, allowlist);
     }
 
     [Theory]

@@ -7,20 +7,28 @@ namespace Cs1Mayor.Mcp;
 /// <summary>
 /// The tool surface exposed to the AI agent.
 ///
-/// DESIGN NOTES
-/// ------------
-/// * One tool per bridge endpoint. The tools are deliberately RAW and ATOMIC: a tool
-///   relays a single HTTP call and returns whatever the bridge replied. No merging,
-///   no orchestration, no goals, no sessions — the agent decides what to do from the
-///   stats it reads back. `docs/04-api-reference.md` documents the endpoint each
-///   tool relays.
+/// DESIGN NOTES — THE MAYOR'S OFFICE MODEL
+/// ---------------------------------------
+/// This server is the mayor's office: it sees everything and controls everything
+/// that needs no spatial judgement, but it never builds anything. Roads, zones,
+/// buildings, bulldozing, transit-stop placement and district painting are SPATIAL
+/// work — they are done by the agent with its cursor through the game's own UI
+/// (via a CUA / computer-use channel), where snapping, slope checks and visual
+/// judgement live. Every attempt to do that work blind, by coordinate, produced
+/// ugly or failing results, so the surface no longer exposes it.
 ///
-/// * `city_request` is the escape hatch: a raw passthrough to ANY bridge endpoint,
-///   so an endpoint added to the bridge is agent-reachable before a dedicated tool
-///   ships. The dedicated tools exist for discoverability, not for capability.
+/// What stays here:
+///   * READS  — every stat the game has, so the agent never has to open an
+///              in-game info panel. `city_overview` is one call for the pulse.
+///   * OFFICE — pause/speed, taxes, budgets, policies, save, line management,
+///              district naming/specialising: one API call replaces navigating
+///              the game's menus and sliders with a cursor.
+///   * `city_request` — raw passthrough, but POSTs are restricted to the office
+///              endpoint allowlist so the build endpoints stay cursor-only.
 ///
-/// * Reads and writes are separate tools so the agent can never accidentally mutate
-///   the city when it only wanted information.
+/// `docs/04-api-reference.md` still documents the full HTTP surface, including
+/// the build endpoints the bridge keeps for completeness — they are just not in
+/// the agent's tool box any more.
 /// </summary>
 [McpServerToolType]
 public sealed class CityTools
@@ -45,6 +53,30 @@ public sealed class CityTools
         => Get("/debug/threads", cancellationToken);
 
     // ------------------------------------------------------------------- reads
+
+    [System.ComponentModel.Description("THE PULSE — one call instead of five panel reads: date, pause/speed, population, cash, happiness, RCI demand, network counts, the economy (income/expenses/tax multiplier), the current problem icons, and the newest citizen chirps. Open with this every turn; drill into the dedicated reads only when a number looks wrong.")]
+    [McpServerTool(Name = "city_overview", Title = "City Overview")]
+    public async Task<JsonNode?> CityOverview(
+        [System.ComponentModel.Description("Max problem icons to include (1-500, default 60).")] int problemLimit = 60,
+        [System.ComponentModel.Description("Max chirps to include (1-100, default 15).")] int chirpLimit = 15,
+        CancellationToken cancellationToken = default)
+    {
+        var summary = Get("/state/summary", cancellationToken);
+        var demand = Get("/state/demand", cancellationToken);
+        var economy = Get("/state/economy", cancellationToken);
+        var problems = Get($"/state/problems?limit={Clamp(problemLimit, 1, 500)}", cancellationToken);
+        var chirps = Get($"/state/chirps?limit={Clamp(chirpLimit, 1, 100)}", cancellationToken);
+        await Task.WhenAll(summary, demand, economy, problems, chirps).ConfigureAwait(false);
+
+        return new JsonObject
+        {
+            ["summary"] = summary.Result,
+            ["demand"] = demand.Result,
+            ["economy"] = economy.Result,
+            ["problems"] = problems.Result,
+            ["chirps"] = chirps.Result,
+        };
+    }
 
     [System.ComponentModel.Description("GET /state/capabilities. What the running game supports: version, DLC, milestone list, current milestone, unlocked/locked features, and the IThreading simulation clock (simulationTime/frame/tick) — compare two reads to know how much simulated time actually elapsed.")]
     [McpServerTool(Name = "city_capabilities", Title = "Game Capabilities")]
@@ -102,7 +134,7 @@ public sealed class CityTools
         CancellationToken cancellationToken = default)
         => await Get($"/state/transport?limit={Clamp(limit, 1, 251)}", cancellationToken).ConfigureAwait(false);
 
-    [System.ComponentModel.Description("GET /state/districts. Districts and special areas. Districts have an id, name, area in cells, population, happiness and specialization; special areas (park, industry, campus, airport, pedestrian zone, ...) have a parkType, parkLevel, group, main gate and whether they are functional. Also reports the 512x512 grid geometry (19.2 m cells) and how many cells are painted, so a paint can be verified by comparing two reads.")]
+    [System.ComponentModel.Description("GET /state/districts. Districts and special areas. Districts have an id, name, area in cells, population, happiness and specialization; special areas (park, industry, campus, airport, pedestrian zone, ...) have a parkType, parkLevel, group, main gate and whether they are functional. Also reports the 512x512 grid geometry (19.2 m cells) and how many cells are painted.")]
     [McpServerTool(Name = "city_districts", Title = "Districts & Areas")]
     public Task<JsonNode?> CityDistricts(CancellationToken cancellationToken)
         => Get("/state/districts", cancellationToken);
@@ -208,136 +240,20 @@ public sealed class CityTools
     public Task<JsonNode?> CitySaves(CancellationToken cancellationToken)
         => Get("/state/saves", cancellationToken);
 
-    // --------------------------------------------------------- prefab catalogue
-
-    [System.ComponentModel.Description("GET /prefabs/buildings. Available building prefabs and their exact names for city_place_building.")]
-    [McpServerTool(Name = "city_building_prefabs", Title = "Building Prefabs")]
-    public async Task<JsonNode?> CityBuildingPrefabs(
-        [System.ComponentModel.Description("Optional service filter, e.g. 'Education', 'FireDepartment'.")] string? service = null,
-        CancellationToken cancellationToken = default)
-        => await Get(Query("/prefabs/buildings", "service", service), cancellationToken).ConfigureAwait(false);
-
-    [System.ComponentModel.Description("GET /prefabs/roads. Available road prefabs and their exact names for city_build_road.")]
-    [McpServerTool(Name = "city_road_prefabs", Title = "Road Prefabs")]
-    public Task<JsonNode?> CityRoadPrefabs(CancellationToken cancellationToken)
-        => Get("/prefabs/roads", cancellationToken);
-
-    [System.ComponentModel.Description("GET /prefabs/networks. Available non-road network prefabs (fences, walls, paths...).")]
-    [McpServerTool(Name = "city_network_prefabs", Title = "Network Prefabs")]
-    public async Task<JsonNode?> CityNetworkPrefabs(
-        [System.ComponentModel.Description("Optional service filter.")] string? service = null,
-        CancellationToken cancellationToken = default)
-        => await Get(Query("/prefabs/networks", "service", service), cancellationToken).ConfigureAwait(false);
-
-    [System.ComponentModel.Description("GET /prefabs/transport. Transport line prefabs (bus, tram, metro, ...) with their class, economics, unlock milestone and the compatible vehicle assets. Transport lines are created with city_transport_line action 'create' passing one of these exact names.")]
+    [System.ComponentModel.Description("GET /prefabs/transport. Transport line prefabs (bus, tram, metro, ...) with their class, economics, unlock milestone and the compatible vehicle assets. Useful for naming the vehicle when managing a line with city_transport_line.")]
     [McpServerTool(Name = "city_transport_prefabs", Title = "Transport Prefabs")]
     public async Task<JsonNode?> CityTransportPrefabs(
         [System.ComponentModel.Description("Optional transport type filter, e.g. 'Bus', 'Metro', 'Train'.")] string? type = null,
         CancellationToken cancellationToken = default)
         => await Get(Query("/prefabs/transport", "type", type), cancellationToken).ConfigureAwait(false);
 
-    // ------------------------------------------------------------------ act
+    // ------------------------------------------------------------------ office
+    // Everything here is non-spatial: one API call replaces opening the game's
+    // menus and moving its sliders with a cursor. Spatial work (roads, zones,
+    // buildings, bulldozing, stop placement, district painting) is done with the
+    // cursor through the game's own UI — not from this server.
 
-    [System.ComponentModel.Description("POST /commands/build-road. Build a road segment between two world points. Reuses an existing node within ~2 units of each endpoint, so segments that share endpoints form real intersections.")]
-    [McpServerTool(Name = "city_build_road", Title = "Build Road")]
-    public async Task<JsonNode?> CityBuildRoad(
-        [System.ComponentModel.Description("Road prefab name from city_road_prefabs, e.g. 'Basic Road'.")] string roadPrefab,
-        [System.ComponentModel.Description("Start point X in world coordinates.")] double startX,
-        [System.ComponentModel.Description("Start point Z in world coordinates.")] double startZ,
-        [System.ComponentModel.Description("End point X in world coordinates.")] double endX,
-        [System.ComponentModel.Description("End point Z in world coordinates.")] double endZ,
-        [System.ComponentModel.Description("Optional road name.")] string? name = null,
-        [System.ComponentModel.Description("Validate only, do not build (default false).")] bool dryRun = false,
-        CancellationToken cancellationToken = default)
-        => await Post("/commands/build-road", new Dictionary<string, object?>
-        {
-            ["roadPrefab"] = roadPrefab,
-            ["start"] = new { x = startX, z = startZ },
-            ["end"] = new { x = endX, z = endZ },
-            ["name"] = name ?? "",
-            ["dryRun"] = dryRun,
-        }, cancellationToken).ConfigureAwait(false);
-
-    [System.ComponentModel.Description("POST /commands/set-zone. Paint a zone inside a radius around a point. Zone blocks are created by roads; there is nothing to paint where no road exists.")]
-    [McpServerTool(Name = "city_zone", Title = "Paint Zone")]
-    public async Task<JsonNode?> CityZone(
-        [System.ComponentModel.Description("Zone type: ResidentialLow, ResidentialHigh, CommercialLow, CommercialHigh, Industrial or Office.")] string zone,
-        [System.ComponentModel.Description("Center X in world coordinates.")] double centerX,
-        [System.ComponentModel.Description("Center Z in world coordinates.")] double centerZ,
-        [System.ComponentModel.Description("Radius in world units (default 40).")] double radius = 40,
-        [System.ComponentModel.Description("Do not repaint cells that already have a developed building (default true).")] bool preserveOccupied = true,
-        [System.ComponentModel.Description("Validate only, do not paint (default false).")] bool dryRun = false,
-        CancellationToken cancellationToken = default)
-        => await Post("/commands/set-zone", new Dictionary<string, object?>
-        {
-            ["zone"] = zone,
-            ["center"] = new { x = centerX, z = centerZ },
-            ["radius"] = radius,
-            ["preserveOccupied"] = preserveOccupied,
-            ["dryRun"] = dryRun,
-        }, cancellationToken).ConfigureAwait(false);
-
-    [System.ComponentModel.Description("POST /commands/place-building. Place a building by prefab name at a world position. Does not snap to roads. Use dryRun first to check cost and fit.")]
-    [McpServerTool(Name = "city_place_building", Title = "Place Building")]
-    public async Task<JsonNode?> CityPlaceBuilding(
-        [System.ComponentModel.Description("Exact prefab name from city_building_prefabs, e.g. 'Water Tower'.")] string buildingPrefab,
-        [System.ComponentModel.Description("Position X in world coordinates.")] double x,
-        [System.ComponentModel.Description("Position Z in world coordinates.")] double z,
-        [System.ComponentModel.Description("Facing angle in degrees (default 0).")] double angleDegrees = 0,
-        [System.ComponentModel.Description("Validate only, do not place (default false).")] bool dryRun = false,
-        CancellationToken cancellationToken = default)
-        => await Post("/commands/place-building", new Dictionary<string, object?>
-        {
-            ["buildingPrefab"] = buildingPrefab,
-            ["position"] = new { x, z },
-            ["angleDegrees"] = angleDegrees,
-            ["dryRun"] = dryRun,
-        }, cancellationToken).ConfigureAwait(false);
-
-    [System.ComponentModel.Description("POST /commands/move-building. Relocate a placed building by id.")]
-    [McpServerTool(Name = "city_move_building", Title = "Move Building")]
-    public async Task<JsonNode?> CityMoveBuilding(
-        [System.ComponentModel.Description("Building id.")] int id,
-        [System.ComponentModel.Description("New position X in world coordinates.")] double x,
-        [System.ComponentModel.Description("New position Z in world coordinates.")] double z,
-        [System.ComponentModel.Description("Facing angle in degrees (default 0).")] double angleDegrees = 0,
-        [System.ComponentModel.Description("Validate only, do not move (default false).")] bool dryRun = false,
-        CancellationToken cancellationToken = default)
-        => await Post("/commands/move-building", new Dictionary<string, object?>
-        {
-            ["id"] = id,
-            ["position"] = new { x, z },
-            ["angleDegrees"] = angleDegrees,
-            ["dryRun"] = dryRun,
-        }, cancellationToken).ConfigureAwait(false);
-
-    [System.ComponentModel.Description("POST /commands/set-building-active. Activate or deactivate a building.")]
-    [McpServerTool(Name = "city_set_building_active", Title = "Set Building Active")]
-    public async Task<JsonNode?> CitySetBuildingActive(
-        [System.ComponentModel.Description("Building id.")] int id,
-        [System.ComponentModel.Description("True to activate, false to deactivate.")] bool active,
-        CancellationToken cancellationToken = default)
-        => await Post("/commands/set-building-active", new Dictionary<string, object?>
-        {
-            ["id"] = id,
-            ["active"] = active,
-        }, cancellationToken).ConfigureAwait(false);
-
-    [System.ComponentModel.Description("POST /commands/bulldoze. Remove a building, road segment or road node by id. Does not refund money.")]
-    [McpServerTool(Name = "city_bulldoze", Title = "Bulldoze")]
-    public async Task<JsonNode?> CityBulldoze(
-        [System.ComponentModel.Description("Entity type: 'building', 'netSegment' or 'netNode'.")] string entityType,
-        [System.ComponentModel.Description("Entity id.")] int id,
-        [System.ComponentModel.Description("For netSegment: keep the nodes instead of deleting them (default false).")] bool keepNodes = false,
-        CancellationToken cancellationToken = default)
-        => await Post("/commands/bulldoze", new Dictionary<string, object?>
-        {
-            ["entityType"] = entityType,
-            ["id"] = id,
-            ["keepNodes"] = keepNodes,
-        }, cancellationToken).ConfigureAwait(false);
-
-    [System.ComponentModel.Description("POST /commands/set-simulation-speed. Set simulation speed (1-3) and/or pause state.")]
+    [System.ComponentModel.Description("POST /commands/set-simulation-speed. Set simulation speed (1-3) and/or pause state. This is the office's hands on the clock: pause while you think or while the cursor works, then resume.")]
     [McpServerTool(Name = "city_set_simulation_speed", Title = "Set Simulation Speed")]
     public async Task<JsonNode?> CitySetSimulationSpeed(
         [System.ComponentModel.Description("Simulation speed 1-3 (default 1).")] int speed = 1,
@@ -391,7 +307,7 @@ public sealed class CityTools
         return await Post("/commands/set-budget", body, cancellationToken).ConfigureAwait(false);
     }
 
-    [System.ComponentModel.Description("POST /commands/set-policy. Set or unset a policy by exact name from city_policies. Setting an unloaded policy is refused (it would be a silent no-op). district=0 or omitted means city-wide; a district id targets that district. Park-group policies with a district id actually target the park id space (parks arrive with the districts release).")]
+    [System.ComponentModel.Description("POST /commands/set-policy. Set or unset a policy by exact name from city_policies. Setting an unloaded policy is refused (it would be a silent no-op). district=0 or omitted means city-wide; a district id targets that district. Park-group policies with a district id actually target the park id space.")]
     [McpServerTool(Name = "city_set_policy", Title = "Set Policy")]
     public async Task<JsonNode?> CitySetPolicy(
         [System.ComponentModel.Description("Policy name from city_policies, e.g. 'Recycling', 'FreeTransport', 'TaxRaiseResLow'.")] string policy,
@@ -407,24 +323,30 @@ public sealed class CityTools
             ["dryRun"] = dryRun,
         }, cancellationToken).ConfigureAwait(false);
 
-    [System.ComponentModel.Description("POST /commands/transport-line. Create, edit, activate, rename or re-vehicle a transport line, as the transport line editor does. action='create' takes transportInfo (name from city_transport_prefabs). action='add-stop' takes line + position (x,z world; index defaults to -1 = append at the end, and a new stop placed within ~2.5 units of the first stop closes the line into a loop). action='remove-stop' takes line + index (-1 = last). action='activate' takes line + day/night booleans (false = unserviceable), active=false disables everything. action='rename' takes line + name. action='set-vehicle' takes line + vehicle (asset name). Every action returns the live game readback for the line.")]
-    [McpServerTool(Name = "city_transport_line", Title = "Transport Line Editor")]
+    [System.ComponentModel.Description("POST /commands/set-building-active. Activate or deactivate a building by id (ids come from city_facilities / city_growables).")]
+    [McpServerTool(Name = "city_set_building_active", Title = "Set Building Active")]
+    public async Task<JsonNode?> CitySetBuildingActive(
+        [System.ComponentModel.Description("Building id.")] int id,
+        [System.ComponentModel.Description("True to activate, false to deactivate.")] bool active,
+        CancellationToken cancellationToken = default)
+        => await Post("/commands/set-building-active", new Dictionary<string, object?>
+        {
+            ["id"] = id,
+            ["active"] = active,
+        }, cancellationToken).ConfigureAwait(false);
+
+    [System.ComponentModel.Description("POST /commands/transport-line. Manage an EXISTING transport line as the line editor does: action='activate' (day/night service), action='rename', action='set-vehicle' (asset name from city_transport_prefabs), action='remove-stop' (index, -1 = last). Lines and their stops are drawn with the cursor in the game's own transport tool; this office only manages them afterwards. Every action returns the live game readback for the line.")]
+    [McpServerTool(Name = "city_transport_line", Title = "Transport Line Management")]
     public async Task<JsonNode?> CityTransportLine(
-        [System.ComponentModel.Description("Action: 'create', 'add-stop', 'remove-stop', 'activate', 'rename' or 'set-vehicle'.")] string action,
-        [System.ComponentModel.Description("Line id for every action except 'create'.")] int line = 0,
-        [System.ComponentModel.Description("For 'create': transport prefab name from city_transport_prefabs, e.g. 'Bus'.")] string? transportInfo = null,
-        [System.ComponentModel.Description("For 'add-stop': stop position X in world coordinates.")] double? x = null,
-        [System.ComponentModel.Description("For 'add-stop': stop position Y (height); omit to sample the terrain.")] double? y = null,
-        [System.ComponentModel.Description("For 'add-stop': stop position Z in world coordinates.")] double? z = null,
-        [System.ComponentModel.Description("Stop index: -1 appends (default); a specific index inserts; placing a stop within ~2.5 units of the first stop closes the loop.")] int index = -1,
-        [System.ComponentModel.Description("For 'add-stop': freeze the platform at the given position (default false).")] bool fixedPlatform = false,
+        [System.ComponentModel.Description("Action: 'activate', 'rename', 'set-vehicle' or 'remove-stop'.")] string action,
+        [System.ComponentModel.Description("Line id from city_transport.")] int line = 0,
+        [System.ComponentModel.Description("For 'remove-stop': stop index (-1 = last).")] int index = -1,
         [System.ComponentModel.Description("For 'activate': day service (default true).")] bool day = true,
         [System.ComponentModel.Description("For 'activate': night service (default true).")] bool night = true,
         [System.ComponentModel.Description("For 'activate': short for day=true, night=true (default true); false disables all service.")] bool active = true,
         [System.ComponentModel.Description("For 'rename': the new line name.")] string? name = null,
         [System.ComponentModel.Description("For 'set-vehicle': the vehicle asset name.")] string? vehicle = null,
-        [System.ComponentModel.Description("For 'create': allocate a new line number for the type (default true).")] bool newNumber = true,
-        [System.ComponentModel.Description("Validate only, do not mutate (default false; add-stop answers the game's own CanAddStop).")] bool dryRun = false,
+        [System.ComponentModel.Description("Validate only, do not mutate (default false).")] bool dryRun = false,
         CancellationToken cancellationToken = default)
     {
         var body = new Dictionary<string, object?>
@@ -433,21 +355,9 @@ public sealed class CityTools
             ["line"] = Clamp(line, 0, 65535),
             ["dryRun"] = dryRun,
         };
-        if (transportInfo != null)
-        {
-            body["transportInfo"] = transportInfo;
-        }
-        if (x.HasValue || y.HasValue || z.HasValue)
-        {
-            body["position"] = new { x = x ?? 0, y = y ?? 0, z = z ?? 0 };
-        }
         if (index != -1)
         {
             body["index"] = index;
-        }
-        if (fixedPlatform)
-        {
-            body["fixedPlatform"] = true;
         }
         if (action == "activate")
         {
@@ -463,25 +373,16 @@ public sealed class CityTools
         {
             body["vehicle"] = vehicle;
         }
-        if (!newNumber)
-        {
-            body["newNumber"] = false;
-        }
         return await Post("/commands/transport-line", body, cancellationToken).ConfigureAwait(false);
     }
 
-    [System.ComponentModel.Description("POST /commands/district. Create, rename, paint, specialize or release a district or a special area. layer='district' (default) or 'park'. action='create' takes name? and, for a park, parkType (Generic, AmusementPark, Zoo, NatureReserve, Industry, Farming, Forestry, Ore, Oil, GenericCampus, TradeSchool, LiberalArts, University, Airport, PedestrianZone) and parkLevel (Level1-5). action='paint' takes id + x/z + radius and uses the game's own district brush (radius is in metres; it paints solid inside radius-38.4 m and fades out to radius). action='erase' takes the same fields and clears the disc (id optional = whole brush). action='rename' takes id + name (empty name clears a custom name). action='specialize' takes id + specialization (Forest/Farming/Oil/Ore/Leisure/Tourist/Organic/Selfsufficient/Hightech/ResidentialWallToWall/CommercialWallToWall/OfficeWallToWall/Financial); the game keeps one per family, and setting a competing one replaces it. action='release' takes id, clears its grid cells and frees it. action='state' reads one entity (or the whole list when no id is given). Every mutation reports the live readback: areaCells before/after, cells in the brush before/after, and the district at the brush centre.")]
-    [McpServerTool(Name = "city_district", Title = "District & Area Editor")]
+    [System.ComponentModel.Description("POST /commands/district. Manage an EXISTING district or special area: action='rename' (id + name, empty clears), action='specialize' (id + specialization: Forest/Farming/Oil/Ore/Leisure/Tourist/Organic/Selfsufficient/Hightech/ResidentialWallToWall/CommercialWallToWall/OfficeWallToWall/Financial; the game keeps one per family and replaces a competing one), action='release' (id — clears its grid cells and frees it), action='state' (one entity, or the whole list when no id). Districts and park areas are painted with the cursor in the game's own district/area tools; this office only manages them afterwards. Mutations report the live readback (areaCells before/after).")]
+    [McpServerTool(Name = "city_district", Title = "District & Area Management")]
     public async Task<JsonNode?> CityDistrict(
-        [System.ComponentModel.Description("Action: 'create', 'rename', 'paint', 'erase', 'specialize', 'release' or 'state'.")] string action,
+        [System.ComponentModel.Description("Action: 'rename', 'specialize', 'release' or 'state'.")] string action,
         [System.ComponentModel.Description("Layer: 'district' (default) or 'park' (a special area).")] string layer = "district",
-        [System.ComponentModel.Description("District or area id (0 = none; for 'paint' id=0 erases). Omit on 'create'.")] int id = 0,
-        [System.ComponentModel.Description("For 'create' on the park layer: Generic, AmusementPark, Zoo, NatureReserve, Industry, Farming, Forestry, Ore, Oil, GenericCampus, TradeSchool, LiberalArts, University, Airport, PedestrianZone.")] string? parkType = null,
-        [System.ComponentModel.Description("For 'create' on the park layer: Level1 (default) to Level5.")] string? parkLevel = null,
-        [System.ComponentModel.Description("For 'create' / 'rename': the name (empty clears a custom name).")] string? name = null,
-        [System.ComponentModel.Description("For 'paint' / 'erase': brush centre X in world coordinates.")] double? x = null,
-        [System.ComponentModel.Description("For 'paint' / 'erase': brush centre Z in world coordinates.")] double? z = null,
-        [System.ComponentModel.Description("For 'paint' / 'erase': brush radius in metres (must be > 38.4; default 64).")] double? radius = null,
+        [System.ComponentModel.Description("District or area id (0 = none; 'state' with 0 lists everything).")] int id = 0,
+        [System.ComponentModel.Description("For 'rename': the name (empty clears a custom name).")] string? name = null,
         [System.ComponentModel.Description("For 'specialize': the specialization name from the tool description.")] string? specialization = null,
         [System.ComponentModel.Description("For 'specialize': true to set (default), false to clear.")] bool set = true,
         [System.ComponentModel.Description("Validate only, do not mutate (default false).")] bool dryRun = false,
@@ -495,25 +396,9 @@ public sealed class CityTools
             ["set"] = set,
             ["dryRun"] = dryRun,
         };
-        if (!string.IsNullOrWhiteSpace(parkType))
-        {
-            body["parkType"] = parkType;
-        }
-        if (!string.IsNullOrWhiteSpace(parkLevel))
-        {
-            body["parkLevel"] = parkLevel;
-        }
         if (name != null)
         {
             body["name"] = name;
-        }
-        if (x.HasValue || z.HasValue)
-        {
-            body["center"] = new { x = x ?? 0, y = 0, z = z ?? 0 };
-        }
-        if (radius.HasValue)
-        {
-            body["radius"] = radius.Value;
         }
         if (!string.IsNullOrWhiteSpace(specialization))
         {
@@ -522,7 +407,7 @@ public sealed class CityTools
         return await Post("/commands/district", body, cancellationToken).ConfigureAwait(false);
     }
 
-    [System.ComponentModel.Description("POST /commands/save. Save the city to a named slot (.crp on disk).")]
+    [System.ComponentModel.Description("POST /commands/save. Save the city to a named slot (.crp on disk). Save after every meaningful batch of work.")]
     [McpServerTool(Name = "city_save", Title = "Save City")]
     public async Task<JsonNode?> CitySave(
         [System.ComponentModel.Description("Save name, e.g. 'MyCity'.")] string name,
@@ -532,57 +417,13 @@ public sealed class CityTools
             ["name"] = name,
         }, cancellationToken).ConfigureAwait(false);
 
-    [System.ComponentModel.Description("POST /commands/repair-zones-to-growables. Repaint zone cells to match each block's growable building type.")]
-    [McpServerTool(Name = "city_repair_zones_to_growables", Title = "Repair Zones To Growables")]
-    public async Task<JsonNode?> CityRepairZonesToGrowables(
-        [System.ComponentModel.Description("Validate only, do not repair (default false).")] bool dryRun = false,
-        CancellationToken cancellationToken = default)
-        => await Post("/commands/repair-zones-to-growables", new Dictionary<string, object?>
-        {
-            ["dryRun"] = dryRun,
-        }, cancellationToken).ConfigureAwait(false);
-
-    [System.ComponentModel.Description("POST /commands/repair-zone-clusters. Repair mottled multi-zone blocks into coherent clusters.")]
-    [McpServerTool(Name = "city_repair_zone_clusters", Title = "Repair Zone Clusters")]
-    public async Task<JsonNode?> CityRepairZoneClusters(
-        [System.ComponentModel.Description("Prefer each cluster's growable zone when choosing the repaint (default true).")] bool preferGrowableZone = true,
-        [System.ComponentModel.Description("Validate only, do not repair (default false).")] bool dryRun = false,
-        CancellationToken cancellationToken = default)
-        => await Post("/commands/repair-zone-clusters", new Dictionary<string, object?>
-        {
-            ["preferGrowableZone"] = preferGrowableZone,
-            ["dryRun"] = dryRun,
-        }, cancellationToken).ConfigureAwait(false);
-
-    [System.ComponentModel.Description("POST /commands/disable-blocked-assets. Disable the broken 'Block Services - ...' asset family so they stop spawning permanently.")]
-    [McpServerTool(Name = "city_disable_blocked_assets", Title = "Disable Blocked Assets")]
-    public Task<JsonNode?> CityDisableBlockedAssets(CancellationToken cancellationToken)
-        => Post("/commands/disable-blocked-assets", new Dictionary<string, object?>(), cancellationToken);
-
-    [System.ComponentModel.Description("POST /commands/batch. Run up to 32 commands in sequence on one simulation tick. Each command is a JSON object with a 'type' ('build-road' or 'set-zone') plus its fields. Missing dryRun defaults to true unless dryRun=false is passed. stopOnError defaults to true.")]
-    [McpServerTool(Name = "city_batch", Title = "Batch Commands")]
-    public async Task<JsonNode?> CityBatch(
-        [System.ComponentModel.Description("JSON array of command objects, e.g. '[{\"type\":\"build-road\",\"roadPrefab\":\"Basic Road\",\"start\":{\"x\":1,\"z\":2},\"end\":{\"x\":3,\"z\":4}}]'. Each also accepts \"type\":\"set-zone\".")] string commandsJson,
-        [System.ComponentModel.Description("Stop the batch at the first failure (default true).")] bool stopOnError = true,
-        [System.ComponentModel.Description("Default dryRun for commands that do not set their own (default true).")] bool dryRun = true,
-        CancellationToken cancellationToken = default)
-    {
-        var commands = JsonNode.Parse(commandsJson);
-        return await Post("/commands/batch", new Dictionary<string, object?>
-        {
-            ["commands"] = commands,
-            ["stopOnError"] = stopOnError,
-            ["dryRun"] = dryRun,
-        }, cancellationToken).ConfigureAwait(false);
-    }
-
     // ------------------------------------------------------------- passthrough
 
-    [System.ComponentModel.Description("Raw passthrough to ANY bridge endpoint, for cases where no dedicated tool exists (e.g. the POST /commands/build-network alias of build-road, or an endpoint added after this server was built). Endpoint list: docs/04-api-reference.md. Returns the bridge response as-is.")]
+    [System.ComponentModel.Description("Raw passthrough for anything with no dedicated tool. GET reaches any endpoint (endpoint list: docs/04-api-reference.md). POST is restricted to the office allowlist: /commands/set-simulation-speed, set-tax-rate, set-budget, set-policy, set-building-active, transport-line, district, save. The build endpoints (build-road, set-zone, place-building, bulldoze, batch, ...) are deliberately NOT reachable — spatial work is done with the cursor through the game's own UI.")]
     [McpServerTool(Name = "city_request", Title = "Raw Bridge Request")]
     public async Task<JsonNode?> CityRequest(
         [System.ComponentModel.Description("HTTP method: 'GET' or 'POST'.")] string method,
-        [System.ComponentModel.Description("Path starting with '/', e.g. '/state/summary' or '/commands/build-network'. Query string allowed on GET.")] string path,
+        [System.ComponentModel.Description("Path starting with '/', e.g. '/state/summary'. Query string allowed on GET.")] string path,
         [System.ComponentModel.Description("JSON body string for POST, e.g. '{\"speed\":2,\"paused\":false}'. Ignored on GET.")] string? jsonBody = null,
         CancellationToken cancellationToken = default)
     {
@@ -606,12 +447,40 @@ public sealed class CityTools
 
         if (normalized == "POST")
         {
+            string cleanPath = path.Split('?')[0];
+            if (!OfficeEndpoints.Contains(cleanPath))
+            {
+                return new JsonObject
+                {
+                    ["ok"] = false,
+                    ["error"] = $"POST '{cleanPath}' is not on the office allowlist",
+                    ["allowed"] = new JsonArray(OfficeEndpoints.Select(e => (JsonNode)e).ToArray()),
+                    ["hint"] = "Spatial work (roads, zones, buildings, bulldozing) is done with the cursor through the game's own UI, not through this server.",
+                };
+            }
             JsonNode? body = string.IsNullOrWhiteSpace(jsonBody) ? new JsonObject() : JsonNode.Parse(jsonBody);
             return await Post(path, body, cancellationToken).ConfigureAwait(false);
         }
 
         return await Get(path, cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// The office allowlist for <see cref="CityRequest"/> POSTs. Reads stay open for
+    /// anything; mutations are limited to the non-spatial levers this server already
+    /// exposes as dedicated tools, so a raw call can never reach the build endpoints.
+    /// </summary>
+    private static readonly string[] OfficeEndpoints =
+    [
+        "/commands/set-simulation-speed",
+        "/commands/set-tax-rate",
+        "/commands/set-budget",
+        "/commands/set-policy",
+        "/commands/set-building-active",
+        "/commands/transport-line",
+        "/commands/district",
+        "/commands/save",
+    ];
 
     // ------------------------------------------------------------- internals
 

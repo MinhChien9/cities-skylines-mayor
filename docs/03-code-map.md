@@ -115,53 +115,50 @@ C#, .NET 10, `ModelContextProtocol` 2.4.0. Namespace `Cs1Mayor.Mcp`.
 | File | Lines | Owns |
 |------|-------|------|
 | `Program.cs` | 67 | Host setup, the stdio transport, and the operating instructions sent to the agent. |
-| `CityTools.cs` | ~609 | The raw tools — one per bridge endpoint, plus `city_request`. Each is a thin relay of one HTTP call. |
+| `CityTools.cs` | ~660 | The office tools — every read plus `city_overview`, the non-spatial levers, and the allowlisted `city_request`. Each is a thin relay of HTTP calls. |
 | `BridgeClient.cs` | 181 | The HTTP client, the error translation, and body truncation so errors stay small in the agent's context. |
 
-### The tool surface (one tool per endpoint)
+### The tool surface (the mayor's office)
 
 | Tool | Bridge call |
 |------|-------------|
 | `city_health` | `/health` |
 | `city_threads` | `/debug/threads` |
+| `city_overview` | `/state/summary` + `/demand` + `/economy` + `/problems` + `/chirps` in one call |
 | `city_summary` · `city_demand` · `city_problems` · `city_chirps` | `/state/summary` · `/demand` · `/problems` · `/chirps` |
-| `city_zones` · `city_economy` · `city_facilities` · `city_growables` · `city_networks` | the matching `/state/*` read |
+| `city_zones` · `city_economy` · `city_budgets` · `city_policies` · `city_facilities` · `city_growables` · `city_networks` | the matching `/state/*` read |
 | `city_road_anomalies` · `city_building_anomalies` · `city_zone_anomalies` | the matching `/state/*-anomalies` read |
-| `city_external_connections` · `city_saves` | `/state/external-connections` · `/state/saves` |
-| `city_building_prefabs` · `city_road_prefabs` · `city_network_prefabs` | `/prefabs/buildings` · `/roads` · `/networks` |
-| `city_build_road` | `POST /commands/build-road` |
-| `city_zone` | `POST /commands/set-zone` |
-| `city_place_building` | `POST /commands/place-building` |
-| `city_move_building` | `POST /commands/move-building` |
-| `city_set_building_active` | `POST /commands/set-building-active` |
-| `city_bulldoze` | `POST /commands/bulldoze` |
+| `city_external_connections` · `city_saves` · `city_capabilities` · `city_districts` · `city_transport` · `city_transport_prefabs` | the matching `/state/*` / `/prefabs/*` read |
 | `city_set_simulation_speed` | `POST /commands/set-simulation-speed` |
 | `city_set_tax_rate` | `POST /commands/set-tax-rate` |
+| `city_set_budget` | `POST /commands/set-budget` |
+| `city_set_policy` | `POST /commands/set-policy` |
+| `city_set_building_active` | `POST /commands/set-building-active` |
+| `city_transport_line` (activate / rename / set-vehicle / remove-stop) | `POST /commands/transport-line` |
+| `city_district` (rename / specialize / release / state) | `POST /commands/district` |
 | `city_save` | `POST /commands/save` |
-| `city_repair_zones_to_growables` | `POST /commands/repair-zones-to-growables` |
-| `city_repair_zone_clusters` | `POST /commands/repair-zone-clusters` |
-| `city_disable_blocked_assets` | `POST /commands/disable-blocked-assets` |
-| `city_batch` | `POST /commands/batch` |
-| `city_request` | any endpoint — raw GET/POST passthrough |
+| `city_request` | GET any endpoint; POST only the office allowlist |
 
-Reads and writes are separate tools so the agent never mutates the city when it only
-wanted information.
+The **build endpoints are deliberately not tools**: roads, zones, buildings,
+bulldozing, stop placement and district painting are spatial work the agent does with
+its cursor through the game's own UI (see `AGENTS.md`). The bridge keeps the endpoints
+([`04-api-reference.md`](04-api-reference.md)) — they are just not agent-reachable.
 
 ### The future `mcp-server/` layout
 
-No files are planned beyond what exists: a new bridge endpoint only needs a new thin
+No files are planned beyond what exists: a new **read** endpoint only needs a new thin
 tool in `CityTools.cs` — and `city_request` already reaches it before that tool lands.
 
 | File | Owns |
 |------|------|
-| `CityTools.cs` | grows with the bridge: one tool per new endpoint |
-| `src/Dispatch/MainThreadQueue.cs` (bridge) | Render-only work (camera framing, screenshot capture). It may not mutate city state. The one named exception to the thread rule. |
+| `CityTools.cs` | grows with the bridge: one tool per new read endpoint |
+| `src/Dispatch/MainThreadQueue.cs` (bridge) | Render-only work: camera framing and the world→screen projection (P2). It may not mutate city state. The one named exception to the thread rule. |
 
 And the bridge gains one named exception to the thread rule:
 
 | File | Owns |
 |------|------|
-| `src/Dispatch/MainThreadQueue.cs` | Render-only work (camera framing, screenshot capture). It may not mutate city state. |
+| `src/Dispatch/MainThreadQueue.cs` | Render-only work: camera framing, projection. It may not mutate city state. |
 
 ---
 

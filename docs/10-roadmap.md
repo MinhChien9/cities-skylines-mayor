@@ -1,8 +1,21 @@
 # Roadmap
 
-The product is the **command surface**: every action the game can perform is one bridge
-endpoint, exposed to the agent as one raw MCP tool. The master table — and the unlocked
-"next releases" below in table form — lives in [`12-command-surface.md`](12-command-surface.md).
+**The pivot (2026-11-11):** the API-building experiment is over — an agent building
+roads/zones/buildings blind, by coordinate, always produced ugly or failing results,
+because the bridge skips the validation and visual judgement the game's own UI tools
+provide. The product is now the **mayor's office model**:
+
+- The MCP server is the agent's **office**: it sees every stat (so the agent never
+  opens an in-game info panel) and controls every non-spatial lever (clock, taxes,
+  budgets, policies, saves, line/district management).
+- The agent's **cursor** (its CUA channel, driving the game window) does all spatial
+  work — roads, zones, buildings, bulldozing, transit lines, district painting —
+  through the game's own UI tools, with the clock paused.
+- `city_request` POSTs are allowlisted to the office endpoints; the build endpoints
+  stay in the bridge for completeness but are not agent-reachable.
+
+`AGENTS.md` is the operating manual for this model. The sections below describe the
+bridge work, which continues — the office just reads more of it now.
 
 ## Done
 
@@ -14,12 +27,15 @@ endpoint, exposed to the agent as one raw MCP tool. The master table — and the
       thread; the upstream's reflection bypass and `CommandQueue` are deleted
 - [x] **`/debug/threads`** — runtime proof of which thread executes commands
 - [x] **MCP server** — C# / .NET 10, `ModelContextProtocol` 2.4.0, stdio
-- [x] **Raw 1:1 tool surface** — 34 tools, one per bridge endpoint, each relaying one
-      HTTP call with no server-side logic; `city_request` reaches *any* endpoint, so new
-      bridge work is agent-callable before a dedicated tool exists
+- [x] **Raw 1:1 tool surface** — one tool per bridge endpoint, each relaying one
+      HTTP call with no server-side logic *(superseded — see the pivot above: the
+      surface is now the 32-tool office, and build endpoints are cursor-only)*
+- [x] **Office tool surface** — 32 tools: every read plus `city_overview` (the pulse
+      in one call), the non-spatial levers, and a POST-allowlisted `city_request`.
+      Build tools removed — spatial work is the cursor's (CUA)
 - [x] **Protocol smoke test** — initialize → tools/list → tools/call verified
 - [x] **Knowledge base** — `docs/05-game-mechanics.md`, `docs/06-expansions.md`
-- [x] **Agent operating manual** — `AGENTS.md` (raw tools; decisions are the agent's)
+- [x] **Agent operating manual** — `AGENTS.md` (the office/cursor division of labor)
 - [x] **Documentation** — architecture, API reference, verification, opencode setup
 - [x] **Project structure** — `src/` split into `Bridge` / `Dispatch` / `Commands` / `State` /
       `Support`; `GameState.cs` split into focused collectors; HTTP types and the route
@@ -73,11 +89,68 @@ Two real bugs were found by this phase and fixed — see
 - [x] Agent can call the read tools and get real data
 - [x] Agent can place a road and verify it
 
-## Next — full command surface
+## Next — the office's missing senses
 
-Grouped by bridge release, because **every bridge change costs a game restart**. The
-verified API signatures for every row are in [`12-command-surface.md`](12-command-surface.md).
-Each release also adds its MCP tools (or relies on `city_request` in the interim).
+The new priority is everything that lets the office replace an in-game panel or aim the
+cursor. Bridge changes are grouped per release (every bridge change costs a game
+restart). Verified API signatures for every row are in
+[`12-command-surface.md`](12-command-surface.md).
+
+### P1 — `city_overview` (MCP only, no game restart) — **done**
+
+- [x] One MCP tool returning summary + demand + economy + problems + chirps in one
+      call — the pulse, without opening a single in-game panel
+- [x] `AGENTS.md` rewritten as the operating manual for the office/cursor model
+- [x] MCP tool surface restructured: build tools removed, office levers kept,
+      `city_request` POST restricted to the office allowlist
+
+### P2 — camera + world→screen projection (bridge, one restart)
+
+The glue between office numbers and cursor clicks: the office reads a problem or
+anomaly at world `(x,z)`, frames the camera there, and converts the world point to a
+screen pixel the cursor can aim at. Without it, every spatial fix starts with the agent
+hunting through screenshots.
+
+- [ ] `POST /commands/set-camera` — frame the camera on a world position / read camera
+      state **[verified: `ICities.ICamera.SetCameraTarget` / `GetCameraPosition`]**
+      — include the user-reported ergonomics fix: disable/toggle **edge scrolling**
+      (`CameraController` reads the live `SavedBool edgeScrolling` in the game settings
+      file; toggling it needs no restart) so the camera stays put
+- [ ] `POST /commands/project-point` — world `(x,z)` → screen pixel + on-screen flag
+      (the projection must run on the **main thread**; plan it with the named
+      main-thread queue below)
+- [ ] A **named main-thread queue** in `SimulationDispatcher` — the one sanctioned
+      exception to the simulation-thread rule, for camera/projection/render only
+- [ ] MCP tools `city_camera` and `city_project`
+- [ ] **Verify**: a world point reported by `city_problems` projects to a pixel; the
+      cursor aimed at that pixel lands on the problem
+
+### P3 — load + area reads (bridge)
+
+- [ ] `POST /commands/load` — load a save **[verified: `ISerializableData.LoadGame`]**
+- [ ] `GET /state/game-areas` — unlocked map tiles from `GameAreaManager`, so the
+      office can tell the cursor where it may build *(was R7; the UI tool path already
+      does its own unlocked-tile checks, so this is now an information read, not a
+      placement guard)*
+- [ ] **Verify**: after load, the summary matches the target save
+
+### P4 — deeper reads (bridge, opportunistic)
+
+- [ ] `GET /state/progress` — current milestone, progress, unlocked `Feature`s
+      **[verified: `UnlockManager.GetCurrentMilestone`, `Unlocked(Feature)]`
+- [ ] `GET /state/resources` — ore, oil, forest, fertility per cell (where to zone
+      specialized industry) **[verified: `ICities.IResource`]** *(terrain *editing*
+      is dropped — terraforming belongs to the cursor's land tool if ever wanted)*
+- [ ] Info-view data the UI shows but the office cannot read yet: land value,
+      pollution, coverage heatmaps — read without opening the panels
+- [ ] MCP tools `city_progress`, `city_resources`
+
+*Dropped from the roadmap: `render-view` PNG capture (the CUA channel takes
+screenshots), `place-prop` / terrain editing (cursor work), `unlock-milestone` /
+`unlock-area` (cheats the office refuses), and the old R6 "UI automation fallback" —
+the cursor channel *is* the UI automation now.*
+
+## Done — bridge releases
 
 ### R0 — capture `ICities` (Tier 0)
 
@@ -186,56 +259,19 @@ read back); see `docs/07-verification.md`.
       radius 77 paints 29.5 — use radius ≥ ~100 so the full-strength core spans 2+ cells.*
 - [x] *No `ICities` district interface exists — the whole family is Tier 2.*
 
-### R4 — terrain, resources, view, load (Tier 0)
+### R4–R7 — superseded by the pivot
 
-- [ ] `POST /commands/edit-terrain` — raise / lower / flatten / smooth
-      **[verified: `ICities.ITerrain.GetHeights` / `SetHeights` / `RawToHeight`]**
-- [ ] `GET /state/resources` — ore, oil, forest, fertility per cell
-      **[verified: `ICities.IResource.GetResource` / `SetResource`]**
-- [ ] `POST /commands/render-view` — camera framing + PNG capture
-      **[verified: `ICities.ICamera.SetCameraTarget` / `GetCameraPosition`]** — should
-      also include the user-reported ergonomics fix: disable/toggle **edge scrolling**
-      (`CameraController` reads the live `SavedBool edgeScrolling` in the game settings
-      file; toggling it needs no restart) so the camera stays put for screenshots
-      *(user request 2026-11-11, scheduled after R2 wrap-up together with the area check)*
-- [ ] `POST /commands/load` — load a save **[verified: `ISerializableData.LoadGame`]**
-- [ ] A **named main-thread queue** in `SimulationDispatcher` — the one sanctioned
-      exception to the simulation-thread rule, for rendering only
-- [ ] MCP tools `city_terrain` and `city_view`
-- [ ] **Verify**: the agent looks at the image and judges it
+The old plan (terrain editing, prop placement, milestone/area unlock commands, an
+in-MCP UI-automation fallback, and placement guards on the build commands) is retired:
+- **Terrain editing, prop placement** → cursor work; the office does not build.
+- **`unlock-milestone` / `unlock-area`** → cheats; the office does not offer them.
+- **UI automation in the MCP server** → unnecessary; the agent's CUA channel drives
+  the game window natively.
+- **Placement guards on `build-road`/`place-building`** → moot for the agent (those
+  endpoints are no longer exposed); the game's own UI tools validate cursor work.
 
-### R5 — props, progress, industry (Tier 1)
-
-- [ ] `GET /prefabs/props` — the `PropInfo` catalogue
-- [ ] `POST /commands/place-prop` — `PropManager.CreateProp` **[verified]**
-- [ ] `GET /state/progress` — current milestone, progress, unlocked `Feature`s
-      **[verified: `UnlockManager.GetCurrentMilestone`, `Unlocked(Feature)]**
-- [ ] `POST /commands/unlock-milestone` / `POST /commands/unlock-area` — exposed as
-      ordinary commands (Tier 0, verified) because the server does not make judgement
-      calls; `AGENTS.md` flags them as cheats to avoid without the user's say-so
-- [ ] `GET /state/industry` — industrial buildings, their production and inputs
-- [ ] MCP tools `city_props`, `city_place_prop`, `city_progress`, `city_unlock`
-
-### R6 — UI automation fallback (tier 3)
-
-- [ ] Move the `game-ui.ps1` primitives into the MCP server (focus, click, type, key,
-      screenshot)
-- [ ] World→screen projection so the agent can aim at a world position
-- [ ] `city_ui` tool — the escape hatch for anything with no API
-- [ ] **Verify**: an agent action that only the UI can perform changes the game state
-
-### R7 — placement area validation (Tier 0, hardening) — *user-reported 2026-11-11*
-
-- [ ] `GET /state/game-areas` — unlocked map tiles from `GameAreaManager`, so the agent
-      can **check the areas before building anything**
-- [ ] `place-building` / `build-road` / `place-prop` refuse points outside unlocked tiles
-      (fail cleanly, spend nothing); `dryRun` answers "buildable **and** in-area?"
-      *(gap: the bridge calls `BuildingManager`/`NetManager` directly and skips the UI's
-      unlocked-tile check — the R2 test loop, depot and utilities were placed without any
-      area check)*
-- [ ] MCP: area read + a note on `city_place_building` / `city_build_road` descriptions
-- [ ] **Verify**: a placement in an unlocked tile passes, the same point in a locked one
-      is refused before any money moves
+What survives from those releases is folded into **P2/P3/P4** above (camera +
+projection, load + unlocked-tile read, progress/resources/heatmap reads).
 
 ## Verification discipline (stands in place of the old evaluation phase)
 
