@@ -432,6 +432,64 @@ public class CityToolsTests
     }
 
     [Fact]
+    public async Task CityCamera_posts_only_the_fields_that_were_set()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityCamera(120.5, 300.25, distance: 250, edgeScroll: false, cancellationToken: CancellationToken.None);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("/commands/set-camera", request.Path);
+        Assert.Contains("\"x\":120.5", request.Body);
+        Assert.Contains("\"z\":300.25", request.Body);
+        Assert.Contains("\"distance\":250", request.Body);
+        Assert.Contains("\"edgeScroll\":false", request.Body);
+        Assert.DoesNotContain("\"y\"", request.Body);
+        Assert.DoesNotContain("verticalAngle", request.Body);
+    }
+
+    [Fact]
+    public async Task CityCamera_without_a_target_is_a_state_read()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityCamera(cancellationToken: CancellationToken.None);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("/commands/set-camera", request.Path);
+        Assert.Equal("{}", request.Body);
+    }
+
+    [Fact]
+    public async Task CityProject_posts_the_point()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityProject(512, 768, y: 64, CancellationToken.None);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("/commands/project-point", request.Path);
+        Assert.Contains("\"x\":512", request.Body);
+        Assert.Contains("\"z\":768", request.Body);
+        Assert.Contains("\"y\":64", request.Body);
+    }
+
+    [Fact]
+    public async Task CityProject_omits_y_when_not_given()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityProject(512, 768, cancellationToken: CancellationToken.None);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.DoesNotContain("\"y\"", request.Body);
+    }
+
+    [Fact]
     public async Task CityRequest_post_allowlist_covers_every_office_tool()
     {
         // Every mutating office tool must stay reachable through the raw passthrough,
@@ -450,6 +508,8 @@ public class CityToolsTests
             "/commands/transport-line",
             "/commands/district",
             "/commands/save",
+            "/commands/set-camera",
+            "/commands/project-point",
         }, allowlist);
     }
 

@@ -1,7 +1,10 @@
 # Bridge HTTP API Reference
 
 The in-game bridge listens on **127.0.0.1:32123**. Every endpoint executes on the game's
-**simulation thread**.
+**simulation thread** — with one named exception: the camera endpoints
+(`/commands/set-camera`, `/commands/project-point`) execute on the **Unity main thread**,
+the thread that owns the camera and the renderer (see the `MainThreadQueue` class in
+`src/Dispatch/`).
 
 > **Pivot note (2026-11-11).** This document describes the *full* HTTP surface, and it
 > is still accurate. But the agent no longer reaches all of it: the MCP tools relay the
@@ -339,6 +342,8 @@ All accept a JSON body. All support `"dryRun": true` where validation is meaning
 | POST | `/commands/transport-line` | `action` (`create`\|`add-stop`\|`remove-stop`\|`activate`\|`rename`\|`set-vehicle`), plus action fields. See below. |
 | POST | `/commands/district` | `action` (`create`\|`rename`\|`paint`\|`erase`\|`specialize`\|`release`\|`state`), `layer?` (`district`\|`park`), plus action fields. See below. |
 | POST | `/commands/save` | `name` |
+| POST | `/commands/set-camera` | `x?`, `y?`, `z?`, `distance?`, `verticalAngle?`, `horizontalAngle?`, `edgeScroll?`. See below. |
+| POST | `/commands/project-point` | `x`, `z`, `y?`. See below. |
 | POST | `/commands/repair-zones-to-growables` | Repair blocks to their growable zone. |
 | POST | `/commands/repair-zone-clusters` | Repair mottled zones. `preferGrowableZone?` |
 | POST | `/commands/disable-blocked-assets` | Disable the broken "Block Services - …" prefab family. |
@@ -397,6 +402,71 @@ Every mutating action returns the live readback. A **created area is not functio
 no main gate (`functional: false`), so place the gate building to give it visitors, income or
 production. Painting does not cost money — the game's tool charges the Landscaping resource,
 not `ApplyBrush`.
+
+### `/commands/set-camera` and `/commands/project-point` — the office's eye and aiming hand
+
+The glue between office numbers and cursor clicks. Both run on the **Unity main thread**
+(the camera and the renderer are Unity objects; city state stays on the simulation thread).
+
+**Which camera:** `ICities.ICamera` (`IManagers.camera` → `CameraWrapper`) turned out to
+drive the game's *cinematic* camera — framing through it changes nothing on screen
+(verified live 2026-11-11). The camera the cursor sees is **`CameraController`**, the free
+camera, whose state is private fields: `m_targetPosition` / `m_currentPosition`,
+`m_targetAngle` / `m_currentAngle` (`Vector2`, x = vertical°, y = horizontal°),
+`m_targetSize` / `m_currentSize` (zoom distance) and the `m_*Velocity` inertia terms.
+`set-camera` writes those fields directly — snap (`instant: true`, default) or glide,
+so the office's aim is deterministic. Edge scrolling toggles live through the game's own
+`CameraController.m_edgeScrolling` `SavedBool` (no restart).
+
+`set-camera` body — every field optional:
+
+| Field | Meaning |
+|---|---|
+| `x`, `z` | World position to frame. Given together, or not at all. |
+| `y` | World height of the target (default 0 = sea level). |
+| `distance` | Camera distance to the target (default: keep current zoom; clamped 100–4000). |
+| `verticalAngle` / `horizontalAngle` | Degrees; default to the **current** framing, so re-aiming does not spin or tilt the view. |
+| `instant` | `true` (default) snaps the camera to the target the same frame; `false` lets it glide. |
+| `edgeScroll` | `true`/`false` to toggle edge scrolling — the ergonomics fix: with edge scrolling on, the camera drifts whenever the cursor touches the window edge. |
+
+With no coordinates and no `edgeScroll` the command is a pure camera-state read.
+
+```json
+{
+  "ok": true, "action": "target",
+  "requested": { "x": 240, "y": 0, "z": -40, "distance": 400, "verticalAngle": 63.2, "horizontalAngle": 45, "instant": true },
+  "camera": { "position": { "x": 240, "y": 0, "z": -40 },
+              "target": { "x": 240, "y": 0, "z": -40 },
+              "angle": { "vertical": 63.2, "horizontal": 45 },
+              "distance": 400,
+              "edgeScrolling": false },
+  "screen": { "width": 1920, "height": 1080 },
+  "note": "The camera snapped to the target; the projection is valid immediately."
+}
+```
+
+`project-point` body: `x`, `z` (required), `y` (optional, default 0).
+
+```json
+{
+  "ok": true,
+  "point": { "x": 240, "y": 0, "z": -40 },
+  "unity": { "x": 959.8, "y": 540.2, "z": 388.1, "inFront": true },
+  "screen": { "width": 1920, "height": 1080, "onScreen": true },
+  "window": { "x": 0, "y": 0, "width": 1920, "height": 1040, "known": true },
+  "client": { "x": 959.8, "y": 499.8 },
+  "cursor": { "x": 959.8, "y": 499.8 },
+  "note": "cursor is absolute desktop pixels, origin top-left, ready for a CUA click; re-project after every camera move."
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `unity` | The raw `Camera.WorldToScreenPoint` — origin **bottom-left** of the game window, `z` = distance in front of the camera. |
+| `window` | The game window's client rectangle on the desktop (`known: false` when the OS would not tell). |
+| `client` | The point in window pixels, origin top-left. |
+| `cursor` | **The one to click** — absolute desktop pixels, origin top-left of the primary monitor. |
+| `onScreen` | In front of the camera and inside the game window. |
 
 ### Examples
 
@@ -458,6 +528,24 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/district `
 
 # 3. confirm from the grid, not from the paint response
 Invoke-RestMethod http://127.0.0.1:32123/state/districts
+```
+
+**Aim the cursor at a problem (frame → project → click):**
+
+```powershell
+# 1. read a problem's world position from the office
+$problem = (Invoke-RestMethod http://127.0.0.1:32123/state/problems).items[0]
+
+# 2. frame the camera on it (and stop edge scrolling from drifting the view)
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/set-camera `
+  -Body ('{"x":' + $problem.position.x + ',"z":' + $problem.position.z + ',"edgeScroll":false}') `
+  -ContentType "application/json"
+
+# 3. project the point to cursor pixels (wait a beat for the camera to settle first)
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/project-point `
+  -Body ('{"x":' + $problem.position.x + ',"z":' + $problem.position.z + '}') `
+  -ContentType "application/json"
+# → cursor: { x: ..., y: ... } — the CUA click target
 ```
 
 **Place a building:**

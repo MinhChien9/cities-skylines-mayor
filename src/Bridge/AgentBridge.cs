@@ -9,6 +9,7 @@ namespace SkylinesAgentBridge
     {
         private static readonly AgentBridge singleton = new AgentBridge();
         private readonly SimulationDispatcher dispatcher = new SimulationDispatcher();
+        private readonly MainThreadQueue mainThreadQueue = new MainThreadQueue();
         private ApiServer server;
         private bool levelLoaded;
         private bool started;
@@ -58,6 +59,17 @@ namespace SkylinesAgentBridge
         public SimulationDispatcher Dispatcher
         {
             get { return dispatcher; }
+        }
+
+        /// <summary>
+        /// The render-only queue drained on the Unity main thread. This is the ONE
+        /// sanctioned exception to the simulation-thread rule — camera framing and
+        /// world→screen projection only; city state still goes through
+        /// <see cref="Dispatcher"/>.
+        /// </summary>
+        public MainThreadQueue MainThreadQueue
+        {
+            get { return mainThreadQueue; }
         }
 
         /// <summary>
@@ -157,6 +169,7 @@ namespace SkylinesAgentBridge
         public void PumpSimulationQueue(float realTimeDelta)
         {
             dispatcher.Pump();
+            mainThreadQueue.Pump();
             AgentBridgeNotifier.Update(realTimeDelta);
         }
     }

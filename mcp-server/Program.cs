@@ -49,9 +49,12 @@ const string Instructions = """
 
     - city_threads is the go/no-go gate: if runsOnSimulationThread is false, tell the
       user and stop.
+    - Aiming the cursor: city_camera frames the camera on a world point (from
+      city_problems or an anomaly read), then city_project turns a world point into
+      desktop pixels for the CUA click. Re-project after every camera move.
     - city_request GETs any bridge endpoint (docs/04-api-reference.md has the list);
       POST only reaches the office allowlist (policies, budgets, taxes, pause, save,
-      line/district management, building active).
+      line/district management, building active, camera, projection).
     """;
 
 builder.Services

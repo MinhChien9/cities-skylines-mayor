@@ -88,13 +88,13 @@ verified by re-reading state afterwards.
 
 ---
 
-## 1b. Automated checks — ✅ 54 TESTS PASSING
+## 1b. Automated checks — ✅ 73 TESTS PASSING
 
 These need no game running:
 
 ```powershell
-dotnet test .\tests\Cs1Mayor.Mcp.Tests\Cs1Mayor.Mcp.Tests.csproj   # 54 xunit tests
-python .\scripts\smoke-test-mcp.py   # MCP protocol handshake
+dotnet test .\tests\Cs1Mayor.Mcp.Tests\Cs1Mayor.Mcp.Tests.csproj   # 73 xunit tests
+python .\scripts\smoke-test-mcp.py   # MCP protocol handshake (34 tools)
 python .\scripts\check-api-docs.py  # API reference matches the route table
 ```
 
@@ -253,6 +253,34 @@ achievements. Unpausing this city requires an income source or a fresh map.
 3. `TransportLine` is a struct — mutating calls (`AddStop`/`RemoveStop`/`SetActive`)
    must run on `m_lines.m_buffer[line]` in place; reads on a copy are fine. This bug
    was caught live (stops counted in `NetManager` but never linked into the chain).
+
+## 1g. P2 verification — camera & projection — ✅ LIVE RUN DONE 2026-11-11
+
+*(Bridge build with the named main-thread queue; sandbox city `P2-pre-restart` loaded
+fresh after a restart, build 4704, thread gate `runsOnSimulationThread:true` passed.
+Nothing city-state changed — the camera is render-only.)*
+
+| Check | Result |
+|---|---|
+| Main-thread queue | ✅ `/debug/threads` reports `mainThreadJobsCompleted: 2`, `mainThreadJobsFailed: 0`, `mainThreadLastJobThreadId: 1` — the Unity main thread, ≠ `simulationThreadId: 2`. The named exception is proven, and the simulation-thread gate still passes. |
+| Camera state read | ✅ `POST /commands/set-camera` `{}` → `action:"state"` with the free camera's position, target, angle (vertical/horizontal), distance, edge-scrolling state and screen size. |
+| Edge scrolling toggle | ✅ `edgeScroll:true` → readback `true`; `edgeScroll:false` → `false`. The `SavedBool` **persists across restarts** (it was still `false` after the save/reload cycle). |
+| Frame a world point | ✅ `set-camera {x:-1290, y:114, z:-20, distance:250}` (the wind turbine read from `/state/facilities`) → snap: `position == target == (-1290, 114, -20)`, and the screenshot shows the turbine dead centre. |
+| Project a world point | ✅ `project-point {x:-1290, y:114, z:-20}` → Unity `(800, 494.35)` (dead centre horizontally on a 1600×900 screen), `inFront:true`, `onScreen:true`, client rect `(480, 281) 1600×900` resolved via `EnumWindows`, **cursor pixel `(1280, 686)`**. |
+| Cursor aim proof | ✅ a real CUA click at the projected desktop pixel `(1280, 686)` landed **on the turbine** — the game's selection circle appeared around it. The full office→frame→project→click chain works. |
+| Save integrity | ✅ nothing city-state was touched; the city reload diff is trivially clean. |
+
+### Bugs found and fixed during this verification
+
+1. **`ICities.ICamera` aims the wrong camera.** The first build framed through
+   `IManagers.camera` (`CameraWrapper`) — verified live to drive the
+   `CinematicCameraController` (photo mode). A `SetCameraTarget` through it changed
+   nothing on screen. Fix: write `CameraController`'s (free camera) private target
+   fields directly — see the note in `12-command-surface.md` §4.10.
+2. **`Process.MainWindowHandle` returns 0 for Cities.exe.** The first projection run
+   reported `window.known:false` with no cursor coordinates. Fix: `EnumWindows` scan
+   for a visible top-level window of the current process in
+   `Support/WindowGeometry.cs` (the `MainWindowHandle` fallback stays).
 
 ---
 
