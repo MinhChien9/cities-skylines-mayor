@@ -155,7 +155,7 @@ C# / .NET 10, `ModelContextProtocol` 2.4.0, stdio transport.
 |---|---|
 | `Program.cs` | DI setup, stdio transport, server instructions. |
 | `BridgeClient.cs` | HTTP client for the bridge, with agent-friendly error wrapping. |
-| `CityTools.cs` | The 33 raw tools, one per endpoint. |
+| `CityTools.cs` | The 32 office tools: reads, `city_overview`, the office levers, the allowlisted passthrough. |
 
 ### `tests/` — automated checks
 
@@ -167,33 +167,42 @@ it can only be verified against a running game, which is what
 
 ## Tool surface
 
-Thirty-three tools, deliberately **raw**: one per bridge endpoint (one for `/health`, one
-for `/debug/threads`, one per state read, one per command, one per prefab catalogue), plus
-`city_request`, a passthrough to *any* endpoint. Every tool relays a single HTTP call and
-returns the bridge's response untouched — no merging, no orchestration. The server adds no
-decision logic; what to do with the data is the agent's call. The master tool list lives
-in [`12-command-surface.md`](12-command-surface.md).
+Thirty-two tools — the mayor's **office**: all reads, plus the non-spatial levers
+(clock, taxes, budgets, policies, saves, line and district management) and
+`city_overview`, a composite of the five pulse reads in one call. Every tool relays
+HTTP calls and returns the bridge's responses — no decision logic in the server; what
+to do with the data is the agent's call.
+
+**What is deliberately absent: the build tools.** Roads, zones, buildings, bulldozing,
+transit-stop placement and district painting are spatial work. Doing them blind, by
+coordinate, always produced ugly or failing results, because the API skips the
+validation and visual judgement the game's own UI tools provide. They are now the
+agent's cursor work (via its CUA channel), and `city_request`'s POST allowlist refuses
+the build endpoints so the division cannot leak. The bridge keeps the endpoints (see
+[`04-api-reference.md`](04-api-reference.md)); they are just not agent-exposed. The
+master tool list lives in [`12-command-surface.md`](12-command-surface.md).
 
 ### Reads
 
 | Tool | Endpoint |
 |---|---|
 | `city_health`, `city_threads` | `/health`, `/debug/threads` |
+| `city_overview` | `/state/summary` + `/demand` + `/economy` + `/problems` + `/chirps` in one call |
 | `city_summary`, `city_demand`, `city_problems`, `city_chirps` | `/state/*` |
 | `city_zones`, `city_economy`, `city_facilities`, `city_growables`, `city_networks` | `/state/*` |
 | `city_road_anomalies`, `city_building_anomalies`, `city_zone_anomalies` | `/state/*-anomalies` |
-| `city_external_connections`, `city_saves` | `/state/*` |
-| `city_building_prefabs`, `city_road_prefabs`, `city_network_prefabs` | `/prefabs/*` |
+| `city_external_connections`, `city_saves`, `city_capabilities` | `/state/*` |
+| `city_districts`, `city_transport`, `city_transport_prefabs` | `/state/districts`, `/state/transport`, `/prefabs/transport` |
 
-### Commands
+### Office commands
 
 | Tool | Endpoint |
 |---|---|
-| `city_build_road`, `city_zone`, `city_place_building`, `city_move_building` | `/commands/*` |
-| `city_set_building_active`, `city_bulldoze` | `/commands/*` |
-| `city_set_simulation_speed`, `city_set_tax_rate`, `city_save` | `/commands/*` |
-| `city_repair_zones_to_growables`, `city_repair_zone_clusters`, `city_disable_blocked_assets`, `city_batch` | `/commands/*` |
-| `city_request` | any endpoint (GET/POST passthrough) |
+| `city_set_simulation_speed`, `city_set_tax_rate`, `city_set_budget`, `city_set_policy` | `/commands/*` |
+| `city_set_building_active`, `city_save` | `/commands/*` |
+| `city_transport_line` (activate / rename / set-vehicle / remove-stop) | `/commands/transport-line` |
+| `city_district` (rename / specialize / release / state) | `/commands/district` |
+| `city_request` | GET any endpoint; POST office-allowlisted endpoints only |
 
 ### Why HTTP and not a raw socket
 
@@ -222,7 +231,7 @@ opencode  ──MCP over stdio──▶  mcp-server/
 
 | Addition | Where it lives | Why it is there |
 |---|---|---|
-| **Raw tool per endpoint** | MCP server | One tool per bridge endpoint, response passed through untouched. A new bridge endpoint is agent-callable immediately via `city_request`. |
+| **Office tool surface** | MCP server | All reads plus the non-spatial levers; `city_request` GETs any endpoint and POSTs only the office allowlist. Spatial work stays with the agent's cursor (CUA), not the server. |
 | **Main-thread render queue** | In the bridge | The one sanctioned exception to the thread rule — screenshots. It may not mutate city state. |
 
 The rule in this document does not change: **all game-state reads and writes stay on the

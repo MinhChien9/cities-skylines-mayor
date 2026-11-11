@@ -1,5 +1,14 @@
 # Command Surface — every action in the game, reachable by the agent
 
+> **Pivot (2026-11-11).** The table below still describes the *bridge* surface, and the
+> research remains valid. But the agent-facing product is now the **mayor's office
+> model**: the MCP server exposes only reads and non-spatial levers (`city_request`
+> POSTs are allowlisted), and every **spatial** action — roads, zones, buildings,
+> bulldozing, transit-stop placement, district painting — is done by the agent's
+> cursor through the game's own UI (its CUA channel). Building blind by coordinate
+> always produced bad results, so those endpoints stay in the bridge but are no longer
+> agent tools. See `AGENTS.md` and `docs/10-roadmap.md`.
+
 > **Status: master table + implementation plan.** The bridge today covers roads, zoning,
 > buildings, bulldozing, saves, taxes, budgets and policies — exposed to the agent as
 > **raw 1:1 MCP tools** (`mcp-server/CityTools.cs`, one tool per
@@ -38,7 +47,7 @@ one of four routes, and the route is part of the design, not an accident.
 | **0** | **`ICities` — the game's supported modding API** | The bridge implements an extension base and receives the interface | Fast, documented, patch-stable | **Lowest** — this is the API Colossal ships for exactly this |
 | **1** | Public game API | The bridge calls `Assembly-CSharp`'s own public methods on the simulation thread | Fast, deterministic | Low — these are the APIs the game itself uses |
 | **2** | Reflection into private state | The bridge reaches a private field or method by name, as it already does for `EconomyManager.m_taxRates` | Fast, but tied to one game version | Medium — a patch can rename a field |
-| **3** | UI automation | The MCP server drives the game window with OS-level mouse and keyboard | ~1 s per action, needs the window focused | Brittle — but it is *literally what the player does* |
+| **3** | The agent's cursor (CUA) | The agent drives the game window itself — clicking the road tool, the zone brush, the district painter, exactly where the player clicks | Human-speed; needs the window focused | Brittle in *automation* terms — but it is *literally what the player does*, with all of the game's own validation for free. **After the pivot this is the primary route for spatial work, not a fallback.** |
 
 ### Tier 0 is the important discovery
 
@@ -81,23 +90,22 @@ The extension bases also give **hooks**, not just handles:
 
 ### The tier-3 escape hatch
 
-`scripts/game-ui.ps1` already solves the hard parts of driving CS1's window:
+**After the pivot, the agent's own CUA channel is tier 3** — it drives the game window
+directly, so `scripts/game-ui.ps1` is no longer pulled into the MCP server. The
+script's findings are still the operating knowledge for cursor play:
 
 - Unity renders its whole UI into a texture, so the Windows accessibility tree is
   useless — input must be injected at the OS level.
-- Windows refuses `SetForegroundWindow` from a background process; the script holds
-  **ALT** while calling it.
-- Screenshot pixels are scaled relative to the real window, and the script maps them
-  back.
+- Windows refuses `SetForegroundWindow` from a background process; hold **ALT** while
+  focusing the window.
+- Screenshot pixels are scaled relative to the real window; map them back before
+  aiming.
 
-The MCP server runs on the player's machine, so it can call that machinery directly.
-The MCP client calls a tool; the tool clicks the same button the player would click.
 **This is what turns parity from aspirational into enforceable**: if no API exists, the
-feature is still reachable.
-
-Tier 3 is a fallback, never the first choice. It is slow, it needs the window focused
-(it steals focus from whatever the user is doing), and it cannot be reasoned about
-numerically — which is why the bridge's numeric state endpoints exist at all.
+agent still plays the feature — with the game's own snapping, validation and previews.
+Tier 3 used to be "a fallback, never the first choice"; for spatial work it is now the
+*first* choice, because it is the only route with eyes. What remains a fallback rule:
+anything numeric stays in the office, which is why the bridge's state endpoints exist.
 
 ### Choosing a tier
 
@@ -114,18 +122,18 @@ Is it a UI-driven feature?            → Tier 3
 
 | # | Capability | Tier | Bridge endpoint | MCP tool | Difficulty |
 |---|---|---|---|---|---|
-| 1 | Roads, zoning, buildings, bulldoze | **1** (today) | `/commands/*` | `city_build_road`, `city_zone`, `city_place_building`, `city_bulldoze` | Done |
+| 1 | Roads, zoning, buildings, bulldoze | **1** (built) + **3** (the agent's route now) | `/commands/*` — *built, kept in the bridge, **not agent-exposed*** | *none* — the cursor does it through the game's own tools | Done; **de-exposed** at the pivot |
 | 2 | **Service budgets** | **1** | `GET /state/budgets`, `POST /commands/set-budget` | `city_budgets`, `city_set_budget` | Done ✅ |
 | 3 | **Policies** (127) | **1** | `GET /state/policies`, `POST /commands/set-policy` | `city_policies`, `city_set_policy` | Done ✅ |
 | 4 | **Transport lines** | **1** + **3** | `GET /state/transport`, `GET /prefabs/transport`, `POST /commands/transport-line` | `city_transport`, `city_transport_prefabs`, `city_transport_line` | Done ✅ (built — R2; live ridership run pending) |
 | 5 | **Districts** (create / paint / specialise) | **2** | `GET /state/districts`, `POST /commands/district` | `city_districts`, `city_district` | Done ✅ (built — R3; live run pending) |
 | 6 | **Special areas** (airport / campus / pedestrian / industry) | **2** | `GET /state/districts`, `POST /commands/district` | `city_districts`, `city_district` | Done ✅ (built — R3; same command, `layer:"park"`) |
 | 7 | **Milestones & map tiles** | **0** | `GET /state/progress`, `POST /commands/unlock-milestone`, `POST /commands/unlock-area` | `city_progress`, `city_unlock` | Easy to build; **a cheat** (§4.6) |
-| 8 | **Props & landscaping** (trees, benches, lamps) | **1** | `GET /prefabs/props`, `POST /commands/place-prop` | `city_props`, `city_place_prop` | Easy |
-| 9 | **Parks & plazas** | **1** (they are buildings) | `POST /commands/place-building` | `city_place_building` | Done |
+| 8 | **Props & landscaping** (trees, benches, lamps) | **1** | `GET /prefabs/props`, `POST /commands/place-prop` | *none* — cursor work | Built? no; **cursor route** |
+| 9 | **Parks & plazas** | **1** (they are buildings) | `POST /commands/place-building` | *none* — cursor work | **Cursor route** |
 | 10 | **Industry chains & cargo** | **1** + **2** | `GET /state/industry`, cargo transport lines | `city_industry` | Medium |
-| 11 | **Terrain edits & natural resources** | **0** | `POST /commands/edit-terrain`, `GET /state/resources` | `city_terrain` | Easy |
-| 12 | **Screenshot & camera** | **0** | `POST /commands/render-view` | `city_view` | Easy |
+| 11 | **Terrain edits & natural resources** | **0** | `POST /commands/edit-terrain` *(dropped)*, `GET /state/resources` | `city_resources` (planned P4); terrain editing → cursor | Read: Easy |
+| 12 | **Screenshot & camera** | **0** | `POST /commands/set-camera` (+ world→screen projection) | `city_camera`, `city_project` (planned P2) — PNG capture dropped, the CUA channel takes screenshots | Easy; **top priority now** |
 | 13 | **Save & load, rename** | **0** + **1** | `/state/saves`, `POST /commands/save`, `POST /commands/load` | `city_save`, `city_load` | Easy (load pending §7) |
 | 14 | **Loans & tariff panels** | **1** + **2** | `POST /commands/set-loan` | `city_set_loan` | Medium |
 | 15 | **Game speed / pause / simulation clock** | **0** + **1** | `POST /commands/set-simulation-speed` | `city_set_simulation_speed` | Done |
@@ -523,6 +531,12 @@ Renaming and duplicating a `.crp` are plain file operations.
 
 ### 4.12 Building placement — Tier 0 (alternative to the existing command)
 
+> **Pivot note:** the bridge keeps `/commands/place-building` and `place-building`
+> works, but the agent no longer places buildings through it — blind placement was the
+> main source of bad results. The cursor's building tool does the validation. This
+> `IBuilding` surface stays research-complete in case the office ever needs a
+> read-only or diagnostic use of it.
+
 ```
 IBuilding.BuildingTypes() → IEnumerable<String>
 IBuilding.CreateBuilding(Vector3 position, Single angle, String buildingType) → UInt16
@@ -560,10 +574,11 @@ Two consequences:
 
 1. **Batch bridge work.** A feature that needs three endpoints should land in one
    bridge build, not three. The matrix rows are grouped into *bridge releases* below.
-2. **New endpoints are instantly agent-reachable.** The MCP server ships a raw
-   passthrough (`city_request`), so a bridge endpoint added today is callable by the
-   agent today; the dedicated 1:1 tool only adds discoverability. No server-side gate
-   sits between a new endpoint and the agent.
+2. **New endpoints are instantly agent-readable.** `city_request` GETs any bridge
+   endpoint, so a new read endpoint is callable by the agent today. **POSTs are
+   restricted to the office allowlist** (clock, taxes, budgets, policies, saves,
+   line/district/building-active management) — the build endpoints stay in the bridge
+   but the agent reaches them only with its cursor.
 
 ### Proposed bridge releases
 
@@ -575,7 +590,7 @@ Two consequences:
 | **R3 — districts & areas** | `/state/districts`, `district` (create / paint / specialise / release) | One implementation covers four feature families (§4.4 + §4.5) — **built** |
 | **R4 — terrain, resources, view, load** | `edit-terrain`, `/state/resources`, `render-view`, `load` | All Tier 0 — one implementation covers all four |
 | **R5 — props, progress, industry** | `/prefabs/props`, `place-prop`, `/state/progress`, `unlock-*`, `/state/industry` | Cheap Tier 1 work, batched |
-| **R6 — UI automation fallback (tier 3)** | Move the `game-ui.ps1` primitives into the MCP server; world→screen projection | The escape hatch for whatever is left |
+| **R6 — UI automation fallback (tier 3)** | *Dropped — the agent's CUA channel is the UI automation. What survives is world→screen projection and camera control (P2 in the roadmap).* | The cursor channel replaces the scripted-clicks plan |
 
 ---
 
@@ -611,4 +626,4 @@ Every one of these follows the existing pattern in
 | Can the transport line be built by the agent *without* the UI? | Strategy A (§4.3) says yes. If `NetManager` refuses to attach a transport segment to an existing road node, strategy B becomes mandatory. The R2 live run answers this. |
 | Does `ICities` expose a transport-line interface? | No `ICities.ITransport` exists **[V]** — transport is the one big family with no supported API, which is why it stays Tier 1 + Tier 3. |
 | Does `LoadGame` work while the mod's dispatcher holds a pending job? | Must be answered before exposing `/commands/load`. The safest rule: refuse to load unless the dispatcher is idle. |
-| Should the tier-3 UI automation live in the MCP server or a helper process? | The MCP server blocks during the call, which is fine for a 1 s action. A helper would avoid blocking but adds a process to supervise. **In the server, for now.** |
+| Should the tier-3 UI automation live in the MCP server or a helper process? | **Answered by the pivot (2026-11-11): neither.** The agent's own CUA channel drives the game window; the MCP server stays the office (stats + non-spatial levers). What the office still needs from this idea is camera control and world→screen projection (P2). |

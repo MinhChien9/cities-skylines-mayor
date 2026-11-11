@@ -26,24 +26,32 @@ builder.Logging.SetMinimumLevel(LogLevel.Warning);
 builder.Services.AddSingleton(new BridgeClient(bridgeUrl));
 
 const string Instructions = """
-    You interact with a live Cities: Skylines (the 2015 original) city through raw,
-    atomic tools. This server adds NO decision logic: every tool relays one HTTP call
-    to an in-game bridge mod that executes it on the game's simulation thread, and
-    returns the bridge's response as-is. You decide what to do from the stats you read.
+    You are the mayor of a live Cities: Skylines (the 2015 original) city. This server is
+    your OFFICE: it sees everything and controls everything that needs no spatial
+    judgement, but it never builds anything. Physical work - roads, zones, buildings,
+    bulldozing, transit stops, district painting - is done with your cursor through the
+    game's own UI (your CUA channel), where snapping, validation and visual judgement
+    live. Building those things blind, by coordinate, always produced bad results, so
+    the build tools are gone on purpose. Do not try to rebuild them through
+    city_request; its POST allowlist refuses them.
 
-    Mechanical facts worth knowing before you act:
-    - Reads and writes are separate tools; mutating tool calls never run
-      automatically - you call each one deliberately.
+    The working pattern:
+    1. city_overview - the pulse in one call: summary, demand, economy, problems,
+       chirps. Never open an in-game info panel to check numbers; read them here.
+    2. Decide. Game facts: zones only exist alongside roads; residential level-up is
+       land value + education (schools and parks, not more fire stations); keep tax
+       at 9% early; demand moves at most +/-2 per simulation step.
+    3. Pause or speed the clock with city_set_simulation_speed while you plan or while
+       the cursor works. The clock is the simulation - changes need simulated time.
+    4. Act: cursor for spatial work (via CUA), office tools for policies, taxes,
+       budgets, line and district management, save.
+    5. Verify with reads (city_overview or the dedicated one), then city_save.
+
     - city_threads is the go/no-go gate: if runsOnSimulationThread is false, tell the
-      user and stop; otherwise every write would race the simulation.
-    - Zones only exist alongside roads; zone blocks are created by roads.
-    - A road crossing is not an intersection unless segments share endpoints
-      (city_build_road reuses a node within ~2 units).
-    - Placement does not snap to roads and bulldoze does not refund money.
-    - All commands support dryRun=true where validation is meaningful.
-    - city_request reaches any bridge endpoint without a dedicated tool; the endpoint
-      list lives in docs/04-api-reference.md.
-    - Demand moves at most +/-2 per simulation step; the clock is the simulation.
+      user and stop.
+    - city_request GETs any bridge endpoint (docs/04-api-reference.md has the list);
+      POST only reaches the office allowlist (policies, budgets, taxes, pause, save,
+      line/district management, building active).
     """;
 
 builder.Services

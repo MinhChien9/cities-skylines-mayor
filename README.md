@@ -1,17 +1,21 @@
 # CS1 Mayor
 
-A thin MCP server that lets an AI agent be the **mayor of a live Cities: Skylines (2015) city**.
+A thin MCP server that is the AI agent's **office** while it plays the mayor of a live
+Cities: Skylines (2015) city with its own cursor.
 
-The agent decides what to do and act — building roads, zoning land, placing services,
-setting taxes, and saving — through **raw, atomic commands**: one MCP tool per bridge
-endpoint, responses passed through untouched. The in-game bridge executes every command
-on the game's own simulation thread. The server contains no decision logic; the agent
-reasons from the stats the read endpoints return.
+The office **sees everything** — every stat the game has, in one call, without the agent
+opening a single in-game info panel — and **controls everything that needs no spatial
+judgement**: the simulation clock, taxes, budgets, policies, saves. It **never builds
+anything**. Roads, zones, buildings, bulldozing, transit lines and district painting are
+spatial work: the agent does those **with its cursor** through the game's own UI (a CUA
+/ computer-use channel), where snapping, slope checks and visual judgement live. The
+server contains no decision logic; the agent reasons from the stats the office returns.
 
 ```
-opencode / Claude Code  ──MCP stdio──▶  Cs1Mayor.Mcp (.NET 10)  ──HTTP──▶  SkylinesAgentBridge.dll (in-game)
-                                                                                 │
-                                                               Cities: Skylines 1.21.1-f9 · Unity 5.6.7f1
+opencode + CUA cursor ─┬─MCP stdio──▶ Cs1Mayor.Mcp (.NET 10) ──HTTP──▶ SkylinesAgentBridge.dll (in-game)
+  plays the city       │                                                              │
+  (hands + eyes)       └──── the office: numbers, clock, policies ────────────────────┘
+                                                       Cities: Skylines 1.21.1-f9 · Unity 5.6.7f1
 ```
 
 ---
@@ -23,15 +27,15 @@ opencode / Claude Code  ──MCP stdio──▶  Cs1Mayor.Mcp (.NET 10)  ──
 | In-game bridge mod | ✅ **Verified running in a live city** |
 | Threading fix | ✅ **Verified** — `probeThreadId == simulationThreadId`, `runsOnMainThread: false` |
 | MCP server | ✅ **Verified end-to-end** against the live game |
-| Raw 1:1 tool surface | ✅ **33 tools** — one per bridge endpoint, plus the `city_request` passthrough |
+| Tool surface | ✅ **32 office tools** — all stats, the clock, policies, taxes, budgets, saves; spatial building is the cursor's job (CUA) |
 | Knowledge base | ✅ `docs/05-game-mechanics.md`, `docs/06-expansions.md` |
 | Automated tests | ✅ 53 xunit tests over the MCP server and the bridge's JSON reader |
 | opencode wiring | ✅ `✓ cs1-mayor connected` |
 
 **Verified against a live city (10,552 citizens, 1,802 road segments):** state reads,
-road building with node reuse, bulldozing with orphan cleanup, zone painting and reverting,
-building placement, simulation speed control, and anomaly detection — all correct, and
-fully reversible. Full log in [`docs/07-verification.md`](docs/07-verification.md).
+simulation speed control, taxes, budgets, policies, transport and district management,
+and anomaly detection — all correct, and fully reversible. Full log in
+[`docs/07-verification.md`](docs/07-verification.md).
 
 ---
 
@@ -73,23 +77,24 @@ Full walkthrough, including the game path and the thread gate:
 
 ## The tools
 
-**One raw tool per bridge endpoint (33 today) plus `city_request` (a passthrough to any
-endpoint).** Each mutates the city only when you call a mutating tool; the server adds no
-logic — the agent decides what to do from the read-backs.
+**32 office tools.** All reads are one call each; `city_overview` bundles the pulse
+(summary, demand, economy, problems, chirps) so the agent never opens an in-game info
+panel. The mutating tools are the office levers only — every spatial action (roads,
+zones, buildings, bulldozing, transit stops, district painting) belongs to the cursor
+through the game's own UI, and `city_request`'s POST allowlist refuses those endpoints.
 
 | Tool | Bridge endpoint |
 |---|---|
 | `city_health` · `city_threads` | `/health` · `/debug/threads` |
+| `city_overview` | `/state/summary` + `/demand` + `/economy` + `/problems` + `/chirps` in one call |
 | `city_summary` · `city_demand` · `city_problems` · `city_chirps` · `city_zones` | `/state/summary` · `/demand` · `/problems` · `/chirps` · `/zones` |
-| `city_economy` · `city_facilities` · `city_growables` · `city_networks` | matching `/state/*` reads |
-| `city_road_anomalies` · `city_building_anomalies` · `city_zone_anomalies` | matching `/state/*-anomalies` reads |
-| `city_external_connections` · `city_saves` | `/state/external-connections` · `/state/saves` |
-| `city_building_prefabs` · `city_road_prefabs` · `city_network_prefabs` | `/prefabs/*` |
-| `city_build_road` · `city_zone` · `city_place_building` · `city_move_building` | `/commands/build-road` · `set-zone` · `place-building` · `move-building` |
-| `city_set_building_active` · `city_bulldoze` | `/commands/set-building-active` · `/commands/bulldoze` |
-| `city_set_simulation_speed` · `city_set_tax_rate` · `city_save` | `/commands/set-simulation-speed` · `set-tax-rate` · `save` |
-| `city_repair_zones_to_growables` · `city_repair_zone_clusters` · `city_disable_blocked_assets` · `city_batch` | matching `/commands/*` |
-| `city_request` | any endpoint — raw GET/POST passthrough |
+| `city_economy` · `city_budgets` · `city_policies` · `city_facilities` · `city_growables` · `city_networks` | matching `/state/*` reads |
+| `city_road_anomalies` · `city_building_anomalies` · `city_zone_anomalies` · `city_external_connections` · `city_saves` | matching `/state/*` reads |
+| `city_capabilities` · `city_districts` · `city_transport` · `city_transport_prefabs` | `/state/capabilities` · `/state/districts` · `/state/transport` · `/prefabs/transport` |
+| `city_set_simulation_speed` · `city_set_tax_rate` · `city_set_budget` · `city_set_policy` · `city_set_building_active` · `city_save` | matching `/commands/*` office levers |
+| `city_transport_line` (activate / rename / set-vehicle / remove-stop) | `/commands/transport-line` |
+| `city_district` (rename / specialize / release / state) | `/commands/district` |
+| `city_request` | GET any endpoint; POST office-allowlisted endpoints only |
 
 Full list with parameters in `mcp-server/CityTools.cs`; the plan to cover the whole game
 in [`docs/12-command-surface.md`](docs/12-command-surface.md).
@@ -148,7 +153,7 @@ cs1-mayor/
 │  ├─ Commands/               every mutation the agent can perform
 │  ├─ State/                  every read of city state, plus the anomaly detectors
 │  └─ Support/                JSON reader and the command result envelope
-├─ mcp-server/                the MCP server (C#, .NET 10) — 33 raw 1:1 tools over stdio
+├─ mcp-server/                the MCP server (C#, .NET 10) — the mayor's office, 32 tools over stdio
 ├─ tests/                     xunit tests for the MCP server and the bridge's JSON reader
 ├─ scripts/                   build, install, launch, smoke test, doc check
 ├─ docs/                      start at docs/README.md

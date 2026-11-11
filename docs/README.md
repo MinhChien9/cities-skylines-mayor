@@ -37,10 +37,12 @@ Two more files live outside this folder:
 
 ## The design in one line
 
-The MCP server is a **thin, honest relay**: one tool per bridge endpoint, raw responses
-passed through untouched, no goal state, no sessions, no decision logic. The agent
-decides what to do — and how well it decides is downstream of the *stats* the read
-endpoints expose and the knowledge in [`05-game-mechanics.md`](05-game-mechanics.md).
+The MCP server is the agent's **office**: a thin, honest relay for every stat and every
+non-spatial lever (clock, taxes, budgets, policies, saves), raw responses passed
+through untouched, no goal state, no sessions, no decision logic. It never builds —
+roads, zones, buildings, bulldozing are the agent's **cursor** work through the game's
+own UI. What the office decides is downstream of the *stats* the reads expose and the
+knowledge in [`05-game-mechanics.md`](05-game-mechanics.md).
 
 ## The three commands that prove it works
 

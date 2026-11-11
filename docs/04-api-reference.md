@@ -3,9 +3,13 @@
 The in-game bridge listens on **127.0.0.1:32123**. Every endpoint executes on the game's
 **simulation thread**.
 
-The MCP tools relay these endpoints one to one (`mcp-server/CityTools.cs`); the
-`city_request` tool is a raw passthrough to any of them, so this document is also the
-reference for what the agent can reach.
+> **Pivot note (2026-11-11).** This document describes the *full* HTTP surface, and it
+> is still accurate. But the agent no longer reaches all of it: the MCP tools relay the
+> reads and the office levers, and `city_request` GETs any endpoint but POSTs only the
+> office allowlist (clock, taxes, budgets, policies, saves, line/district/building-active
+> management). The build endpoints below (`build-road`, `set-zone`, `place-building`,
+> `bulldoze`, `batch`, ...) stay in the bridge for completeness — spatial work is done
+> by the agent's cursor through the game's own UI. See `AGENTS.md`.
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:32123/state/summary
