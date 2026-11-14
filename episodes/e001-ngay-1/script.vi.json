@@ -33,7 +33,7 @@
     },
     {
       "role": "beat",
-      "vo": "Kế hoạch B: dựng tuabin gió ngay bên sông. Có điện rồi, mà ống vẫn đứng im.",
+      "vo": "Kế hoạch B: dựng tua-bin gió ngay bên sông. Có điện rồi, mà ống vẫn đứng im.",
       "visual": {"type": "clip", "in": 204.0, "out": 228.0, "speed": 3.0},
       "source": [11, 12, 14]
     },

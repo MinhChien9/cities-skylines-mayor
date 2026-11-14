@@ -72,7 +72,7 @@ session journal written by the server.
       recording, 6 chapters, 35-entry journal, 23 timelapse frames, save
       `mayor-live-proof-1`; the mayor found and fixed the town's sewage failure)
 
-### Phase 3 — Post-production ⬅ current
+### Phase 3 — Post-production ✅
 
 - [x] Script writer: journal + stats → hook (3 s), story beats, punchline; Vietnamese
       (`post.brief` → Claude writes `episodes/<id>/script.vi.json` by
@@ -86,9 +86,11 @@ session journal written by the server.
 - [x] `ffmpeg` assembly: cut by markers, speed ramps, timelapse, 9:16 crop + 16:9 master,
       music bed, loudness normalisation (`post.edit`: voice-driven timeline, `chapter`
       visuals, generated pad ducked under the voice, −14 LUFS; e001 renders in ~20 s)
-- [ ] First pilot: a 60 s Short "AI làm thị trưởng — ngày 1"
+- [x] First pilot: a 60 s Short "AI làm thị trưởng — ngày 1" (40.9 s, 9:16 + 16:9
+      rendered; `episodes/e001-ngay-1/REVIEW.md` has the fact check, QA and the
+      **human review still to do before publishing**)
 
-### Phase 4 — Series
+### Phase 4 — Series ⬅ current
 
 - [ ] Episode format and naming, thumbnail generation, upload checklist (AI disclosure)
 - [ ] Mayor persona and running storyline across episodes
@@ -145,6 +147,9 @@ Lessons recorded so far:
   drain pipe never ran). Replace them through the validated tools.
 - A water pipe connects to a building by ending on its pipe node: aim at the building
   centre and the test pass snaps to it. A pipe ending nearby gives `WaterNotConnected`.
+- An unprimed `small` Whisper pass over the final mix is a good intelligibility check
+  (93 % on e001) but mishears Vietnamese tones; it flags words for a human ear, it does
+  not prove a TTS error.
 - OBS writes two chapters of its own into every hybrid MP4: "Start" at 0 and a trailing
   "Dummy"; post-production must skip them. `StopRecord` answers before the output
   stops, so `studio_record stop` polls until it is inactive.
