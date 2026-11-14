@@ -265,6 +265,13 @@ namespace SkylinesAgentBridge
                     return OnGameThread(delegate { return BuildingCommands.SetBuildingActive(body); });
                 });
 
+            MapPost("/commands/empty-building", "Empty a cemetery or landfill (or stop emptying it)",
+                delegate(HttpRequest request)
+                {
+                    string body = request.Body;
+                    return OnGameThread(delegate { return BuildingCommands.EmptyBuilding(body); });
+                });
+
             MapPost("/commands/disable-blocked-assets", "Disable blocked assets",
                 delegate { return OnGameThread(delegate { return AssetCommands.DisableBlockedAssets(); }); });
 

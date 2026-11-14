@@ -64,6 +64,7 @@ clownish. Your notes are the story's raw material — see
 | Zone an area | `city_zone_area` (the brush) |
 | Place / move a service building | `city_place_building`, `city_move_building` |
 | Demolish | `city_bulldoze` |
+| Empty a full cemetery or landfill | `city_empty_building` (needs crematories / incinerators to take the contents) |
 | Pause / resume / speed the clock | `city_set_simulation_speed` |
 | Change taxes, budgets, policies | `city_set_tax_rate`, `city_set_budget`, `city_set_policy` |
 | Save | `city_save` (new incrementing name) |

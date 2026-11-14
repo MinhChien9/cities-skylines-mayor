@@ -48,6 +48,7 @@ EXPECTED_TOOLS = {
     "city_transport",
     "city_transport_prefabs",
     "city_set_building_active",
+    "city_empty_building",
     "city_set_simulation_speed",
     "city_set_tax_rate",
     "city_budgets",

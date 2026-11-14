@@ -191,6 +191,10 @@ Lessons recorded so far:
   open from the start. Unlimited Money answers the game's money test with "yes", so the
   bridge let a ₡60k police HQ through with ₡30k in the bank (cash −₡27k). The bridge now
   checks the real cash itself.
+- Left alone for four game years at ~14k people, both cemeteries filled and 220
+  buildings were abandoned for uncollected dead. Crematories don't fill up; build them
+  before cemeteries are full. Full cemeteries and landfills can be emptied
+  (`city_empty_building`); the game reuses the `LandfillFull` flag for a full cemetery.
 - In this build the Water Pumping Station (`Water Intake`) is `ShorelineOrGround` and the
   `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
   pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the

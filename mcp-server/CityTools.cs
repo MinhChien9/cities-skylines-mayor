@@ -327,6 +327,18 @@ public sealed class CityTools
             ["active"] = active,
         }, cancellationToken).ConfigureAwait(false);
 
+    [System.ComponentModel.Description("POST /commands/empty-building. The info panel's 'Empty building' button: a full cemetery or landfill sends what it stores away (bodies to crematories, garbage to incinerators/other landfills) and takes nothing new while emptying. empty=false stops it. Needs somewhere for the contents to go.")]
+    [McpServerTool(Name = "city_empty_building", Title = "Empty Building")]
+    public async Task<JsonNode?> CityEmptyBuilding(
+        [System.ComponentModel.Description("Building id (a cemetery or landfill, from city_facilities).")] int id,
+        [System.ComponentModel.Description("True to start emptying (default), false to stop.")] bool empty = true,
+        CancellationToken cancellationToken = default)
+        => await Post("/commands/empty-building", new Dictionary<string, object?>
+        {
+            ["id"] = id,
+            ["empty"] = empty,
+        }, cancellationToken).ConfigureAwait(false);
+
     [System.ComponentModel.Description("POST /commands/transport-line. Manage an EXISTING transport line as the line editor does: action='activate' (day/night service), action='rename', action='set-vehicle' (asset name from city_transport_prefabs), action='remove-stop' (index, -1 = last). Lines and their stops are drawn with the cursor in the game's own transport tool; this office only manages them afterwards. Every action returns the live game readback for the line.")]
     [McpServerTool(Name = "city_transport_line", Title = "Transport Line Management")]
     public async Task<JsonNode?> CityTransportLine(
@@ -458,7 +470,7 @@ public sealed class CityTools
 
     // ------------------------------------------------------------- passthrough
 
-    [System.ComponentModel.Description("Raw passthrough for anything with no dedicated tool. GET reaches any endpoint (endpoint list: docs/04-api-reference.md). POST is limited to endpoints that also have a dedicated tool: /commands/set-simulation-speed, set-tax-rate, set-budget, set-policy, set-building-active, transport-line, district, save, set-camera, project-point, build-road, place-building, move-building, zone-segment, set-zone, bulldoze. The legacy repair/batch endpoints are not reachable.")]
+    [System.ComponentModel.Description("Raw passthrough for anything with no dedicated tool. GET reaches any endpoint (endpoint list: docs/04-api-reference.md). POST is limited to endpoints that also have a dedicated tool: /commands/set-simulation-speed, set-tax-rate, set-budget, set-policy, set-building-active, empty-building, transport-line, district, save, set-camera, project-point, build-road, place-building, move-building, zone-segment, set-zone, bulldoze. The legacy repair/batch endpoints are not reachable.")]
     [McpServerTool(Name = "city_request", Title = "Raw Bridge Request")]
     public async Task<JsonNode?> CityRequest(
         [System.ComponentModel.Description("HTTP method: 'GET' or 'POST'.")] string method,
@@ -516,6 +528,7 @@ public sealed class CityTools
         "/commands/set-budget",
         "/commands/set-policy",
         "/commands/set-building-active",
+        "/commands/empty-building",
         "/commands/transport-line",
         "/commands/district",
         "/commands/save",
