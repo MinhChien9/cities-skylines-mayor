@@ -379,6 +379,13 @@ control points the tool would make:
   and power lines are exempt. `hint` says what to change.
 - **Money.** `cost` is the construction cost in ₡ (from the test pass); the build pass
   charges it, and `moneyBefore` / `moneyAfter` show the treasury.
+- **Collateral is reported.** Like the player's tool, the build removes non-important
+  objects in its way. The one that matters is a **power line whose pylon stands where the
+  road goes**: the game deletes that line (crossing the wire between pylons is fine), and
+  everything it fed loses power. A dry run lists such lines in `removesPowerLines` with a
+  `warning`; a build lists every incompatible segment and building that disappeared nearby
+  in `removed: { segments: [{id, prefab}], buildings: [{id, prefab, x, z}] }`, plus a
+  `warning`. Compatible roads split into junctions by design are not listed.
 - **A refusal is HTTP 200 with `"ok": false`** — the command ran; the game said no.
 
 ```json
@@ -406,7 +413,9 @@ checks (`BuildingTool.CheckSpace`, `BuildingTool.SnapToPath`,
 Collisions, slope, unlocked tiles and money are checked first. On success the site is
 cleared the way the tool clears it (trees, props), the cost is charged, the building and
 its sub-buildings are created, coverage is refreshed, and the placement effect plays. The
-response reports where it actually went: `position`, `angleDegrees`, `snappedTo`.
+response reports where it actually went: `position`, `angleDegrees`, `snappedTo`. If the
+site clearing removed anything nearby (a power line or pylon, a prop building) the
+response carries `removed` and a `warning`, as for `/commands/build-road`.
 
 ### `/state/map` — a map made of game data
 

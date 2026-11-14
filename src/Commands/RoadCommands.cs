@@ -127,12 +127,15 @@ namespace SkylinesAgentBridge.Commands
                     ",\"underwaterMeters\":" + Mathf.RoundToInt(totalUnderwater) +
                     ",\"errors\":" + errorsJson +
                     ",\"hint\":\"" + JsonUtil.Escape(hint) + "\"" +
+                    PowerLinesCrossedJson(info, waypoints, curved, control) +
                     ",\"legs\":[" + legJson + "]}");
             }
 
             // Phase 2: build. Control points are re-made per leg, so leg i+1 snaps onto the
             // node leg i just created.
             NetManager net = Singleton<NetManager>.instance;
+            Collateral collateral = TakeCollateral(waypoints, curved, control);
+            System.Predicate<NetInfo> splitByDesign = delegate(NetInfo existing) { return Compatible(existing, info); };
             uint buildIndexBefore = Singleton<SimulationManager>.instance.m_currentBuildIndex;
             int moneyBefore = MoneyNow();
             ushort lastNode = 0;
@@ -150,7 +153,8 @@ namespace SkylinesAgentBridge.Commands
                 {
                     return CommandResult.FromJson("{\"ok\":false,\"built\":" + JsonUtil.Bool(i > 0) +
                         ",\"failedLeg\":" + i + "," + GameValidation.ErrorFields(errors) +
-                        ",\"segmentIds\":" + IdsJson(NewSegments(buildIndexBefore)) + "}");
+                        ",\"segmentIds\":" + IdsJson(NewSegments(buildIndexBefore)) +
+                        collateral.RemovedJson(splitByDesign) + "}");
                 }
             }
 
@@ -172,6 +176,7 @@ namespace SkylinesAgentBridge.Commands
                 ",\"cost\":" + (totalCost / 100) +
                 ",\"moneyBefore\":" + moneyBefore +
                 ",\"moneyAfter\":" + MoneyNow() +
+                collateral.RemovedJson(splitByDesign) +
                 ",\"legs\":[" + legJson + "]}");
         }
 
@@ -304,6 +309,102 @@ namespace SkylinesAgentBridge.Commands
                 result.Add(hits[i].Value);
             }
             return result;
+        }
+
+        private static Collateral TakeCollateral(List<Vector3> waypoints, bool curved, Vector3 control)
+        {
+            float minX = float.MaxValue, minZ = float.MaxValue, maxX = float.MinValue, maxZ = float.MinValue;
+            List<Vector3> pts = new List<Vector3>(waypoints);
+            if (curved) pts.Add(control);
+            for (int i = 0; i < pts.Count; i++)
+            {
+                minX = Mathf.Min(minX, pts[i].x); maxX = Mathf.Max(maxX, pts[i].x);
+                minZ = Mathf.Min(minZ, pts[i].z); maxZ = Mathf.Max(maxZ, pts[i].z);
+            }
+            return Collateral.Take(minX, minZ, maxX, maxZ, 64f);
+        }
+
+        /// <summary>
+        /// For a dry run: the power lines whose pylons stand in the planned surface network's
+        /// way. The game removes such a line when the road is built, so these would be cut.
+        /// Returns <c>,"removesPowerLines":[...],"warning":"..."</c> or an empty string.
+        /// </summary>
+        private static string PowerLinesCrossedJson(NetInfo info, List<Vector3> waypoints, bool curved, Vector3 control)
+        {
+            if (!IsSurfaceNetwork(info))
+            {
+                return "";
+            }
+            List<Vector2> path = new List<Vector2>();
+            if (curved)
+            {
+                Vector3 a = waypoints[0];
+                Vector3 b = waypoints[waypoints.Count - 1];
+                ColossalFramework.Math.Bezier3 curve = new ColossalFramework.Math.Bezier3(a,
+                    Vector3.Lerp(a, control, 2f / 3f), Vector3.Lerp(b, control, 2f / 3f), b);
+                for (int k = 0; k <= 16; k++)
+                {
+                    Vector3 p = curve.Position(k / 16f);
+                    path.Add(new Vector2(p.x, p.z));
+                }
+            }
+            else
+            {
+                for (int i = 0; i < waypoints.Count; i++)
+                {
+                    path.Add(new Vector2(waypoints[i].x, waypoints[i].z));
+                }
+            }
+            NetNode[] nodes = Singleton<NetManager>.instance.m_nodes.m_buffer;
+            NetSegment[] segments = Singleton<NetManager>.instance.m_segments.m_buffer;
+            StringBuilder ids = new StringBuilder();
+            int count = 0;
+            for (int i = 1; i < segments.Length; i++)
+            {
+                if ((segments[i].m_flags & NetSegment.Flags.Created) == NetSegment.Flags.None)
+                {
+                    continue;
+                }
+                NetInfo other = segments[i].Info;
+                if (other == null || other.m_class == null || other.m_class.m_service != ItemClass.Service.Electricity)
+                {
+                    continue;
+                }
+                // Only a pylon (a node of the line) in the road's way gets the line
+                // removed; a road crossing the wire between two pylons leaves it alone.
+                float reach = info.m_halfWidth + 4f;
+                if (NearPath(path, nodes[segments[i].m_startNode].m_position, reach) ||
+                    NearPath(path, nodes[segments[i].m_endNode].m_position, reach))
+                {
+                    if (count++ > 0) ids.Append(',');
+                    ids.Append(i);
+                }
+            }
+            if (count == 0)
+            {
+                return "";
+            }
+            return ",\"removesPowerLines\":[" + ids + "],\"warning\":\"" + JsonUtil.Escape(
+                "This route runs over a pylon of " + count + " power line segment(s). The game removes a power line whose pylon is in a road's way, " +
+                "so whatever it feeds would lose power. Shift the road, or rebuild the line around it afterwards (crossing the wire between pylons is fine).") + "\"";
+        }
+
+        /// <summary>True when point p lies within reach metres (XZ) of the polyline.</summary>
+        private static bool NearPath(List<Vector2> path, Vector3 p, float reach)
+        {
+            Vector2 q = new Vector2(p.x, p.z);
+            for (int k = 1; k < path.Count; k++)
+            {
+                Vector2 a = path[k - 1];
+                Vector2 ab = path[k] - a;
+                float len2 = ab.sqrMagnitude;
+                float t = len2 > 0.0001f ? Mathf.Clamp01(Vector2.Dot(q - a, ab) / len2) : 0f;
+                if ((a + ab * t - q).sqrMagnitude <= reach * reach)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /// <summary>2D segment intersection: p = a + t(b-a) = c + u(d-c), both t and u in [0,1].</summary>
