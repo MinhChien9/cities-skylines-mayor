@@ -494,7 +494,7 @@ so the office's aim is deterministic. Edge scrolling toggles live through the ga
 | `x`, `z` | World position to frame. Given together, or not at all. |
 | `y` | World height of the target (default 0 = sea level). |
 | `distance` | Camera distance to the target (default: keep current zoom; clamped 100–4000). |
-| `verticalAngle` / `horizontalAngle` | Degrees; default to the **current** framing, so re-aiming does not spin or tilt the view. |
+| `verticalAngle` / `horizontalAngle` | Degrees: `verticalAngle` is the pitch (0 = level with the horizon, 90 = top-down, clamped to 0–90), `horizontalAngle` the yaw (−180..180). They map to `CameraController.m_targetAngle` **y** and **x** respectively. Both default to the **current** framing, so re-aiming does not spin or tilt the view. |
 | `instant` | `true` (default) snaps the camera to the target the same frame; `false` lets it glide. |
 | `edgeScroll` | `true`/`false` to toggle edge scrolling — the ergonomics fix: with edge scrolling on, the camera drifts whenever the cursor touches the window edge. |
 

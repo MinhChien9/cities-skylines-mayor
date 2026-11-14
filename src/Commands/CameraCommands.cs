@@ -25,7 +25,8 @@ namespace SkylinesAgentBridge.Commands
     /// The camera the player (and the cursor) actually uses is **CameraController** —
     /// the free camera. Its state is fields, not methods:
     ///   m_targetPosition / m_currentPosition   the point the camera looks at
-    ///   m_targetAngle    / m_currentAngle      Vector2 (x = vertical°, y = horizontal°)
+    ///   m_targetAngle    / m_currentAngle      Vector2 (x = horizontal° yaw, -180..180;
+    ///                                          y = vertical° pitch, 0..90 = level..top-down)
     ///   m_targetSize     / m_currentSize       camera distance from the target (zoom)
     ///   m_velocity / m_angleVelocity / m_zoomVelocity   inertia — zeroed for instant moves
     /// The game lerps current → target every frame, so writing the target fields makes
@@ -87,8 +88,10 @@ namespace SkylinesAgentBridge.Commands
                 // another point does not spin, tilt or zoom the view unless asked for.
                 float y = JsonUtil.GetNumber(body, "y", 0f);
                 float distance = JsonUtil.GetNumber(body, "distance", currentSize);
-                float verticalAngle = JsonUtil.GetNumber(body, "verticalAngle", currentAngle.x);
-                float horizontalAngle = JsonUtil.GetNumber(body, "horizontalAngle", currentAngle.y);
+                // CameraController.m_*Angle is (x = yaw, y = pitch): the game wraps x to
+                // -180..180 when the player rotates and clamps y to 0..90 (top-down).
+                float verticalAngle = Mathf.Clamp(JsonUtil.GetNumber(body, "verticalAngle", currentAngle.y), 0f, 90f);
+                float horizontalAngle = JsonUtil.GetNumber(body, "horizontalAngle", currentAngle.x);
                 bool instant = JsonUtil.GetBool(body, "instant", true);
 
                 distance = Mathf.Clamp(distance, 100f, 4000f);
@@ -119,7 +122,8 @@ namespace SkylinesAgentBridge.Commands
                             ? "The camera glides to the target over a few frames; re-read or re-project once it settles."
                             : "The camera snapped to the target; the projection is valid immediately.")
                         + "\""
-                    : ""));
+                    : "") +
+                "}");
         }
 
         // --------------------------------------------------------------- project-point
@@ -219,7 +223,7 @@ namespace SkylinesAgentBridge.Commands
             float verticalAngle, float horizontalAngle, float distance, bool instant)
         {
             SetVector3Field(controller, "m_targetPosition", target);
-            SetVector2Field(controller, "m_targetAngle", new Vector2(verticalAngle, horizontalAngle));
+            SetVector2Field(controller, "m_targetAngle", new Vector2(horizontalAngle, verticalAngle));
             SetFloatField(controller, "m_targetSize", distance);
 
             if (instant)
@@ -227,7 +231,7 @@ namespace SkylinesAgentBridge.Commands
                 // Snap the current state to the target and kill the inertia so the
                 // framing is settled the same frame — deterministic for projection.
                 SetVector3Field(controller, "m_currentPosition", target);
-                SetVector2Field(controller, "m_currentAngle", new Vector2(verticalAngle, horizontalAngle));
+                SetVector2Field(controller, "m_currentAngle", new Vector2(horizontalAngle, verticalAngle));
                 SetFloatField(controller, "m_currentSize", distance);
                 SetVector3Field(controller, "m_velocity", Vector3.zero);
                 SetVector2Field(controller, "m_angleVelocity", Vector2.zero);
@@ -248,8 +252,8 @@ namespace SkylinesAgentBridge.Commands
                 ",\"target\":{\"x\":" + JsonUtil.Number(target.x) +
                 ",\"y\":" + JsonUtil.Number(target.y) +
                 ",\"z\":" + JsonUtil.Number(target.z) + "}" +
-                ",\"angle\":{\"vertical\":" + JsonUtil.Number(angle.x) +
-                ",\"horizontal\":" + JsonUtil.Number(angle.y) + "}" +
+                ",\"angle\":{\"vertical\":" + JsonUtil.Number(angle.y) +
+                ",\"horizontal\":" + JsonUtil.Number(angle.x) + "}" +
                 ",\"distance\":" + JsonUtil.Number(size) +
                 ",\"edgeScrolling\":" + ReadEdgeScrolling(controller) + "}" +
                 ",\"screen\":{\"width\":" + Screen.width +
