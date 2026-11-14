@@ -325,9 +325,11 @@ namespace SkylinesAgentBridge.Commands
         }
 
         /// <summary>
-        /// For a dry run: the power lines whose pylons stand in the planned surface network's
-        /// way. The game removes such a line when the road is built, so these would be cut.
-        /// Returns <c>,"removesPowerLines":[...],"warning":"..."</c> or an empty string.
+        /// For a dry run: what the planned surface network would clear away. The power lines
+        /// whose pylons stand in its way (the game removes the whole line, cutting whatever it
+        /// feeds) and the grown buildings it runs through (demolished like the player's tool
+        /// does). Returns <c>,"removesPowerLines":[...],"wouldRemove":{...},"warning":"..."</c>
+        /// (only the parts that apply) or an empty string.
         /// </summary>
         private static string PowerLinesCrossedJson(NetInfo info, List<Vector3> waypoints, bool curved, Vector3 control)
         {
@@ -380,13 +382,81 @@ namespace SkylinesAgentBridge.Commands
                     ids.Append(i);
                 }
             }
-            if (count == 0)
+
+            // Grown (zoned) buildings in the way are demolished too: the road tool treats
+            // them as clearable. Test each building's footprint, grown by the road's
+            // half width, against points sampled along the route.
+            StringBuilder grown = new StringBuilder();
+            int grownCount = 0;
+            List<Vector2> samples = new List<Vector2>();
+            for (int k = 1; k < path.Count; k++)
+            {
+                float len = Vector2.Distance(path[k - 1], path[k]);
+                int steps = Mathf.Max(1, Mathf.CeilToInt(len / 2f));
+                for (int j = 0; j <= steps; j++)
+                {
+                    samples.Add(Vector2.Lerp(path[k - 1], path[k], j / (float)steps));
+                }
+            }
+            float minX = float.MaxValue, minZ = float.MaxValue, maxX = float.MinValue, maxZ = float.MinValue;
+            for (int k = 0; k < samples.Count; k++)
+            {
+                minX = Mathf.Min(minX, samples[k].x); maxX = Mathf.Max(maxX, samples[k].x);
+                minZ = Mathf.Min(minZ, samples[k].y); maxZ = Mathf.Max(maxZ, samples[k].y);
+            }
+            Building[] blds = Singleton<BuildingManager>.instance.m_buildings.m_buffer;
+            float pad = info.m_halfWidth - 1f;
+            for (int i = 1; i < blds.Length; i++)
+            {
+                if ((blds[i].m_flags & Building.Flags.Created) == Building.Flags.None) continue;
+                BuildingInfo bi = blds[i].Info;
+                if (bi == null || bi.m_class == null) continue;
+                ItemClass.Service sv = bi.m_class.m_service;
+                if (sv != ItemClass.Service.Residential && sv != ItemClass.Service.Commercial &&
+                    sv != ItemClass.Service.Industrial && sv != ItemClass.Service.Office) continue;
+                Vector3 c = blds[i].m_position;
+                float hw = bi.m_cellWidth * 4f + pad;
+                float hl = bi.m_cellLength * 4f + pad;
+                float r = Mathf.Max(hw, hl) * 1.5f;
+                if (c.x < minX - r || c.x > maxX + r || c.z < minZ - r || c.z > maxZ + r) continue;
+                float cos = Mathf.Cos(blds[i].m_angle);
+                float sin = Mathf.Sin(blds[i].m_angle);
+                for (int k = 0; k < samples.Count; k++)
+                {
+                    float dx = samples[k].x - c.x;
+                    float dz = samples[k].y - c.z;
+                    // Building space: x along its width, z along its length (the game's
+                    // m_angle rotates the building's local axes in the XZ plane).
+                    float lx = dx * cos + dz * sin;
+                    float lz = -dx * sin + dz * cos;
+                    if (Mathf.Abs(lx) <= hw && Mathf.Abs(lz) <= hl)
+                    {
+                        if (grownCount++ > 0) grown.Append(',');
+                        grown.Append("{\"id\":").Append(i).Append(",\"prefab\":\"").Append(JsonUtil.Escape(bi.name))
+                            .Append("\",\"x\":").Append(JsonUtil.Number(c.x)).Append(",\"z\":").Append(JsonUtil.Number(c.z)).Append('}');
+                        break;
+                    }
+                }
+            }
+
+            if (count == 0 && grownCount == 0)
             {
                 return "";
             }
-            return ",\"removesPowerLines\":[" + ids + "],\"warning\":\"" + JsonUtil.Escape(
-                "This route runs over a pylon of " + count + " power line segment(s). The game removes a power line whose pylon is in a road's way, " +
-                "so whatever it feeds would lose power. Shift the road, or rebuild the line around it afterwards (crossing the wire between pylons is fine).") + "\"";
+            string json = "";
+            string warning = "";
+            if (count > 0)
+            {
+                json += ",\"removesPowerLines\":[" + ids + "]";
+                warning += "This route runs over a pylon of " + count + " power line segment(s). The game removes a power line whose pylon is in a road's way, " +
+                    "so whatever it feeds would lose power. Shift the road, or rebuild the line around it afterwards (crossing the wire between pylons is fine). ";
+            }
+            if (grownCount > 0)
+            {
+                json += ",\"wouldRemove\":{\"buildings\":[" + grown + "]}";
+                warning += "The road would demolish " + grownCount + " grown building(s) in its way (the game clears zoned buildings for a road).";
+            }
+            return json + ",\"warning\":\"" + JsonUtil.Escape(warning.Trim()) + "\"";
         }
 
         /// <summary>True when point p lies within reach metres (XZ) of the polyline.</summary>

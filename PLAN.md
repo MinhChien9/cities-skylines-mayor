@@ -171,7 +171,8 @@ Lessons recorded so far:
   `removesPowerLines`.
 - A service building placed over **grown zoned buildings demolishes them** (they are not
   a collision). A coal plant dry run said ok and then took three factories with it;
-  dry runs now list `wouldRemove`.
+  dry runs now list `wouldRemove`. Roads demolish grown buildings in their way too; road
+  dry runs list them the same way (footprint test against the route).
 - In this build the Water Pumping Station (`Water Intake`) is `ShorelineOrGround` and the
   `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
   pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the
