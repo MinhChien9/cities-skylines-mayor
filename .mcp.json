@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "cs1-mayor": {
+      "type": "stdio",
+      "command": "dotnet",
+      "args": ["mcp-server/bin/Release/net10.0/Cs1Mayor.Mcp.dll"],
+      "env": {
+        "CS1_BRIDGE_URL": "http://127.0.0.1:32123"
+      }
+    }
+  }
+}

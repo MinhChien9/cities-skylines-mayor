@@ -56,7 +56,11 @@ dotnet test  .\Cs1Mayor.sln
 python .\scripts\smoke-test-mcp.py
 ```
 
-Then wire it into opencode:
+**Claude Code** picks the server up from the project's `.mcp.json` (approve it on first
+launch; it runs the Release build above), and `CLAUDE.md` loads `AGENTS.md` as its
+operating manual. Run `claude` in this directory and say "you are the mayor".
+
+Or wire it into opencode:
 
 ```json
 {
