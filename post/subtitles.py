@@ -103,14 +103,18 @@ def _ass_time(seconds):
     return f"{cs // 360000}:{cs // 6000 % 60:02d}:{cs // 100 % 60:02d}.{cs % 100:02d}"
 
 
-def to_ass(lines, width, height, font="Arial", highlight="&H0000D7FF"):
+def to_ass(lines, width, height, font="Arial", highlight="&H0000D7FF", cards=None):
     """ASS subtitles from placed lines: [{"start": s, "words": [...]}] (word times line-local).
 
     One event per chunk, shown until the next chunk starts; the word being spoken is
     coloured (karaoke-style override tags), the others white with a black outline.
+    cards: [{"start", "end", "text"}] - big numbers/labels in the upper part of the frame.
     """
     size = int(height * (0.058 if height > width else 0.065))
-    margin_v = int(height * (0.30 if height > width else 0.08))
+    # Lower third, but above the game toolbar (bottom ~8 % of a 16:9 frame).
+    margin_v = int(height * (0.30 if height > width else 0.14))
+    card_size = int(size * 1.6)
+    card_margin = int(height * (0.12 if height > width else 0.07))
     header = (
         "[Script Info]\nScriptType: v4.00+\nWrapStyle: 0\nScaledBorderAndShadow: yes\n"
         f"PlayResX: {width}\nPlayResY: {height}\n\n"
@@ -120,12 +124,17 @@ def to_ass(lines, width, height, font="Arial", highlight="&H0000D7FF"):
         "Alignment, MarginL, MarginR, MarginV, Encoding\n"
         f"Style: Default,{font},{size},&H00FFFFFF,&H00FFFFFF,&H00000000,&H64000000,"
         f"-1,0,0,0,100,100,0,0,1,{max(2, size // 12)},{max(1, size // 30)},2,"
-        f"{int(width * 0.06)},{int(width * 0.06)},{margin_v},1\n\n"
+        f"{int(width * 0.06)},{int(width * 0.06)},{margin_v},1\n"
+        f"Style: Card,{font},{card_size},&H0000D7FF,&H0000D7FF,&H00000000,&H80000000,"
+        f"-1,0,0,0,100,100,0,0,1,{max(3, card_size // 10)},{max(1, card_size // 25)},8,"
+        f"{int(width * 0.05)},{int(width * 0.05)},{card_margin},1\n\n"
         "[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
     )
+    # As many characters as fit one line: bold Arial averages ~0.58 em per character.
+    max_chars = max(10, int(width * 0.88 / (size * 0.58)))
     events = []
     for line in lines:
-        groups = chunks(line["words"])
+        groups = chunks(line["words"], max_chars=max_chars)
         for g, group in enumerate(groups):
             start = line["start"] + group[0]["start"]
             end = line["start"] + (groups[g + 1][0]["start"] if g + 1 < len(groups) else group[-1]["end"] + 0.25)
@@ -137,6 +146,9 @@ def to_ass(lines, width, height, font="Arial", highlight="&H0000D7FF"):
                     (f"{{\\c{highlight}}}{_escape(x['text'])}{{\\c&H00FFFFFF&}}" if i == k else _escape(x["text"]))
                     for i, x in enumerate(group))
                 events.append(f"Dialogue: 0,{_ass_time(w_start)},{_ass_time(w_end)},Default,,0,0,0,,{text}")
+    for card in cards or []:
+        events.append(f"Dialogue: 1,{_ass_time(card['start'])},{_ass_time(card['end'])},Card,,0,0,0,,"
+                      f"{{\\fad(200,200)}}{_escape(card['text'])}")
     return header + "\n".join(events) + "\n"
 
 

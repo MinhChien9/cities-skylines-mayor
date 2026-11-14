@@ -20,8 +20,9 @@ timed) and the edit (each line's `visual`). Shape:
       ]
     }
 
-visual types: clip {in, out, speed?} from the recording; timelapse {viewpoint, folder?,
-fps?} from the brief's frames; still {file}. `source` lists the journal entries (seq)
+visual types: clip {in, out, speed?} from the recording; chapter {title} (a recording
+chapter: cut by marker); timelapse {viewpoint, folder?} from the brief's frames; still
+{file}. The edit fits every visual to its line's voice-over. `source` lists the journal entries (seq)
 the line is based on: every claim must trace back to something that happened.
 """
 import argparse
@@ -34,7 +35,8 @@ SPEECH_RATE = 5.0         # Vietnamese syllables per second, a calm narrator
 HOOK_MAX_SECONDS = 3.0
 SHORT_MAX_SECONDS = 60.0
 FORMATS = {"short", "episode"}
-VISUALS = {"clip", "timelapse", "still"}
+VISUALS = {"clip", "chapter", "timelapse", "still"}
+LINE_PAD = 0.6           # lead-in + breath the edit adds around each voiced line
 
 
 def vo_seconds(text):
@@ -52,7 +54,9 @@ def visual_seconds(visual, brief=None):
 
 
 def line_seconds(line, brief=None):
-    return max(vo_seconds(line.get("vo", "")), visual_seconds(line.get("visual", {}), brief))
+    """The edit is voice-driven: a line lasts its voice-over plus a pad, and the visual
+    is trimmed or retimed to fit (post.edit), so the visual does not lengthen it."""
+    return vo_seconds(line.get("vo", "")) + LINE_PAD
 
 
 def _timelapse_frames(visual, brief):
@@ -107,6 +111,9 @@ def validate(script, brief=None):
                 errors.append(f"{where}: clip needs 0 <= in < out")
             elif duration and visual["out"] > duration + 0.01:
                 errors.append(f"{where}: clip ends at {visual['out']} s, the recording is {duration:.1f} s")
+        elif visual["type"] == "chapter" and brief is not None and visual.get("title") not in {
+                c["title"] for c in ((brief.get("recording") or {}).get("chapters") or [])}:
+            errors.append(f"{where}: no recording chapter titled {visual.get('title')!r}")
         elif visual["type"] == "timelapse" and brief is not None and not _timelapse_frames(visual, brief):
             errors.append(f"{where}: no timelapse frames for viewpoint '{visual.get('viewpoint')}'")
         elif visual["type"] == "still" and not visual.get("file"):
