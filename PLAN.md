@@ -80,7 +80,9 @@ session journal written by the server.
 - [x] TTS: decide between VieNeu-TTS (local, open source, GPU/CPU) and ElevenLabs (paid);
       default VieNeu for cost and licensing clarity (**VieNeu v3 Turbo**, `post.voice`;
       e001 voiced: 9 lines, 35.4 s)
-- [ ] Subtitles from the script with word timing (forced alignment), burned-in
+- [x] Subtitles from the script with word timing (forced alignment), burned-in
+      (`post.subtitles`: faster-whisper word times matched to the script, ASS with a
+      spoken-word highlight; e001 aligned at 99 %, burn-in checked on a 9:16 test clip)
 - [ ] `ffmpeg` assembly: cut by markers, speed ramps, timelapse, 9:16 crop + 16:9 master,
       music bed, loudness normalisation
 - [ ] First pilot: a 60 s Short "AI làm thị trưởng — ngày 1"
@@ -112,6 +114,7 @@ session journal written by the server.
 | 2026-11-15 | Camera shots streamed from the MCP server as ~30 Hz glide targets | No new bridge code per move; the game's camera smoothing evens out the steps |
 | 2026-11-15 | Timelapse runs inside the MCP server, keyed on game days, and pauses an active recording around each capture (+0.7 s guard on each side) | Without the guard ~0.35 s of each cut leaked into the video (game capture lag); the guard measured clean |
 | 2026-11-15 | `studio_marker` waits out a short recording pause (up to 6 s) | A timelapse capture pauses the recording ~3 s; OBS refuses chapters while paused (code 702, found live) |
+| 2026-11-15 | Word timing from faster-whisper matched to the script, not a phoneme forced aligner | Whisper (CTranslate2, no torch) gives good word times on clean TTS audio; the script stays the on-screen text; a wav2vec2 aligner would pull torch in for little gain |
 | 2026-11-15 | TTS = VieNeu-TTS v3 Turbo, CPU/ONNX, voice Thiện Minh | Apache-2.0 incl. preset voices (monetised use allowed), offline, free, ~2× real time on CPU, no torch; ElevenLabs only if quality demands it |
 | 2026-11-15 | Claude writes the script in-session from a deterministic brief; code only builds the brief and validates | The writing is the judgement; the brief and validator keep it truthful (beats cite journal `seq`) and inside the 3 s / 60 s budgets |
 | 2026-11-15 | `ObsClient` never resends a request whose connection dropped after sending; it only retries a send that failed | Same rule as the mayor's: a lost answer does not mean OBS did not act (e.g. `StartRecord`) |
@@ -157,5 +160,5 @@ Lessons recorded so far:
 | MCP | Debug build current with `main`. The Release build in `bin/Release` is held by this Claude Code session's running server: rebuild it after the session ends (or `/mcp` reconnect) to get the studio tools in Claude Code |
 | OBS | 33.0.1 portable at `D:\tools\obs-studio`, configured by `scripts/setup-obs.ps1`: websocket 4455 (password in `studio.local.json`), scene "CS1 Mayor", recordings in `D:\cs1-mayor-recordings` |
 | ffmpeg | 8.1 at `D:\tools\ffmpeg\bin` (NVENC available), not on PATH; no `-pattern_type glob` |
-| Post venv | `D:\tools\venv-post` (Python 3.11, `vieneu` 3.8.4); model cache `HF_HOME=D:\tools\hf-cache` |
+| Post venv | `D:\tools\venv-post` (Python 3.11, `vieneu` 3.8.4, `faster-whisper` 1.2.1); model cache `HF_HOME=D:\tools\hf-cache` |
 | GPU | RTX 2060 (Turing: NVENC H.264 / HEVC; no AV1 encode) |
