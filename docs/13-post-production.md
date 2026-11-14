@@ -62,13 +62,13 @@ as AI-made.
 ## 3. Voice (VieNeu-TTS)
 
 ```powershell
-D:	oolsenv-post\Scripts\python.exe -X utf8 -m post.voice episodes/e001-ngay-1/script.vi.json
+D:\tools\venv-post\Scripts\python.exe -X utf8 -m post.voice episodes/e001-ngay-1/script.vi.json
 ```
 
 Local, offline, **Apache-2.0 including its preset voices** (commercial and monetised use
 allowed; never clone a real person's voice without permission). `pip install vieneu` in
-the venv `D:	oolsenv-post`; on CPU it runs through ONNX, no torch (~2× real time on
-this machine). Set `HF_HOME=D:	ools\hf-cache` so the model stays off C:. One WAV per
+the venv `D:\tools\venv-post`; on CPU it runs through ONNX, no torch (~2× real time on
+this machine). Set `HF_HOME=D:\tools\hf-cache` so the model stays off C:. One WAV per
 line (48 kHz mono) and `build/voice/manifest.json` with the exact durations; unchanged
 lines are not regenerated. The default narrator is **Thiện Minh** (male, northern,
 storytelling); a script may set `"voice"` to any preset (`Vieneu().list_preset_voices()`).
