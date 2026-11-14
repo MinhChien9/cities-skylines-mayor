@@ -111,6 +111,9 @@ public sealed class JournalTests : IDisposable
     [InlineData("studio_status", "{}", false)]
     [InlineData("city_request", "{\"path\":\"/state/summary\"}", false)]
     [InlineData("city_request", "{\"path\":\"/commands/save\",\"method\":\"post\"}", true)]
+    [InlineData("studio_timelapse", "{\"action\":\"start\"}", true)]
+    [InlineData("studio_timelapse", "{\"action\":\"status\"}", false)]
+    [InlineData("city_district", "{\"action\":\"state\"}", false)]
     public void ShouldJournal_MutatingCallsOnly(string tool, string args, bool expected)
     {
         Assert.Equal(expected, Journal.ShouldJournal(tool, Args(args)));

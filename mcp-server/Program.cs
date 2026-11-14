@@ -34,7 +34,9 @@ builder.Services.AddSingleton(obs);
 
 // The decision journal: one file per server session, written on the first entry.
 builder.Services.AddSingleton(new Journal(Journal.DefaultDirectory(), bridge, obs));
-builder.Services.AddSingleton(ViewpointStore.Default());
+var viewpoints = ViewpointStore.Default();
+builder.Services.AddSingleton(viewpoints);
+builder.Services.AddSingleton(new TimelapseRunner(bridge, obs, studio, viewpoints));
 
 const string Instructions = """
     You are the mayor of a live Cities: Skylines (the 2015 original) city. This server is
@@ -77,7 +79,8 @@ const string Instructions = """
     studio_note (decision / mistake / milestone / observation / plan) - the video
     scripts are written from that journal. studio_journal reads the story so far.
     B-roll: studio_camera_move (orbit / flyover / zoom with the UI hidden) and
-    studio_viewpoint (named angles to return to, e.g. for timelapses).
+    studio_viewpoint (named angles to return to); studio_timelapse captures those
+    viewpoints every N game days in the background while the city grows.
     """;
 
 builder.Services
@@ -97,6 +100,7 @@ builder.Services
     .WithTools<StudioTools>()
     .WithTools<JournalTools>()
     .WithTools<CinematicTools>()
+    .WithTools<TimelapseTools>()
     .WithRequestFilters(filters => filters.AddCallToolFilter(Journal.ToolCallFilter));
 
 await builder.Build().RunAsync();

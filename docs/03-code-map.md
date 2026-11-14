@@ -128,6 +128,8 @@ C#, .NET 10, `ModelContextProtocol` 2.4.0. Namespace `Cs1Mayor.Mcp`.
 | `JournalTools.cs` | ~75 | `studio_note` (the mayor's why) and `studio_journal` (read the story so far). |
 | `CinematicTools.cs` | ~330 | `studio_camera_move` (orbit / flyover / zoom streamed as ~30 Hz glide targets, UI hidden and restored) and `studio_viewpoint` (named framings in `viewpoints.local.json`, `ViewpointStore`). |
 | `CameraPath.cs` | ~105 | The pure camera-move math: eased interpolation, orbit sweeps, compass headings. |
+| `TimelapseRunner.cs` | ~350 | Background timelapse: polls the game date, every N game days cuts to each viewpoint (UI hidden), saves a PNG through OBS, restores camera and UI, pauses an active recording around it; `frames.jsonl` manifest. |
+| `TimelapseTools.cs` | ~55 | `studio_timelapse` start / stop / status / capture. |
 | `StudioSettings.cs` | ~80 | Finds and reads the git-ignored `studio.local.json` written by `scripts/setup-obs.ps1` (OBS url, password, scene). |
 
 ### The tool surface (the mayor's office)
@@ -154,6 +156,7 @@ C#, .NET 10, `ModelContextProtocol` 2.4.0. Namespace `Cs1Mayor.Mcp`.
 | `city_request` | GET any endpoint; POST only the office allowlist |
 | `studio_status` · `studio_record` · `studio_marker` · `studio_screenshot` | OBS through obs-websocket (`ObsClient`), not the bridge |
 | `studio_camera_move` · `studio_viewpoint` | `POST /commands/set-camera` (many glide targets per shot; `hideUi`) |
+| `studio_timelapse` | `GET /state/summary` (game date), `POST /commands/set-camera`, OBS `SaveSourceScreenshot` / `PauseRecord` / `ResumeRecord` |
 | `studio_note` · `studio_journal` | The decision journal file (`Journal`); no bridge or OBS call of their own |
 
 The **build endpoints are deliberately not tools**: roads, zones, buildings,
@@ -192,6 +195,7 @@ And the bridge gains one named exception to the thread rule:
 | `StudioToolsTests.cs` | The studio tools against a small model of OBS's recording state |
 | `JournalTests.cs` | Journal lines and context (game, recording, both offline), what gets journalled, result summaries, the note/journal tools |
 | `CinematicToolsTests.cs` | `CameraPath` math (easing, orbit, heading, yaw wrap) and the shot / viewpoint tools against a stub bridge |
+| `TimelapseTests.cs` | Capture cadence by game days, file layout and manifest, camera/UI restore, pause/resume around an active recording |
 | `StubObsServer.cs` | A raw-TCP obs-websocket v5 stub the OBS tests run against (no ASP.NET dependency) |
 
 The JSON reader is compiled into the test project from `src/Support/JsonUtil.cs`

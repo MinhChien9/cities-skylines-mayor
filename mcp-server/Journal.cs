@@ -43,6 +43,7 @@ public sealed class Journal
         ["city_request"] = "office",      // only its POSTs, see ShouldJournal
         ["studio_record"] = "studio",
         ["studio_marker"] = "marker",
+        ["studio_timelapse"] = "studio",
     };
 
     private const int MaxResultChars = 2000;
@@ -199,6 +200,12 @@ public sealed class Journal
         if (arguments is not null && arguments.TryGetValue("dryRun", out var dry) && dry.ValueKind == JsonValueKind.True)
         {
             return false;   // planning, not a decision
+        }
+        if (arguments is not null && arguments.TryGetValue("action", out var action)
+            && action.ValueKind == JsonValueKind.String
+            && action.GetString()?.Trim().ToLowerInvariant() is "status" or "state" or "list")
+        {
+            return false;   // a read through an action tool
         }
         if (tool == "city_request")
         {
