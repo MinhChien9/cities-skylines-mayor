@@ -454,7 +454,7 @@ One command, six actions — the same things the in-game transport line editor d
 | action | fields | effect |
 |---|---|---|
 | `create` | `transportInfo` (exact name from `/prefabs/transport`), `newNumber?` | Creates an empty line, numbered per type. |
-| `add-stop` | `line`, `position:{x,y,z}` (y optional — terrain is sampled), `index?` (`-1` = append), `fixedPlatform?` | Adds a stop. **A stop placed within ~2.5 units of the line's first stop closes the line into a complete loop.** `dryRun:true` answers the game's own `CanAddStop`. |
+| `add-stop` | `line`, `position:{x,y,z}` (y optional — terrain is sampled), `index?` (`-1` = append), `fixedPlatform?`, `close?` | Adds a stop. The game moves each stop onto the road, often tens of metres from the point given — read the real positions back from `lineData.stops`. **A stop exactly on the first stop closes the line into a loop: pass `close: true`** (position not needed) to do that. `dryRun:true` answers the game's own `CanAddStop`. |
 | `remove-stop` | `line`, `index` (`-1` = last) | Removes a stop (and its segments), reconnecting the chain. |
 | `activate` | `line`, `day?`, `night?`, `active?` | The day/night service switches (`SetActive`): `active=false` disables everything. |
 | `rename` | `line`, `name` | Names the line (verified through `GetLineName`). |

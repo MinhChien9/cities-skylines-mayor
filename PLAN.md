@@ -102,7 +102,7 @@ session journal written by the server.
 
 ### Backlog (not scheduled)
 
-- Transit line drawing and district painting as validated tools
+- District painting as a validated tool (transit lines: done, #47)
 - `/state/progress` (milestones) as story triggers; `/commands/load`
 
 ## Decision log
@@ -195,6 +195,10 @@ Lessons recorded so far:
   buildings were abandoned for uncollected dead. Crematories don't fill up; build them
   before cemeteries are full. Full cemeteries and landfills can be emptied
   (`city_empty_building`); the game reuses the `LandfillFull` flag for a full cemetery.
+- Bus stops are moved onto the road by the game, often 40 m from the point asked for and
+  sometimes onto a cross street; a "closing" stop aimed at the first stop's requested
+  point became a duplicate 15th stop. `add-stop close: true` now closes the loop. Lines
+  are creatable from the MCP tool (`city_transport_line create / add-stop`).
 - In this build the Water Pumping Station (`Water Intake`) is `ShorelineOrGround` and the
   `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
   pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the

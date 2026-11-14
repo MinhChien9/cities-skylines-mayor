@@ -298,6 +298,24 @@ public class CityToolsTests
         Assert.Contains("\"empty\":true", request.Body);
     }
 
+    [Fact]
+    public async Task CityTransportLine_add_stop_posts_position_and_close()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityTransportLine("add-stop", 176, x: -638, z: -265, cancellationToken: CancellationToken.None);
+        await tools.CityTransportLine("add-stop", 176, close: true, cancellationToken: CancellationToken.None);
+        await tools.CityTransportLine("create", transportInfo: "Bus", cancellationToken: CancellationToken.None);
+
+        Assert.Equal(3, handler.Requests.Count);
+        Assert.Contains("\"position\":{\"x\":-638", handler.Requests[0].Body);
+        Assert.DoesNotContain("close", handler.Requests[0].Body);
+        Assert.Contains("\"close\":true", handler.Requests[1].Body);
+        Assert.DoesNotContain("position", handler.Requests[1].Body);
+        Assert.Contains("\"transportInfo\":\"Bus\"", handler.Requests[2].Body);
+    }
+
     // ------------------------------------------------------------ passthrough
 
     [Fact]

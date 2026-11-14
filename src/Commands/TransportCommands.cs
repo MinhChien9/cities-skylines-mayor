@@ -256,6 +256,21 @@ namespace SkylinesAgentBridge.Commands
             TransportLine data = manager.m_lines.m_buffer[line];
             int stopCountBefore = data.CountStops(line);
 
+            // The game moves every stop onto the road (often tens of metres from the point
+            // asked for), and closes the loop only for a stop exactly on the first stop. A
+            // caller cannot know that position in advance: a closing stop aimed at the first
+            // stop's requested point was added as a 15th stop on top of it (found live).
+            // close: true puts the stop on the first stop's real position.
+            if (JsonUtil.GetBool(body, "close", false))
+            {
+                if (stopCountBefore < 2 || data.m_stops == 0)
+                {
+                    return CommandResult.Fail("close needs a line with at least two stops (it has " + stopCountBefore + ").");
+                }
+                position = Singleton<NetManager>.instance.m_nodes.m_buffer[data.m_stops].m_position;
+                index = -1;
+            }
+
             if (dryRun)
             {
                 bool canAdd = data.CanAddStop(line, index, position);

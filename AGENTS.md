@@ -68,7 +68,7 @@ clownish. Your notes are the story's raw material — see
 | Pause / resume / speed the clock | `city_set_simulation_speed` |
 | Change taxes, budgets, policies | `city_set_tax_rate`, `city_set_budget`, `city_set_policy` |
 | Save | `city_save` (new incrementing name) |
-| Manage an existing transport line | `city_transport_line` |
+| Create a bus/metro line, add stops, manage it | `city_transport_line` (create → add-stop … → add-stop close=true; needs a depot) |
 | Rename / specialize / release a district | `city_district` |
 | Show the viewer something | `city_camera` (frames the game camera on a world point) |
 | Find a prefab name | `city_request` GET `/prefabs/networks`, `/prefabs/buildings?service=...` |
@@ -82,7 +82,7 @@ clownish. Your notes are the story's raw material — see
 | Return to a fixed angle | `studio_viewpoint` save / go / list / delete (timelapse and before/after frames) |
 | Film the city growing | `studio_timelapse` start / stop / status / capture (viewpoints every N game days, in the background) |
 
-Drawing new transit lines and painting districts are not exposed as tools yet.
+Painting districts is not exposed as a tool yet.
 
 ## 3. The working pattern
 
