@@ -119,6 +119,8 @@ C#, .NET 10, `ModelContextProtocol` 2.4.0. Namespace `Cs1Mayor.Mcp`.
 |------|-------|------|
 | `Program.cs` | 67 | Host setup, the stdio transport, and the operating instructions sent to the agent. |
 | `CityTools.cs` | ~660 | The office tools — every read plus `city_overview`, the non-spatial levers, and the allowlisted `city_request`. Each is a thin relay of HTTP calls. |
+| `BuildTools.cs` | ~260 | `city_map` (PNG) and the game-validated build tools: road/network, building place/move, zoning, bulldoze. |
+| `MapRenderer.cs` | ~240 | Renders the `/state/map` raster to PNG: palette, height shading, labelled grid, dead-end rings. |
 | `BridgeClient.cs` | 181 | The HTTP client, the error translation, and body truncation so errors stay small in the agent's context. |
 
 ### The tool surface (the mayor's office)

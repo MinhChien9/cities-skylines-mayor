@@ -6,13 +6,16 @@ The in-game bridge listens on **127.0.0.1:32123**. Every endpoint executes on th
 the thread that owns the camera and the renderer (see the `MainThreadQueue` class in
 `src/Dispatch/`).
 
-> **Pivot note (2026-11-11).** This document describes the *full* HTTP surface, and it
-> is still accurate. But the agent no longer reaches all of it: the MCP tools relay the
-> reads and the office levers, and `city_request` GETs any endpoint but POSTs only the
-> office allowlist (clock, taxes, budgets, policies, saves, line/district/building-active
-> management). The build endpoints below (`build-road`, `set-zone`, `place-building`,
-> `bulldoze`, `batch`, ...) stay in the bridge for completeness — spatial work is done
-> by the agent's cursor through the game's own UI. See `AGENTS.md`.
+> **Validated building (2026-11-15).** The build endpoints run the game's own tool
+> code: `build-road` calls `NetTool.CreateNode` (test pass first, then for real) and
+> `place-building` / `move-building` reproduce `BuildingTool`'s placement rules with
+> its public checks. A placement the player could not make is refused with the game's
+> own `ToolErrors` names. `/state/map` is the matching read: a semantic raster of an
+> area with world coordinates. Together they replace the cursor (CUA) for spatial work;
+> the MCP tools `city_map`, `city_build_road`, `city_place_building`,
+> `city_move_building`, `city_zone_segment`, `city_zone_area` and `city_bulldoze` relay
+> them. The legacy `repair-*`, `batch` and `disable-blocked-assets` endpoints still
+> bypass validation and stay off the MCP allowlist.
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:32123/state/summary
@@ -50,6 +53,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 | GET | `/state/zone-anomalies` | Zone defects. `?limit=`, `?minMinorityCells=`, `?minUnzonedCells=`, `?includeUnzonedHoles=`. |
 | GET | `/state/external-connections` | Highway / rail / sea connections. `?limit=`. |
 | GET | `/state/saves` | Saved games on disk. |
+| GET | `/state/map` | Semantic top-down raster of an area: land/water/road/zone/building classes, terrain heights, locked tiles, road dead ends. `?x=&z=` centre, `?size=` metres (default 1024), `?cell=` metres (default 8). See below. |
 | GET | `/prefabs/buildings` | Available building prefabs. `?service=`. |
 | GET | `/prefabs/roads` | Available road prefabs. |
 | GET | `/prefabs/networks` | Available network prefabs. `?service=`. |
@@ -328,11 +332,12 @@ All accept a JSON body. All support `"dryRun": true` where validation is meaning
 
 | Method | Path | Body |
 |---|---|---|
-| POST | `/commands/build-road` | `roadPrefab`, `start:{x,z}`, `end:{x,z}`, `name?`, `dryRun?` |
+| POST | `/commands/build-road` | `roadPrefab` (any network), `start:{x,z}`, `end:{x,z}`, `control?:{x,z}` (curve), `elevation?`, `snapRadius?` (8), `autoSplit?` (true), `allowWater?`, `name?`, `dryRun?`. Game-validated; see below. |
 | POST | `/commands/build-network` | Alias for `build-road`, kept for older agent scripts. |
-| POST | `/commands/set-zone` | `zone`, `center:{x,z}`, `radius`, `preserveOccupied?`, `dryRun?` |
-| POST | `/commands/place-building` | `buildingPrefab`, `position:{x,z}`, `angleDegrees?`, `dryRun?` |
-| POST | `/commands/move-building` | `id`, `position:{x,z}`, `angleDegrees?`, `dryRun?` |
+| POST | `/commands/set-zone` | The zone brush: `zone`, `center:{x,z}`, `radius`, `overwrite?` (false), `dryRun?` |
+| POST | `/commands/zone-segment` | Zone along one road: `segmentId`, `zone`, `side?` (`left`\|`right`\|`both`), `depth?` (1–4), `overwrite?`, `dryRun?` |
+| POST | `/commands/place-building` | `buildingPrefab`, `position:{x,z}`, `angleDegrees?`, `dryRun?`. Game-validated; see below. |
+| POST | `/commands/move-building` | `id`, `position:{x,z}`, `angleDegrees?`, `dryRun?`. Same rules; relocates in place (`RelocateBuilding`). |
 | POST | `/commands/set-building-active` | `id`, `active` |
 | POST | `/commands/bulldoze` | `entityType` (`building`\|`netSegment`\|`netNode`), `id`, `keepNodes?`, `dryRun?` |
 | POST | `/commands/set-simulation-speed` | `speed` (1–3), `paused` |
@@ -348,6 +353,70 @@ All accept a JSON body. All support `"dryRun": true` where validation is meaning
 | POST | `/commands/repair-zone-clusters` | Repair mottled zones. `preferGrowableZone?` |
 | POST | `/commands/disable-blocked-assets` | Disable the broken "Block Services - …" prefab family. |
 | POST | `/commands/batch` | Run several commands in sequence. |
+
+### `/commands/build-road` — the game's own road tool
+
+Every network (roads, highways, `Water Pipe`, `Power Line`, paths, rails) is built through
+`NetTool.CreateNode`, the static method the road tool calls on a click, with the same
+control points the tool would make:
+
+- **Ends snap.** Within `snapRadius` (default 8 m) an end attaches to an existing node,
+  else onto an existing segment, which the game splits into a T-junction. `start` / `end`
+  in each leg say what that end snapped to.
+- **Straight roads split themselves** (`autoSplit`, default true) at every existing node
+  on the line and every point where the line crosses an existing segment. The tool's test
+  pass reports `ObjectCollision` for a road drawn straight across a dead end or across the
+  middle of a segment; stopping at those points is what a player does by clicking there,
+  and it turns each crossing into a real intersection.
+- **Test first, then build.** Every leg runs with `test: true`; nothing is built unless all
+  legs pass. `dryRun: true` stops there.
+- **Refusals are the game's own.** `errors` lists `ToolErrors` names (`ObjectCollision`,
+  `SlopeTooSteep`, `OutOfArea`, `NotEnoughMoney`, `TooShort`, `InvalidShape`, ...) plus
+  the bridge's own `Underwater`: the game builds a ground road on the sea bed without
+  complaint, so the bridge refuses a surface network (road, path, track) with 4 m or more
+  under water unless `elevation >= 4` (the bridge variant) or `allowWater: true`. Pipes
+  and power lines are exempt. `hint` says what to change.
+- **Money.** `cost` is the construction cost in ₡ (from the test pass); the build pass
+  charges it, and `moneyBefore` / `moneyAfter` show the treasury.
+- **A refusal is HTTP 200 with `"ok": false`** — the command ran; the game said no.
+
+```json
+{ "ok": true, "built": true, "roadPrefab": "Basic Road", "segmentIds": [6854, 27513],
+  "endNodeId": 18695, "cost": 400, "moneyBefore": 689200, "moneyAfter": 688800,
+  "legs": [ { "leg": 0, "errors": [], "underwaterMeters": 0,
+              "start": { "snappedTo": "segment", "segmentId": 17321, "x": 402, "y": 78.4, "z": -625 },
+              "end":   { "snappedTo": "segment", "segmentId": 30296, "x": 322, "y": 77.9, "z": -625 } } ] }
+```
+
+### `/commands/place-building` — the game's own placement rules
+
+A port of the placement half of `BuildingTool.SimulationStep`, calling the game's public
+checks (`BuildingTool.CheckSpace`, `BuildingTool.SnapToPath`,
+`BuildingAI.CheckBuildPosition`, `ZoneManager.CheckSpace`, `TerrainManager.GetShorePos`):
+
+| Placement mode | What happens to the requested point |
+|---|---|
+| `Roadside` (most services) | Snaps to the nearest zone-grid slot within 8 m, facing the road; else to the nearest road within 40 m. Aim at the kerb. |
+| `Shoreline` | Snaps to the water's edge within 50 m, facing the water. |
+| `ShorelineOrGround` | The shore if one is within 50 m, else like `OnGround`. |
+| `PathsideOrGround` | Snaps to a nearby road/path, else like `OnGround`. |
+| `OnGround`, `OnSurface`, `OnTerrain` | Exactly where asked, at `angleDegrees`. |
+
+Collisions, slope, unlocked tiles and money are checked first. On success the site is
+cleared the way the tool clears it (trees, props), the cost is charged, the building and
+its sub-buildings are created, coverage is refreshed, and the placement effect plays. The
+response reports where it actually went: `position`, `angleDegrees`, `snappedTo`.
+
+### `/state/map` — a map made of game data
+
+`cols × rows` cells of `cell` metres. Row 0 is the north edge (max z), column 0 the west
+edge (min x): `x = west + (col + 0.5) * cell`, `z = north - (row + 0.5) * cell`.
+`classes` is base64, one byte per cell: the low 7 bits are a class from `legend` (0 land,
+1 water, 2 road, 3 highway, 4 other network, 5 service building, 6 growable building,
+7–10 residential/commercial/industrial/office zone); bit `0x80` marks a cell outside the
+unlocked area. `heights` is base64, one little-endian `uint16` per cell = terrain height ×
+4. `roadDeadEnds` lists road nodes with a single segment (the natural places to extend
+from). The MCP tool `city_map` renders it as a PNG with labelled coordinates.
 
 ### `/commands/transport-line` — the line editor
 
@@ -488,7 +557,6 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 ```powershell
 $body = @{
   zone = "ResidentialLow"
-  preserveOccupied = $true
   center = @{ x = 240; z = -40 }
   radius = 70
 } | ConvertTo-Json -Depth 5
@@ -623,16 +691,17 @@ Failure:
 
 ## Notes and gotchas
 
-- **`build-road` reuses nodes.** It looks for an existing node within ~2 units of each
-  endpoint and attaches to it instead of creating a duplicate. That is how you get real
-  intersections.
+- **`build-road` snaps like the tool.** Ends attach to an existing node or segment within
+  `snapRadius`; straight roads stop at nodes and crossings on the way. That is how you get
+  real intersections.
 - **Zone blocks are created by roads.** If `set-zone` reports it changed nothing, there is
   probably no road within the painted radius.
-- **`preserveOccupied` defaults to `true`.** It will not repaint cells that already have a
-  developed building. Set it to `false` only when you deliberately want to repaint.
+- **`overwrite` defaults to `false`.** Like the zone tool, painting only fills unzoned
+  cells; pass `overwrite: true` to rezone, or zone `Unzoned` to clear.
 - **Dead ends are not errors.** `includeDeadEnds` defaults to `false` for that reason.
-- **Building placement does not snap to roads automatically.** A service building needs
-  road access to work; check `city_problems` after placing.
+- **Roadside buildings snap to the road.** Aim near the kerb; the response's `position`
+  and `snappedTo` say where it went. A free-standing building (`OnGround`) still needs a
+  road, pipe or power connection of its own.
 - **`bulldoze` does not refund money.** The refund is applied by the game's tool path,
   which the bridge deliberately does not use.
 - **A 409 means "no city is loaded", not "wrong endpoint".** Every endpoint that touches

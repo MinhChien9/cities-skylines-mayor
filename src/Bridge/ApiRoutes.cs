@@ -109,6 +109,16 @@ namespace SkylinesAgentBridge
                     return OnGameThread(delegate { return GameState.BuildNetworksJson(limit, service); });
                 });
 
+            MapGet("/state/map", "Read a semantic top-down map of an area (land, water, roads, zones, buildings, locked tiles)",
+                delegate(HttpRequest request)
+                {
+                    float x = request.GetQueryFloat("x", 0f);
+                    float z = request.GetQueryFloat("z", 0f);
+                    float size = request.GetQueryFloat("size", 1024f);
+                    float cell = request.GetQueryFloat("cell", 8f);
+                    return OnGameThread(delegate { return CommandResult.FromJson(MapCollector.BuildMapJson(x, z, size, cell)); });
+                });
+
             MapGet("/state/road-anomalies", "Inspect road anomalies",
                 delegate(HttpRequest request)
                 {
@@ -182,7 +192,7 @@ namespace SkylinesAgentBridge
                 });
 
             // ---- commands ---------------------------------------------------------
-            MapPost("/commands/build-road", "Build a road segment",
+            MapPost("/commands/build-road", "Build a road (game-validated, NetTool rules)",
                 delegate(HttpRequest request)
                 {
                     string body = request.Body;
@@ -205,6 +215,13 @@ namespace SkylinesAgentBridge
                     return OnGameThread(delegate { return ZoneCommands.SetZone(body); });
                 });
 
+            MapPost("/commands/zone-segment", "Zone the cells along one road segment",
+                delegate(HttpRequest request)
+                {
+                    string body = request.Body;
+                    return OnGameThread(delegate { return ZoneCommands.ZoneSegment(body); });
+                });
+
             MapPost("/commands/repair-zones-to-growables", "Repair zones back to growables",
                 delegate(HttpRequest request)
                 {
@@ -219,7 +236,7 @@ namespace SkylinesAgentBridge
                     return OnGameThread(delegate { return ZoneCommands.RepairZoneClusters(body); });
                 });
 
-            MapPost("/commands/place-building", "Place a building",
+            MapPost("/commands/place-building", "Place a building (game-validated, BuildingTool rules)",
                 delegate(HttpRequest request)
                 {
                     string body = request.Body;

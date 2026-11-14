@@ -1,5 +1,13 @@
 # Command Surface — every action in the game, reachable by the agent
 
+> **Second pivot (2026-11-15) — validated building.** Rows 1 and 9 are agent tools again:
+> the build endpoints now call the game's own tool code (`NetTool.CreateNode`, a port of
+> `BuildingTool`'s placement rules) with the test pass first, and `city_map` gives the
+> agent a coordinate-exact view of the land. The cursor (tier 3) is no longer needed for
+> roads, networks, zoning, buildings or bulldozing; transit-line drawing and district
+> painting remain the open spatial rows. The 2026-11-11 note below is kept for history.
+> See `AGENTS.md` and `docs/10-roadmap.md`.
+
 > **Pivot (2026-11-11).** The table below still describes the *bridge* surface, and the
 > research remains valid. But the agent-facing product is now the **mayor's office
 > model**: the MCP server exposes only reads and non-spatial levers (`city_request`
@@ -122,7 +130,7 @@ Is it a UI-driven feature?            → Tier 3
 
 | # | Capability | Tier | Bridge endpoint | MCP tool | Difficulty |
 |---|---|---|---|---|---|
-| 1 | Roads, zoning, buildings, bulldoze | **1** (built) + **3** (the agent's route now) | `/commands/*` — *built, kept in the bridge, **not agent-exposed*** | *none* — the cursor does it through the game's own tools | Done; **de-exposed** at the pivot |
+| 1 | Roads, zoning, buildings, bulldoze | **1** — through the game's own tool code | `/commands/build-road`, `zone-segment`, `set-zone`, `place-building`, `move-building`, `bulldoze`, `GET /state/map` | `city_build_road`, `city_zone_segment`, `city_zone_area`, `city_place_building`, `city_move_building`, `city_bulldoze`, `city_map` | **Re-exposed 2026-11-15, game-validated, verified live** |
 | 2 | **Service budgets** | **1** | `GET /state/budgets`, `POST /commands/set-budget` | `city_budgets`, `city_set_budget` | Done ✅ |
 | 3 | **Policies** (127) | **1** | `GET /state/policies`, `POST /commands/set-policy` | `city_policies`, `city_set_policy` | Done ✅ |
 | 4 | **Transport lines** | **1** + **3** | `GET /state/transport`, `GET /prefabs/transport`, `POST /commands/transport-line` | `city_transport`, `city_transport_prefabs`, `city_transport_line` | Done ✅ (built — R2; live ridership run pending) |
@@ -130,7 +138,7 @@ Is it a UI-driven feature?            → Tier 3
 | 6 | **Special areas** (airport / campus / pedestrian / industry) | **2** | `GET /state/districts`, `POST /commands/district` | `city_districts`, `city_district` | Done ✅ (built — R3; same command, `layer:"park"`) |
 | 7 | **Milestones & map tiles** | **0** | `GET /state/progress`, `POST /commands/unlock-milestone`, `POST /commands/unlock-area` | `city_progress`, `city_unlock` | Easy to build; **a cheat** (§4.6) |
 | 8 | **Props & landscaping** (trees, benches, lamps) | **1** | `GET /prefabs/props`, `POST /commands/place-prop` | *none* — cursor work | Built? no; **cursor route** |
-| 9 | **Parks & plazas** | **1** (they are buildings) | `POST /commands/place-building` | *none* — cursor work | **Cursor route** |
+| 9 | **Parks & plazas** | **1** (they are buildings) | `POST /commands/place-building` | `city_place_building` | **Validated route** (2026-11-15) |
 | 10 | **Industry chains & cargo** | **1** + **2** | `GET /state/industry`, cargo transport lines | `city_industry` | Medium |
 | 11 | **Terrain edits & natural resources** | **0** | `POST /commands/edit-terrain` *(dropped)*, `GET /state/resources` | `city_resources` (planned P4); terrain editing → cursor | Read: Easy |
 | 12 | **Screenshot & camera** | **0** | `POST /commands/set-camera` + `POST /commands/project-point` (P2 — main-thread queue is the named exception) | `city_camera`, `city_project` — PNG capture dropped, the CUA channel takes screenshots | **Built and verified live 2026-11-11** (note: the ICities `ICamera` wrapper drives the *cinematic* camera; aiming uses `CameraController` fields — see §4.10) |

@@ -15,7 +15,7 @@ namespace SkylinesAgentBridge.Commands
             bool dryRun = JsonUtil.GetBool(body, "dryRun", false);
             string prefabName = JsonUtil.GetString(body, "buildingPrefab", "");
             float angleDegrees = JsonUtil.GetNumber(body, "angleDegrees", 0f);
-            Vector3 position = CommandInput.ReadPoint(body, "position");
+            Vector3 target = CommandInput.ReadPoint(body, "position");
 
             if (prefabName == null || prefabName.Length == 0)
             {
@@ -32,45 +32,119 @@ namespace SkylinesAgentBridge.Commands
                 return CommandResult.Fail("Building prefab is blocked and must not be used: " + prefabName + " (" + AssetPolicy.BlockReason(prefabName) + ")");
             }
 
-            TerrainManager terrain = TerrainManager.instance;
-            position.y = terrain.SampleRawHeightSmoothWithWater(position, false, 0f);
+            // Resolve exactly where the building tool would put it, and what it would say.
+            BuildingPlacement.Result placement = BuildingPlacement.Resolve(info, target, angleDegrees, 0);
 
-            if (dryRun)
+            if (placement.Errors != ToolBase.ToolErrors.None || dryRun)
             {
-                return CommandResult.FromJson("{\"ok\":true,\"dryRun\":true,\"message\":\"Place-building validation passed.\",\"buildingPrefab\":\"" + JsonUtil.Escape(prefabName) + "\"}");
+                return CommandResult.FromJson("{\"ok\":" + JsonUtil.Bool(placement.Errors == ToolBase.ToolErrors.None) +
+                    ",\"dryRun\":" + JsonUtil.Bool(dryRun) +
+                    ",\"built\":false" +
+                    ",\"buildingPrefab\":\"" + JsonUtil.Escape(prefabName) + "\"" +
+                    ",\"placementMode\":\"" + info.m_placementMode + "\"" +
+                    PlacementJson(placement) +
+                    "," + GameValidation.ErrorFields(placement.Errors) + "}");
             }
 
-            SimulationManager simulation = Singleton<SimulationManager>.instance;
-            BuildingManager buildings = BuildingManager.instance;
-            Randomizer randomizer = simulation.m_randomizer;
-            ushort buildingId;
-            float angle = angleDegrees * Mathf.Deg2Rad;
+            int moneyBefore = RoadCommands.MoneyNow();
+            BuildingPlacement.ClearSite(info, placement, 0);
 
-            bool created = buildings.CreateBuilding(
-                out buildingId,
-                ref randomizer,
-                info,
-                position,
-                angle,
-                info.GetLength(),
-                simulation.m_currentBuildIndex);
-
-            simulation.m_randomizer = randomizer;
-
-            if (!created)
+            if (GameValidation.NeedMoney() && placement.Cost > 0)
             {
-                return CommandResult.Fail("Failed to create building.");
+                Singleton<EconomyManager>.instance.FetchResource(EconomyManager.Resource.Construction, placement.Cost, info.m_class);
             }
 
-            simulation.m_currentBuildIndex += 1u;
+            ushort buildingId = CreateWithSubBuildings(info, placement.Position, placement.Angle);
+            if (buildingId == 0)
+            {
+                return CommandResult.Fail("The game refused to create the building (object limit?).");
+            }
 
-            string json = "{\"ok\":true,\"dryRun\":false,\"buildingId\":" + buildingId +
+            int publicServiceIndex = ItemClass.GetPublicServiceIndex(info.m_class.m_service);
+            if (publicServiceIndex != -1)
+            {
+                Singleton<CoverageManager>.instance.CoverageUpdated(info.m_class.m_service, info.m_class.m_subService, info.m_class.m_level);
+            }
+            BuildingTool.DispatchPlacementEffect(info, 0, placement.Position, placement.Angle, info.m_cellWidth, info.m_cellLength, false, false);
+
+            Debug.Log("[SkylinesAgentBridge] Placed building " + buildingId + " (" + prefabName + "), cost " + placement.Cost);
+
+            return CommandResult.FromJson("{\"ok\":true,\"dryRun\":false,\"built\":true" +
+                ",\"buildingId\":" + buildingId +
                 ",\"buildingPrefab\":\"" + JsonUtil.Escape(prefabName) + "\"" +
                 ",\"service\":\"" + JsonUtil.Escape(info.m_class.m_service.ToString()) + "\"" +
-                ",\"subService\":\"" + JsonUtil.Escape(info.m_class.m_subService.ToString()) + "\"}";
+                ",\"subService\":\"" + JsonUtil.Escape(info.m_class.m_subService.ToString()) + "\"" +
+                ",\"placementMode\":\"" + info.m_placementMode + "\"" +
+                PlacementJson(placement) +
+                ",\"moneyBefore\":" + moneyBefore +
+                ",\"moneyAfter\":" + RoadCommands.MoneyNow() + "}");
+        }
 
-            Debug.Log("[SkylinesAgentBridge] Placed building " + buildingId + " with prefab " + prefabName);
-            return CommandResult.FromJson(json);
+        /// <summary>
+        /// Creates the building and its sub-buildings the way <c>BuildingTool.CreateBuilding</c>
+        /// does. Returns the main building id, or 0.
+        /// </summary>
+        private static ushort CreateWithSubBuildings(BuildingInfo info, Vector3 position, float angle)
+        {
+            BuildingManager buildings = Singleton<BuildingManager>.instance;
+            SimulationManager simulation = Singleton<SimulationManager>.instance;
+            ushort building;
+            if (!buildings.CreateBuilding(out building, ref simulation.m_randomizer, info, position, angle, 0, simulation.m_currentBuildIndex))
+            {
+                return 0;
+            }
+            if (info.m_fixedHeight)
+            {
+                buildings.m_buildings.m_buffer[building].m_flags |= Building.Flags.FixedHeight;
+            }
+            simulation.m_currentBuildIndex++;
+
+            ushort main = building;
+            if (info.m_subBuildings != null && info.m_subBuildings.Length != 0)
+            {
+                Matrix4x4 matrix = default(Matrix4x4);
+                matrix.SetTRS(position, Quaternion.AngleAxis(angle * 57.29578f, Vector3.down), Vector3.one);
+                for (int i = 0; i < info.m_subBuildings.Length; i++)
+                {
+                    BuildingInfo subInfo = info.m_subBuildings[i].m_buildingInfo;
+                    if (subInfo == null)
+                    {
+                        continue;
+                    }
+                    Vector3 subPosition = matrix.MultiplyPoint(info.m_subBuildings[i].m_position);
+                    float subAngle = info.m_subBuildings[i].m_angle * ((float)Math.PI / 180f) + angle;
+                    Segment3 connection = default(Segment3);
+                    int productionRate;
+                    int cost;
+                    subInfo.m_buildingAI.CheckBuildPosition(0, ref subPosition, ref subAngle, 0f, 0f, ref connection, out productionRate, out cost);
+                    ushort sub;
+                    if (buildings.CreateBuilding(out sub, ref simulation.m_randomizer, subInfo, subPosition, subAngle, 0, simulation.m_currentBuildIndex))
+                    {
+                        if (info.m_subBuildings[i].m_fixedHeight)
+                        {
+                            buildings.m_buildings.m_buffer[sub].m_flags |= Building.Flags.FixedHeight;
+                        }
+                        simulation.m_currentBuildIndex++;
+                        buildings.m_buildings.m_buffer[building].m_subBuilding = sub;
+                        buildings.m_buildings.m_buffer[sub].m_parentBuilding = building;
+                        buildings.m_buildings.m_buffer[sub].m_flags |= Building.Flags.Untouchable;
+                        building = sub;
+                    }
+                }
+            }
+            return main;
+        }
+
+        private static string PlacementJson(BuildingPlacement.Result r)
+        {
+            float degrees = r.Angle * Mathf.Rad2Deg;
+            degrees = ((degrees % 360f) + 360f) % 360f;
+            return ",\"cost\":" + (r.Cost / 100) +
+                ",\"snappedTo\":\"" + r.Snap + "\"" +
+                ",\"position\":{\"x\":" + JsonUtil.Number(r.Position.x) +
+                ",\"y\":" + JsonUtil.Number(r.Position.y) +
+                ",\"z\":" + JsonUtil.Number(r.Position.z) + "}" +
+                ",\"angleDegrees\":" + JsonUtil.Number(degrees);
         }
 
         public static CommandResult MoveBuilding(string body)
@@ -100,48 +174,30 @@ namespace SkylinesAgentBridge.Commands
                 return CommandResult.Fail("Building prefab is blocked and must not be used for move/recreate: " + info.name + " (" + AssetPolicy.BlockReason(info.name) + ")");
             }
 
-            Vector3 position = CommandInput.ReadPoint(body, "position");
-            TerrainManager terrain = TerrainManager.instance;
-            position.y = terrain.SampleRawHeightSmoothWithWater(position, false, 0f);
+            Vector3 target = CommandInput.ReadPoint(body, "position");
             float angleDegrees = JsonUtil.GetNumber(body, "angleDegrees", oldBuilding.m_angle * Mathf.Rad2Deg);
-            float angle = angleDegrees * Mathf.Deg2Rad;
 
-            if (dryRun)
+            // Same validation as placing it fresh, with the building itself excluded from
+            // the collision check (relocating = id), like the move tool does.
+            BuildingPlacement.Result placement = BuildingPlacement.Resolve(info, target, angleDegrees, id);
+            placement.Errors &= ~ToolBase.ToolErrors.NotEnoughMoney; // relocation is free
+            if (placement.Errors != ToolBase.ToolErrors.None || dryRun)
             {
-                return CommandResult.FromJson("{\"ok\":true,\"dryRun\":true,\"message\":\"Move-building validation passed.\",\"id\":" + id +
-                    ",\"buildingPrefab\":\"" + JsonUtil.Escape(info.name) + "\"}");
+                return CommandResult.FromJson("{\"ok\":" + JsonUtil.Bool(placement.Errors == ToolBase.ToolErrors.None) +
+                    ",\"dryRun\":" + JsonUtil.Bool(dryRun) +
+                    ",\"moved\":false,\"id\":" + id +
+                    ",\"buildingPrefab\":\"" + JsonUtil.Escape(info.name) + "\"" +
+                    PlacementJson(placement) +
+                    "," + GameValidation.ErrorFields(placement.Errors) + "}");
             }
 
-            SimulationManager simulation = Singleton<SimulationManager>.instance;
-            Randomizer randomizer = simulation.m_randomizer;
-            ushort newBuildingId;
-            bool created = buildings.CreateBuilding(
-                out newBuildingId,
-                ref randomizer,
-                info,
-                position,
-                angle,
-                info.GetLength(),
-                simulation.m_currentBuildIndex);
+            BuildingPlacement.ClearSite(info, placement, id);
+            Singleton<BuildingManager>.instance.RelocateBuilding(id, placement.Position, placement.Angle);
 
-            simulation.m_randomizer = randomizer;
-            if (!created)
-            {
-                return CommandResult.Fail("Failed to create moved building.");
-            }
-
-            simulation.m_currentBuildIndex += 1u;
-            buildings.ReleaseBuilding(id);
-
-            string json = "{\"ok\":true,\"dryRun\":false,\"oldBuildingId\":" + id +
-                ",\"newBuildingId\":" + newBuildingId +
+            Debug.Log("[SkylinesAgentBridge] Relocated building " + id + " (" + info.name + ")");
+            return CommandResult.FromJson("{\"ok\":true,\"dryRun\":false,\"moved\":true,\"id\":" + id +
                 ",\"buildingPrefab\":\"" + JsonUtil.Escape(info.name) + "\"" +
-                ",\"position\":{\"x\":" + JsonUtil.Number(position.x) +
-                ",\"y\":" + JsonUtil.Number(position.y) +
-                ",\"z\":" + JsonUtil.Number(position.z) + "}}";
-
-            Debug.Log("[SkylinesAgentBridge] Moved building " + id + " to " + newBuildingId + " with prefab " + info.name);
-            return CommandResult.FromJson(json);
+                PlacementJson(placement) + "}");
         }
 
         public static CommandResult SetBuildingActive(string body)

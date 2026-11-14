@@ -7,10 +7,17 @@ namespace SkylinesAgentBridge.Commands
 {
     public static class ZoneCommands
     {
+        /// <summary>
+        /// Paints zone cells inside a circle - the zone tool's brush (<c>ZoneTool.ApplyBrush</c>):
+        /// a cell is painted when its centre lies inside the circle. Like the tool, an
+        /// already-zoned cell is only changed when <c>overwrite</c> is true, and painting
+        /// <c>Unzoned</c> clears cells. Only valid cells (along a zonable road, not blocked)
+        /// can hold a zone.
+        /// </summary>
         public static CommandResult SetZone(string body)
         {
             bool dryRun = JsonUtil.GetBool(body, "dryRun", false);
-            bool preserveOccupied = JsonUtil.GetBool(body, "preserveOccupied", true);
+            bool overwrite = JsonUtil.GetBool(body, "overwrite", false);
             string zoneName = JsonUtil.GetString(body, "zone", "ResidentialLow");
             float radius = JsonUtil.GetNumber(body, "radius", 32f);
             Vector3 center = CommandInput.ReadPoint(body, "center");
@@ -27,73 +34,178 @@ namespace SkylinesAgentBridge.Commands
             }
 
             ZoneManager manager = ZoneManager.instance;
-            float radiusSq = radius * radius;
-            int touchedBlocks = 0;
-            int skippedOccupiedBlocks = 0;
-            int changedCells = 0;
-
+            ZoneTally tally = new ZoneTally();
             for (int i = 1; i < manager.m_blocks.m_buffer.Length; i++)
             {
-                ZoneBlock block = manager.m_blocks.m_buffer[i];
-                if ((block.m_flags & ZoneBlock.FLAG_CREATED) == 0)
+                if ((manager.m_blocks.m_buffer[i].m_flags & ZoneBlock.FLAG_CREATED) == 0)
                 {
                     continue;
                 }
-
-                Vector3 delta = block.m_position - center;
-                delta.y = 0f;
-                if (delta.sqrMagnitude > radiusSq)
+                Vector3 delta = manager.m_blocks.m_buffer[i].m_position - center;
+                if (Mathf.Abs(delta.x) > 46f + radius || Mathf.Abs(delta.z) > 46f + radius)
                 {
                     continue;
                 }
+                PaintBlock((ushort)i, zone, overwrite, dryRun, 4, center, radius, tally);
+            }
 
-                touchedBlocks++;
-                if (preserveOccupied && ZoneBlockHasProtectedBuilding(block))
+            return CommandResult.FromJson("{\"ok\":true,\"dryRun\":" + JsonUtil.Bool(dryRun) +
+                ",\"zone\":\"" + JsonUtil.Escape(zone.ToString()) + "\"" +
+                ",\"overwrite\":" + JsonUtil.Bool(overwrite) + tally.Json() + "}");
+        }
+
+        /// <summary>
+        /// Zones the cells along one road segment: the zone blocks the road itself created
+        /// (<c>m_blockStartLeft/Right</c>, <c>m_blockEndLeft/Right</c>), on one or both sides,
+        /// up to <c>depth</c> cells (1-4) back from the road. This is the precise way to say
+        /// "zone both sides of this street", and it never spills onto neighbouring roads.
+        /// </summary>
+        public static CommandResult ZoneSegment(string body)
+        {
+            bool dryRun = JsonUtil.GetBool(body, "dryRun", false);
+            bool overwrite = JsonUtil.GetBool(body, "overwrite", false);
+            string zoneName = JsonUtil.GetString(body, "zone", "ResidentialLow");
+            string side = JsonUtil.GetString(body, "side", "both");
+            int depth = Mathf.Clamp((int)JsonUtil.GetNumber(body, "depth", 4f), 1, 4);
+            ushort segmentId = (ushort)JsonUtil.GetNumber(body, "segmentId", 0f);
+
+            ItemClass.Zone zone;
+            if (!TryParseZone(zoneName, out zone))
+            {
+                return CommandResult.Fail("Unsupported zone: " + zoneName);
+            }
+            if (side != "left" && side != "right" && side != "both")
+            {
+                return CommandResult.Fail("side must be left, right or both.");
+            }
+
+            NetSegment[] segments = NetManager.instance.m_segments.m_buffer;
+            if (segmentId == 0 || segmentId >= segments.Length ||
+                (segments[segmentId].m_flags & NetSegment.Flags.Created) == NetSegment.Flags.None)
+            {
+                return CommandResult.Fail("Road segment was not found: " + segmentId);
+            }
+
+            NetSegment segment = segments[segmentId];
+            List<ushort> blocks = new List<ushort>();
+            if (side != "right")
+            {
+                AddBlock(blocks, segment.m_blockStartLeft);
+                AddBlock(blocks, segment.m_blockEndLeft);
+            }
+            if (side != "left")
+            {
+                AddBlock(blocks, segment.m_blockStartRight);
+                AddBlock(blocks, segment.m_blockEndRight);
+            }
+            if (blocks.Count == 0)
+            {
+                return CommandResult.Fail("Segment " + segmentId + " has no zone blocks on that side. Highways, ramps, pipes and very short or steep roads cannot be zoned.");
+            }
+
+            ZoneTally tally = new ZoneTally();
+            for (int i = 0; i < blocks.Count; i++)
+            {
+                PaintBlock(blocks[i], zone, overwrite, dryRun, depth, Vector3.zero, -1f, tally);
+            }
+
+            return CommandResult.FromJson("{\"ok\":true,\"dryRun\":" + JsonUtil.Bool(dryRun) +
+                ",\"segmentId\":" + segmentId +
+                ",\"zone\":\"" + JsonUtil.Escape(zone.ToString()) + "\"" +
+                ",\"side\":\"" + side + "\",\"depth\":" + depth +
+                ",\"overwrite\":" + JsonUtil.Bool(overwrite) +
+                ",\"blocks\":" + blocks.Count + tally.Json() + "}");
+        }
+
+        private sealed class ZoneTally
+        {
+            public int Blocks;
+            public int Changed;
+            public int AlreadyZoned;
+            public int Invalid;
+
+            public string Json()
+            {
+                return ",\"touchedBlocks\":" + Blocks + ",\"changedCells\":" + Changed +
+                    ",\"skippedAlreadyZoned\":" + AlreadyZoned + ",\"skippedInvalidCells\":" + Invalid;
+            }
+        }
+
+        private static void AddBlock(List<ushort> blocks, ushort block)
+        {
+            if (block != 0 && (ZoneManager.instance.m_blocks.m_buffer[block].m_flags & ZoneBlock.FLAG_CREATED) != 0 && !blocks.Contains(block))
+            {
+                blocks.Add(block);
+            }
+        }
+
+        /// <summary>
+        /// Applies a zone to the cells of one block. Cell column 0 is the one touching the
+        /// road; <paramref name="depth"/> limits how far back from the road cells are
+        /// painted. With <paramref name="radius"/> &gt; 0 only cells whose centre is inside
+        /// the circle are painted (the brush). Mirrors ZoneTool.ApplyBrush, plus the m_valid
+        /// check so the counts are honest.
+        /// </summary>
+        private static void PaintBlock(ushort blockId, ItemClass.Zone zone, bool overwrite, bool dryRun, int depth,
+            Vector3 center, float radius, ZoneTally tally)
+        {
+            ZoneManager manager = ZoneManager.instance;
+            ZoneBlock block = manager.m_blocks.m_buffer[blockId];
+            int rows = block.RowCount;
+            Vector3 forward = new Vector3(Mathf.Cos(block.m_angle), 0f, Mathf.Sin(block.m_angle)) * 8f;
+            Vector3 side = new Vector3(forward.z, 0f, -forward.x);
+            bool touched = false;
+            bool changed = false;
+
+            for (int row = 0; row < rows; row++)
+            {
+                for (int col = 0; col < depth; col++)
                 {
-                    skippedOccupiedBlocks++;
-                    continue;
-                }
-
-                if (!dryRun)
-                {
-                    int rows = ZoneHelpers.GetRowCount(block);
-
-                    for (int z = 0; z < rows; z++)
+                    if (radius > 0f)
                     {
-                        for (int x = 0; x < 4; x++)
+                        Vector3 cell = block.m_position + ((float)col - 3.5f) * forward + ((float)row - 3.5f) * side - center;
+                        if (cell.x * cell.x + cell.z * cell.z > radius * radius)
                         {
-                            try
-                            {
-                                if (manager.m_blocks.m_buffer[i].SetZone(x, z, zone))
-                                {
-                                    changedCells++;
-                                }
-                            }
-                            catch (System.Exception ex)
-                            {
-                                Debug.Log("[SkylinesAgentBridge] Skipped zone cell " + i + "/" + x + "/" + z + ": " + ex.Message);
-                            }
+                            continue;
                         }
                     }
-
-                    try
+                    touched = true;
+                    if ((block.m_valid & (1UL << ((row << 3) | col))) == 0)
                     {
-                        manager.m_blocks.m_buffer[i].RefreshZoning((ushort)i);
-                        manager.UpdateBlock((ushort)i);
+                        tally.Invalid++;
+                        continue;
                     }
-                    catch (System.Exception ex)
+                    ItemClass.Zone current = block.GetZone(col, row);
+                    if (current == zone)
                     {
-                        Debug.Log("[SkylinesAgentBridge] Failed to refresh zone block " + i + ": " + ex.Message);
+                        continue;
+                    }
+                    if (!overwrite && zone != ItemClass.Zone.Unzoned && current != ItemClass.Zone.Unzoned)
+                    {
+                        tally.AlreadyZoned++;
+                        continue;
+                    }
+                    if (dryRun)
+                    {
+                        tally.Changed++;
+                        continue;
+                    }
+                    if (manager.m_blocks.m_buffer[blockId].SetZone(col, row, zone))
+                    {
+                        tally.Changed++;
+                        changed = true;
                     }
                 }
             }
 
-            if (dryRun)
+            if (touched)
             {
-                return CommandResult.FromJson("{\"ok\":true,\"dryRun\":true,\"zone\":\"" + JsonUtil.Escape(zoneName) + "\",\"preserveOccupied\":" + JsonUtil.Bool(preserveOccupied) + ",\"matchingBlocks\":" + touchedBlocks + ",\"skippedOccupiedBlocks\":" + skippedOccupiedBlocks + "}");
+                tally.Blocks++;
             }
-
-            return CommandResult.FromJson("{\"ok\":true,\"dryRun\":false,\"zone\":\"" + JsonUtil.Escape(zoneName) + "\",\"preserveOccupied\":" + JsonUtil.Bool(preserveOccupied) + ",\"touchedBlocks\":" + touchedBlocks + ",\"skippedOccupiedBlocks\":" + skippedOccupiedBlocks + ",\"changedCells\":" + changedCells + "}");
+            if (changed)
+            {
+                manager.m_blocks.m_buffer[blockId].RefreshZoning(blockId);
+            }
         }
 
         public static CommandResult RepairZonesToGrowables(string body)
@@ -337,40 +449,6 @@ namespace SkylinesAgentBridge.Commands
             return false;
         }
 
-        private static bool ZoneBlockHasProtectedBuilding(ZoneBlock block)
-        {
-            BuildingManager manager = BuildingManager.instance;
-            for (ushort i = 1; i < manager.m_buildings.m_buffer.Length; i++)
-            {
-                Building building = manager.m_buildings.m_buffer[i];
-                if ((building.m_flags & Building.Flags.Created) == Building.Flags.None)
-                {
-                    continue;
-                }
-
-                BuildingInfo info = building.Info;
-                if (info == null || info.m_class == null || GameInfoHelpers.IsInternalNetworkHelperBuilding(info))
-                {
-                    continue;
-                }
-
-                if (!ShouldProtectBuilding(info))
-                {
-                    continue;
-                }
-
-                float protectionRadius = Mathf.Max(info.GetWidth(), info.GetLength()) * 4f + 38f;
-                Vector3 delta = building.m_position - block.m_position;
-                delta.y = 0f;
-                if (delta.sqrMagnitude <= protectionRadius * protectionRadius)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         private static void GetExpectedZoneFromNearbyGrowables(ZoneBlock block, out ItemClass.Zone expectedZone, out bool hasGrowable, out bool mixedUse)
         {
             expectedZone = ItemClass.Zone.Unzoned;
@@ -547,25 +625,6 @@ namespace SkylinesAgentBridge.Commands
 
                 MinorityCells = ZonedCells - DominantCells;
             }
-        }
-
-        private static bool ShouldProtectBuilding(BuildingInfo info)
-        {
-            string service = info.m_class.m_service.ToString();
-            return service == "Residential" ||
-                service == "Commercial" ||
-                service == "Industrial" ||
-                service == "Office" ||
-                service == "Water" ||
-                service == "Electricity" ||
-                service == "Garbage" ||
-                service == "HealthCare" ||
-                service == "PoliceDepartment" ||
-                service == "FireDepartment" ||
-                service == "Education" ||
-                service == "Disaster" ||
-                service == "Beautification" ||
-                service == "Monument";
         }
     }
 }

@@ -1,5 +1,37 @@
 # Roadmap
 
+**The second pivot (2026-11-15): validated building.** The cursor model below worked,
+but every spatial step cost a screenshot, positions were guessed from pixels, and a
+screenshot even made dry land read as sea. The original problem with API building was
+never "an API" — it was that the upstream endpoints wrote to the storage layer and
+skipped every rule. The build endpoints now run the game's own tool code:
+
+- [x] `build-road` → `NetTool.CreateNode` with tool-identical control points: node /
+      segment snapping, test pass then build, cost charged, straight roads split at
+      existing nodes and crossings (the test pass refuses a road drawn across them),
+      plus an `Underwater` refusal for ground roads on the sea bed
+- [x] `place-building` / `move-building` → a port of `BuildingTool`'s placement rules
+      (`FindClosestZone` zone-grid snapping, `SnapToPath`, shoreline snapping,
+      `CheckSpace`, `CheckBuildPosition`, slope, money), site clearing, sub-buildings,
+      `RelocateBuilding` for moves
+- [x] `zone-segment` (zone along one road's own blocks, side + depth) and a cell-level
+      `set-zone` brush with the zone tool's no-overwrite rule
+- [x] `GET /state/map` — semantic raster with world coordinates; `city_map` renders it
+      to PNG (hand-written encoder, no image dependency)
+- [x] MCP `BuildTools` (7 tools), allowlist opened to the validated endpoints, tests
+- [x] `scripts/restart-game.ps1` — save, restart with the fresh mod, resume the city
+- [x] **Verified live**: a street grid with T-junctions and 4-way crossings, zoning,
+      water outlet + tower + pipes, wind turbines → 115 citizens, no cursor
+
+### Next
+
+- [ ] **Studio** — record the agent playing: OBS control (obs-websocket), a decision
+      journal, cinematic camera moves, timelapse capture (see the project's video goal)
+- [ ] Transit line drawing and district painting as validated tools
+- [ ] `/state/map` overlays: land value, pollution, coverage, traffic
+
+---
+
 **The pivot (2026-11-11):** the API-building experiment is over — an agent building
 roads/zones/buildings blind, by coordinate, always produced ugly or failing results,
 because the bridge skips the validation and visual judgement the game's own UI tools

@@ -160,6 +160,15 @@ fails loudly if a tool disappears or the handshake breaks.
 Starts Cities: Skylines, waits for the bridge to answer `/health`, and asserts the
 thread proof before you let the agent touch anything.
 
+After changing the bridge, use the restart script instead. The game loads mod
+assemblies once, so a new DLL needs a restart; this saves the city, stops the game,
+builds and installs the mod, relaunches with `--continuelastsave`, and waits for the
+city and the thread proof:
+
+```powershell
+.\scripts\restart-game.ps1            # -NoBuild to restart without rebuilding
+```
+
 ---
 
 ## 7. Let the mayor work
