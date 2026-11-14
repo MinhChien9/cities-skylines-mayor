@@ -48,10 +48,13 @@ namespace SkylinesAgentBridge.Commands
         ///   horizontalAngle   - horizontal viewing angle in degrees (default: keep current)
         ///   instant           - true (default) to snap the camera, false to glide
         ///   edgeScroll        - true/false to toggle the edge-scrolling setting
+        ///   hideUi            - true/false to enter/leave the game's free-camera mode, which
+        ///                       hides the whole UI (including this bridge's console),
+        ///                       notification icons, district names and borders: clean B-roll
         ///
-        /// With no coordinates and no edgeScroll the command is a pure camera-state read.
-        /// The response always carries the live readback: camera position, angle,
-        /// distance, the edge-scrolling state and the Unity screen size.
+        /// With no coordinates, no edgeScroll and no hideUi the command is a pure
+        /// camera-state read. The response always carries the live readback: camera
+        /// position, angle, distance, the edge-scrolling and UI state and the screen size.
         /// </summary>
         public static CommandResult SetCamera(string body)
         {
@@ -75,6 +78,13 @@ namespace SkylinesAgentBridge.Commands
             {
                 bool edgeScroll = JsonUtil.GetBool(body, "edgeScroll", false);
                 edgeScrollError = SetEdgeScrolling(controller, edgeScroll);
+            }
+
+            // ---- optional: hide the UI (the game's own free-camera mode) -------------
+            string hideUiError = null;
+            if (HasField(body, "hideUi"))
+            {
+                hideUiError = SetFreeCamera(controller, JsonUtil.GetBool(body, "hideUi", false));
             }
 
             // ---- optional: frame a target ----------------------------------------
@@ -110,6 +120,10 @@ namespace SkylinesAgentBridge.Commands
             if (edgeScrollError != null)
             {
                 return CommandResult.Fail(edgeScrollError);
+            }
+            if (hideUiError != null)
+            {
+                return CommandResult.Fail(hideUiError);
             }
 
             return CommandResult.FromJson(
@@ -255,7 +269,8 @@ namespace SkylinesAgentBridge.Commands
                 ",\"angle\":{\"vertical\":" + JsonUtil.Number(angle.y) +
                 ",\"horizontal\":" + JsonUtil.Number(angle.x) + "}" +
                 ",\"distance\":" + JsonUtil.Number(size) +
-                ",\"edgeScrolling\":" + ReadEdgeScrolling(controller) + "}" +
+                ",\"edgeScrolling\":" + ReadEdgeScrolling(controller) +
+                ",\"uiHidden\":" + ReadFreeCamera(controller) + "}" +
                 ",\"screen\":{\"width\":" + Screen.width +
                 ",\"height\":" + Screen.height + "}";
         }
@@ -376,6 +391,32 @@ namespace SkylinesAgentBridge.Commands
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Enters or leaves the game's free-camera mode by writing the same public field
+        /// the game's "hide UI" key toggles. CameraController.UpdateFreeCamera notices the
+        /// change on its next frame and does the rest itself: UIView.Show(false),
+        /// notification icons, district names, area borders and road names off - and back
+        /// on when cleared. Returns null on success, an error otherwise.
+        /// </summary>
+        private static string SetFreeCamera(CameraController controller, bool hidden)
+        {
+            FieldInfo field = typeof(CameraController).GetField(
+                "m_freeCamera", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            if (field == null || field.FieldType != typeof(bool))
+            {
+                return "CameraController.m_freeCamera not found (game version changed?).";
+            }
+            field.SetValue(controller, hidden);
+            return null;
+        }
+
+        /// <summary>Whether free-camera mode (UI hidden) is on, or null if unknown.</summary>
+        private static string ReadFreeCamera(CameraController controller)
+        {
+            object value = GetField(controller, "m_freeCamera");
+            return value is bool ? JsonUtil.Bool((bool)value) : "null";
         }
 
         /// <summary>The current edge-scrolling state, or null if it cannot be read.</summary>

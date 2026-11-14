@@ -347,7 +347,7 @@ All accept a JSON body. All support `"dryRun": true` where validation is meaning
 | POST | `/commands/transport-line` | `action` (`create`\|`add-stop`\|`remove-stop`\|`activate`\|`rename`\|`set-vehicle`), plus action fields. See below. |
 | POST | `/commands/district` | `action` (`create`\|`rename`\|`paint`\|`erase`\|`specialize`\|`release`\|`state`), `layer?` (`district`\|`park`), plus action fields. See below. |
 | POST | `/commands/save` | `name` |
-| POST | `/commands/set-camera` | `x?`, `y?`, `z?`, `distance?`, `verticalAngle?`, `horizontalAngle?`, `edgeScroll?`. See below. |
+| POST | `/commands/set-camera` | `x?`, `y?`, `z?`, `distance?`, `verticalAngle?`, `horizontalAngle?`, `edgeScroll?`, `hideUi?`. See below. |
 | POST | `/commands/project-point` | `x`, `z`, `y?`. See below. |
 | POST | `/commands/repair-zones-to-growables` | Repair blocks to their growable zone. |
 | POST | `/commands/repair-zone-clusters` | Repair mottled zones. `preferGrowableZone?` |
@@ -497,8 +497,9 @@ so the office's aim is deterministic. Edge scrolling toggles live through the ga
 | `verticalAngle` / `horizontalAngle` | Degrees: `verticalAngle` is the pitch (0 = level with the horizon, 90 = top-down, clamped to 0–90), `horizontalAngle` the yaw (−180..180). They map to `CameraController.m_targetAngle` **y** and **x** respectively. Both default to the **current** framing, so re-aiming does not spin or tilt the view. |
 | `instant` | `true` (default) snaps the camera to the target the same frame; `false` lets it glide. |
 | `edgeScroll` | `true`/`false` to toggle edge scrolling — the ergonomics fix: with edge scrolling on, the camera drifts whenever the cursor touches the window edge. |
+| `hideUi` | `true`/`false` to enter/leave the game's free-camera mode (`CameraController.m_freeCamera`, the field the game's hide-UI key toggles). The game then hides the whole UI — including the bridge console — plus notification icons, district names, area borders and road names, and shows them again when cleared. For clean video. Readback: `camera.uiHidden`. |
 
-With no coordinates and no `edgeScroll` the command is a pure camera-state read.
+With no coordinates, no `edgeScroll` and no `hideUi` the command is a pure camera-state read.
 
 ```json
 {
@@ -508,7 +509,7 @@ With no coordinates and no `edgeScroll` the command is a pure camera-state read.
               "target": { "x": 240, "y": 0, "z": -40 },
               "angle": { "vertical": 63.2, "horizontal": 45 },
               "distance": 400,
-              "edgeScrolling": false },
+              "edgeScrolling": false, "uiHidden": false },
   "screen": { "width": 1920, "height": 1080 },
   "note": "The camera snapped to the target; the projection is valid immediately."
 }

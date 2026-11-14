@@ -394,7 +394,7 @@ public sealed class CityTools
         return await Post("/commands/district", body, cancellationToken).ConfigureAwait(false);
     }
 
-    [System.ComponentModel.Description("POST /commands/set-camera. The office's eye: frame the game camera on a world position (one from city_problems or an anomaly read), read the current camera state, or toggle edge scrolling so the camera stays put. Use it to show the viewer what was just built (or before a screenshot). x/z given -> the camera snaps to the target the same frame (instant: false lets it glide). distance defaults to keeping the current zoom; verticalAngle/horizontalAngle default to the current framing. edgeScroll true/false flips the live edge-scrolling setting (no restart needed). Runs on the Unity main thread - the named exception to the simulation-thread rule.")]
+    [System.ComponentModel.Description("POST /commands/set-camera. The office's eye: frame the game camera on a world position (one from city_problems or an anomaly read), read the current camera state, or toggle edge scrolling so the camera stays put. Use it to show the viewer what was just built (or before a screenshot). x/z given -> the camera snaps to the target the same frame (instant: false lets it glide). distance defaults to keeping the current zoom; verticalAngle/horizontalAngle default to the current framing. edgeScroll true/false flips the live edge-scrolling setting (no restart needed). hideUi true/false hides/shows the whole UI for clean video (readback: camera.uiHidden). Runs on the Unity main thread - the named exception to the simulation-thread rule.")]
     [McpServerTool(Name = "city_camera", Title = "Camera")]
     public async Task<JsonNode?> CityCamera(
         [System.ComponentModel.Description("World x of the target point.")] double? x = null,
@@ -405,6 +405,7 @@ public sealed class CityTools
         [System.ComponentModel.Description("Yaw (compass direction the camera faces) in degrees, -180..180 (default: keep current).")] double? horizontalAngle = null,
         [System.ComponentModel.Description("True/false to toggle edge scrolling; omit to leave it alone.")] bool? edgeScroll = null,
         [System.ComponentModel.Description("False = glide to the target over a few frames (smoother on video); default true = snap.")] bool? instant = null,
+        [System.ComponentModel.Description("True = hide the game UI, notification icons, district names and the bridge console (the game's free-camera mode) for clean video; false = show them again; omit to leave it.")] bool? hideUi = null,
         CancellationToken cancellationToken = default)
     {
         var body = new Dictionary<string, object?>();
@@ -416,6 +417,7 @@ public sealed class CityTools
         if (horizontalAngle.HasValue) { body["horizontalAngle"] = horizontalAngle.Value; }
         if (edgeScroll.HasValue) { body["edgeScroll"] = edgeScroll.Value; }
         if (instant.HasValue) { body["instant"] = instant.Value; }
+        if (hideUi.HasValue) { body["hideUi"] = hideUi.Value; }
         return await Post("/commands/set-camera", body, cancellationToken).ConfigureAwait(false);
     }
 

@@ -65,7 +65,7 @@ session journal written by the server.
 - [x] **S4 Decision journal**: `studio_note(text, kind)` + automatic entries for every
       build tool call, each with wall time, recording timecode, game date, population,
       cash → `journal/<session>.jsonl` (already git-ignored)
-- [ ] **S5 Cinematic camera**: orbit / fly-over helper (glide via `city_camera`
+- [x] **S5 Cinematic camera**: orbit / fly-over helper (glide via `city_camera`
       `instant:false`), hide UI for B-roll, fixed timelapse viewpoints
 - [ ] **S6 Timelapse capture**: snapshot from fixed viewpoints every N game days
 - [ ] Live proof: one recorded session with markers and a journal
@@ -103,6 +103,8 @@ session journal written by the server.
 | 2026-11-15 | `setup-obs.ps1` writes only the websocket config file; everything else goes over obs-websocket | OBS owns its scene/profile files and rewrites them on exit; the websocket keeps them consistent |
 | 2026-11-15 | Canvas 1920×1080 @ 60 fps, Simple output, quality "Small", Game Capture matched on the executable | Standard YouTube master; the capture survives a title change; the game is scaled to fit |
 | 2026-11-15 | Journal through one MCP call-tool filter, not per tool; dry runs and reads are not journalled, refusals are | One place covers every mutating tool; refusals and mistakes are story material |
+| 2026-11-15 | Hide UI through the game's free-camera mode (`m_freeCamera`), not by hiding panels | The game's own hide-UI path also hides problem icons, names and borders, and the bridge console with them |
+| 2026-11-15 | Camera shots streamed from the MCP server as ~30 Hz glide targets | No new bridge code per move; the game's camera smoothing evens out the steps |
 | 2026-11-15 | `ObsClient` never resends a request whose connection dropped after sending; it only retries a send that failed | Same rule as the mayor's: a lost answer does not mean OBS did not act (e.g. `StartRecord`) |
 
 Lessons recorded so far:
@@ -130,7 +132,7 @@ Lessons recorded so far:
 | Item | State |
 |---|---|
 | Game | Epic, `D:\Epic Games\CitiesSkylines`, map "Cannes", test town around (330, -640) |
-| Bridge | Installed from `main` (#13), `runsOnSimulationThread: true` |
+| Bridge | Installed from the S5 branch (`set-camera hideUi`), `runsOnSimulationThread: true` |
 | MCP | Release build current with `main`; `.mcp.json` wires it into Claude Code |
 | OBS | 33.0.1 portable at `D:\tools\obs-studio`, configured by `scripts/setup-obs.ps1`: websocket 4455 (password in `studio.local.json`), scene "CS1 Mayor", recordings in `D:\cs1-mayor-recordings` |
 | ffmpeg | 8.1 at `D:\tools\ffmpeg\bin` (NVENC available), not on PATH |
