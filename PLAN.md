@@ -67,7 +67,7 @@ session journal written by the server.
       cash → `journal/<session>.jsonl` (already git-ignored)
 - [x] **S5 Cinematic camera**: orbit / fly-over helper (glide via `city_camera`
       `instant:false`), hide UI for B-roll, fixed timelapse viewpoints
-- [ ] **S6 Timelapse capture**: snapshot from fixed viewpoints every N game days
+- [x] **S6 Timelapse capture**: snapshot from fixed viewpoints every N game days
 - [ ] Live proof: one recorded session with markers and a journal
 
 ### Phase 3 — Post-production
@@ -105,6 +105,7 @@ session journal written by the server.
 | 2026-11-15 | Journal through one MCP call-tool filter, not per tool; dry runs and reads are not journalled, refusals are | One place covers every mutating tool; refusals and mistakes are story material |
 | 2026-11-15 | Hide UI through the game's free-camera mode (`m_freeCamera`), not by hiding panels | The game's own hide-UI path also hides problem icons, names and borders, and the bridge console with them |
 | 2026-11-15 | Camera shots streamed from the MCP server as ~30 Hz glide targets | No new bridge code per move; the game's camera smoothing evens out the steps |
+| 2026-11-15 | Timelapse runs inside the MCP server, keyed on game days, and pauses an active recording around each capture (+0.7 s guard on each side) | Without the guard ~0.35 s of each cut leaked into the video (game capture lag); the guard measured clean |
 | 2026-11-15 | `ObsClient` never resends a request whose connection dropped after sending; it only retries a send that failed | Same rule as the mayor's: a lost answer does not mean OBS did not act (e.g. `StartRecord`) |
 
 Lessons recorded so far:
@@ -118,6 +119,11 @@ Lessons recorded so far:
 - `CameraController.m_targetAngle` is (x = yaw, y = pitch 0..90).
 - Repo line endings are mixed: most of `src/` is CRLF, the rest LF — keep each file's.
 - Repo CI is disabled on GitHub; run the checks locally before merging.
+- `set-camera` without `y` aims at sea level; where the land is higher the game itself
+  re-frames the camera (pitch 30 → 38 within 2 s). Saved viewpoints keep the read-back,
+  terrain-adjusted `y`, so they hold steady.
+- At speed 3 one 5 s timelapse poll is ~3 game days: that is the finest cadence.
+- This ffmpeg build has no `-pattern_type glob`; use a concat list for image sequences.
 - OBS writes two chapters of its own into every hybrid MP4: "Start" at 0 and a trailing
   "Dummy"; post-production must skip them. `StopRecord` answers before the output
   stops, so `studio_record stop` polls until it is inactive.

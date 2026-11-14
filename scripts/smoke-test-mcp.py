@@ -65,6 +65,7 @@ EXPECTED_TOOLS = {
     "studio_journal",
     "studio_camera_move",
     "studio_viewpoint",
+    "studio_timelapse",
 }
 
 
