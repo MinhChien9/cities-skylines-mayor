@@ -53,7 +53,7 @@ Design (decided): a separate MCP tool class `StudioTools` in the same server, ta
 OBS through obs-websocket v5 (a minimal `ClientWebSocket` client, no dependency), plus a
 session journal written by the server.
 
-- [ ] **S1 OBS setup script** `scripts/setup-obs.ps1`: enable obs-websocket (port 4455,
+- [x] **S1 OBS setup script** `scripts/setup-obs.ps1`: enable obs-websocket (port 4455,
       auth on, generated password written to a git-ignored `studio.local.json`), create
       scene "CS1 Mayor" with a Game Capture of `Cities.exe`, recording to
       `D:\cs1-mayor-recordings`, NVENC H.264, hybrid MP4 (chapter markers)
@@ -100,6 +100,8 @@ session journal written by the server.
 | 2026-11-15 | `city_map` semantic raster instead of screenshots | Exact coordinates, independent of camera/fog/UI |
 | 2026-11-15 | OBS 33.0.1 portable + ffmpeg 8.1 (BtbN) on `D:\tools` | No winget on this LTSC machine; portable keeps config out of `%APPDATA%` |
 | 2026-11-15 | Studio inside the existing MCP server | One server for the agent; the journal can see build calls |
+| 2026-11-15 | `setup-obs.ps1` writes only the websocket config file; everything else goes over obs-websocket | OBS owns its scene/profile files and rewrites them on exit; the websocket keeps them consistent |
+| 2026-11-15 | Canvas 1920×1080 @ 60 fps, Simple output, quality "Small", Game Capture matched on the executable | Standard YouTube master; the capture survives a title change; the game is scaled to fit |
 
 Lessons recorded so far:
 
@@ -112,6 +114,11 @@ Lessons recorded so far:
 - `CameraController.m_targetAngle` is (x = yaw, y = pitch 0..90).
 - Repo line endings are mixed: most of `src/` is CRLF, the rest LF — keep each file's.
 - Repo CI is disabled on GitHub; run the checks locally before merging.
+- OBS 33.0.1 ships obs-websocket 5.7.6; `CreateRecordChapter` is available (S3 markers).
+  `SetInputMute` takes `inputMuted`, not `inputMute`.
+- The game runs windowed at 1600×900, so the 1080p capture is upscaled; a 1920×1080
+  game window would be sharper. The bridge's debug console overlay shows in the capture
+  (S5 hides UI for B-roll).
 
 ## Environment state (update at the end of every task)
 
@@ -120,6 +127,6 @@ Lessons recorded so far:
 | Game | Epic, `D:\Epic Games\CitiesSkylines`, map "Cannes", test town around (330, -640) |
 | Bridge | Installed from `main` (#13), `runsOnSimulationThread: true` |
 | MCP | Release build current with `main`; `.mcp.json` wires it into Claude Code |
-| OBS | 33.0.1 portable at `D:\tools\obs-studio` (config in `D:\tools\obs-studio\config\obs-studio`); started once, **websocket and scene not configured yet** |
+| OBS | 33.0.1 portable at `D:\tools\obs-studio`, configured by `scripts/setup-obs.ps1`: websocket 4455 (password in `studio.local.json`), scene "CS1 Mayor", recordings in `D:\cs1-mayor-recordings` |
 | ffmpeg | 8.1 at `D:\tools\ffmpeg\bin` (NVENC available), not on PATH |
 | GPU | RTX 2060 (Turing: NVENC H.264 / HEVC; no AV1 encode) |

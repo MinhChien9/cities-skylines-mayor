@@ -169,6 +169,22 @@ city and the thread proof:
 .\scripts\restart-game.ps1            # -NoBuild to restart without rebuilding
 ```
 
+### Recording (optional)
+
+To record the play, set up OBS once (portable OBS at `D:\tools\obs-studio` by default):
+
+```powershell
+.\scripts\setup-obs.ps1               # -RotatePassword for a new websocket password
+```
+
+It enables obs-websocket on port 4455 with a generated password, creates the
+"CS1 Mayor" scene with a Game Capture of `Cities.exe`, sets NVENC H.264 hybrid MP4
+recording to `D:\cs1-mayor-recordings`, then proves it with a preview frame
+(`setup-check.png`) and a three-second test recording checked by ffprobe. The password
+and connection details land in the git-ignored `studio.local.json` at the repo root,
+where the MCP server's studio tools read them. Run it again any time; it only restarts
+OBS when the websocket settings have to change.
+
 ---
 
 ## 7. Let the mayor work
