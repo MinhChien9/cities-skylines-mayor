@@ -18,6 +18,7 @@ should read it.
 | 09 | [Upstream notes](09-upstream-notes.md) | understand what was forked from `cities-skylines1-agent-skill` and what changed |
 | 10 | [Roadmap](10-roadmap.md) | see what is built and what is next |
 | 11 | [Command surface](12-command-surface.md) | the master table of every tool and endpoint, plus the verified game APIs for what is missing |
+| 13 | [Post-production](13-post-production.md) | turn a recorded session and its journal into a scripted, voiced, subtitled video |
 
 Two more files live outside this folder:
 

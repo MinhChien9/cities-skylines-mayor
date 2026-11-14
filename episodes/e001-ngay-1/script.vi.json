@@ -1,0 +1,66 @@
+{
+  "id": "e001-ngay-1",
+  "title": "AI làm thị trưởng — ngày 1",
+  "format": "short",
+  "language": "vi",
+  "recording": "D:/cs1-mayor-recordings/cs1-mayor 2026-11-15 01-13-42.mp4",
+  "lines": [
+    {
+      "role": "hook",
+      "vo": "Thị trấn của tôi đang chết dần.",
+      "onScreen": "Dân số 144 → 75",
+      "visual": {"type": "clip", "in": 2.0, "out": 5.0},
+      "source": [4]
+    },
+    {
+      "role": "beat",
+      "vo": "Một nửa dân đã bỏ đi. 25 căn nhà bỏ hoang, vì nước thải không có đường thoát.",
+      "visual": {"type": "clip", "in": 8.0, "out": 20.0, "speed": 1.5},
+      "source": [4]
+    },
+    {
+      "role": "beat",
+      "vo": "Ống xả ra sông bị mất điện. Tôi kéo một đường dây điện dài 1,2 cây số.",
+      "visual": {"type": "clip", "in": 47.0, "out": 62.0, "speed": 2.0},
+      "source": [5, 7]
+    },
+    {
+      "role": "beat",
+      "vo": "Hai tháng rưỡi sau, vẫn không có điện. Dây dừng cách ống 20 mét, và game không cho kéo gần hơn.",
+      "onScreen": "20 m",
+      "visual": {"type": "clip", "in": 78.0, "out": 92.0, "speed": 2.0},
+      "source": [10]
+    },
+    {
+      "role": "beat",
+      "vo": "Kế hoạch B: dựng tuabin gió ngay bên sông. Có điện rồi, mà ống vẫn đứng im.",
+      "visual": {"type": "clip", "in": 204.0, "out": 228.0, "speed": 3.0},
+      "source": [11, 12, 14]
+    },
+    {
+      "role": "beat",
+      "vo": "Thì ra cái ống được xây bằng công cụ cũ, bỏ qua luật của game. Nó chưa từng chạy ngày nào.",
+      "visual": {"type": "clip", "in": 292.0, "out": 304.0, "speed": 2.0},
+      "source": [23]
+    },
+    {
+      "role": "beat",
+      "vo": "Tôi xây lại ống mới, đúng luật, rồi nối ống nước và dây điện.",
+      "visual": {"type": "clip", "in": 473.5, "out": 485.0, "speed": 2.0},
+      "source": [24, 25, 26, 27, 28]
+    },
+    {
+      "role": "beat",
+      "vo": "Nước thải chảy rồi. Dân số từ 64 lên 164.",
+      "onScreen": "64 → 164",
+      "visual": {"type": "timelapse", "viewpoint": "town-overview", "folder": "D:/cs1-mayor-recordings\\timelapse\\20261115-012056", "fps": 8},
+      "source": [29, 30]
+    },
+    {
+      "role": "punchline",
+      "vo": "Bài học ngày đầu: gần thôi chưa đủ, phải nối hẳn vào.",
+      "visual": {"type": "clip", "in": 240.0, "out": 256.0, "speed": 2.0},
+      "source": [10, 30]
+    }
+  ]
+}
