@@ -218,9 +218,14 @@ namespace SkylinesAgentBridge.Commands
             }
 
             Building.Flags before = building.m_flags;
+            byte rateBefore = building.m_productionRate;
             BuildingInfo info = building.Info;
             if (info != null && info.m_buildingAI != null)
             {
+                // The player's on/off button: the game derives the Active flag from
+                // m_productionRate on every simulation step, so writing only the flag is
+                // undone on the next step (found live: a switched-off drain pipe stayed off).
+                info.m_buildingAI.SetProductionRate(id, ref building, (byte)(active ? 100 : 0));
                 InvokeManualActivation(info.m_buildingAI, id, ref building, active);
             }
 
@@ -238,6 +243,8 @@ namespace SkylinesAgentBridge.Commands
             string json = "{\"ok\":true,\"id\":" + id +
                 ",\"active\":" + JsonUtil.Bool(active) +
                 ",\"prefab\":\"" + JsonUtil.Escape(prefab) + "\"" +
+                ",\"productionRateBefore\":" + rateBefore +
+                ",\"productionRateAfter\":" + building.m_productionRate +
                 ",\"beforeFlags\":\"" + JsonUtil.Escape(before.ToString()) + "\"" +
                 ",\"afterFlags\":\"" + JsonUtil.Escape(building.m_flags.ToString()) + "\"}";
             Debug.Log("[SkylinesAgentBridge] Set building " + id + " active=" + active);

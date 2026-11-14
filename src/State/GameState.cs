@@ -479,6 +479,8 @@ namespace SkylinesAgentBridge.State
                 items.Append(",\"displayName\":\"").Append(JsonUtil.Escape(info.GetUncheckedLocalizedTitle())).Append("\"");
                 items.Append(",\"blockedAsset\":").Append(JsonUtil.Bool(AssetPolicy.IsBlockedBuildingPrefab(info)));
                 items.Append(",\"active\":").Append(JsonUtil.Bool((building.m_flags & Building.Flags.Active) != Building.Flags.None));
+                // The game's on/off switch (0 = switched off by the player); Active is derived from it.
+                items.Append(",\"productionRate\":").Append(building.m_productionRate);
                 items.Append(",\"flags\":\"").Append(JsonUtil.Escape(building.m_flags.ToString())).Append("\"");
                 items.Append(",\"service\":\"").Append(JsonUtil.Escape(service)).Append("\"");
                 items.Append(",\"subService\":\"").Append(JsonUtil.Escape(subService)).Append("\"");
