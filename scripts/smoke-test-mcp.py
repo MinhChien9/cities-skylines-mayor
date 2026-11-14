@@ -63,6 +63,8 @@ EXPECTED_TOOLS = {
     "studio_screenshot",
     "studio_note",
     "studio_journal",
+    "studio_camera_move",
+    "studio_viewpoint",
 }
 
 

@@ -21,3 +21,4 @@ Thumbs.db
 
 # Local studio secrets (OBS websocket password), written by scripts/setup-obs.ps1
 studio.local.json
+viewpoints.local.json

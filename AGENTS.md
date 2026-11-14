@@ -68,6 +68,8 @@ Every command would be racing the game's simulation and silently corrupting the 
 | See the real rendered game | `studio_screenshot` (costs image tokens; `city_map` stays the planning eye) |
 | Explain a decision for the video | `studio_note` (kind: decision / mistake / milestone / observation / plan) |
 | Recall the story so far | `studio_journal` (newest journal entries) |
+| Film B-roll | `studio_camera_move` (orbit / flyover / zoom, UI hidden); `city_camera hideUi:true` keeps the UI off across several shots |
+| Return to a fixed angle | `studio_viewpoint` save / go / list / delete (timelapse and before/after frames) |
 
 Drawing new transit lines and painting districts are not exposed as tools yet.
 
