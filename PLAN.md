@@ -77,8 +77,9 @@ session journal written by the server.
 - [x] Script writer: journal + stats → hook (3 s), story beats, punchline; Vietnamese
       (`post.brief` → Claude writes `episodes/<id>/script.vi.json` by
       `docs/13-post-production.md` → `post.script` validates; pilot script e001 written)
-- [ ] TTS: decide between VieNeu-TTS (local, open source, GPU/CPU) and ElevenLabs (paid);
-      default VieNeu for cost and licensing clarity
+- [x] TTS: decide between VieNeu-TTS (local, open source, GPU/CPU) and ElevenLabs (paid);
+      default VieNeu for cost and licensing clarity (**VieNeu v3 Turbo**, `post.voice`;
+      e001 voiced: 9 lines, 35.4 s)
 - [ ] Subtitles from the script with word timing (forced alignment), burned-in
 - [ ] `ffmpeg` assembly: cut by markers, speed ramps, timelapse, 9:16 crop + 16:9 master,
       music bed, loudness normalisation
@@ -111,6 +112,7 @@ session journal written by the server.
 | 2026-11-15 | Camera shots streamed from the MCP server as ~30 Hz glide targets | No new bridge code per move; the game's camera smoothing evens out the steps |
 | 2026-11-15 | Timelapse runs inside the MCP server, keyed on game days, and pauses an active recording around each capture (+0.7 s guard on each side) | Without the guard ~0.35 s of each cut leaked into the video (game capture lag); the guard measured clean |
 | 2026-11-15 | `studio_marker` waits out a short recording pause (up to 6 s) | A timelapse capture pauses the recording ~3 s; OBS refuses chapters while paused (code 702, found live) |
+| 2026-11-15 | TTS = VieNeu-TTS v3 Turbo, CPU/ONNX, voice Thiện Minh | Apache-2.0 incl. preset voices (monetised use allowed), offline, free, ~2× real time on CPU, no torch; ElevenLabs only if quality demands it |
 | 2026-11-15 | Claude writes the script in-session from a deterministic brief; code only builds the brief and validates | The writing is the judgement; the brief and validator keep it truthful (beats cite journal `seq`) and inside the 3 s / 60 s budgets |
 | 2026-11-15 | `ObsClient` never resends a request whose connection dropped after sending; it only retries a send that failed | Same rule as the mayor's: a lost answer does not mean OBS did not act (e.g. `StartRecord`) |
 
@@ -154,5 +156,6 @@ Lessons recorded so far:
 | Bridge | Installed from `main` (#22), `runsOnSimulationThread: true` |
 | MCP | Debug build current with `main`. The Release build in `bin/Release` is held by this Claude Code session's running server: rebuild it after the session ends (or `/mcp` reconnect) to get the studio tools in Claude Code |
 | OBS | 33.0.1 portable at `D:\tools\obs-studio`, configured by `scripts/setup-obs.ps1`: websocket 4455 (password in `studio.local.json`), scene "CS1 Mayor", recordings in `D:\cs1-mayor-recordings` |
-| ffmpeg | 8.1 at `D:\tools\ffmpeg\bin` (NVENC available), not on PATH |
+| ffmpeg | 8.1 at `D:\tools\ffmpeg\bin` (NVENC available), not on PATH; no `-pattern_type glob` |
+| Post venv | `D:\tools\venv-post` (Python 3.11, `vieneu` 3.8.4); model cache `HF_HOME=D:\tools\hf-cache` |
 | GPU | RTX 2060 (Turing: NVENC H.264 / HEVC; no AV1 encode) |

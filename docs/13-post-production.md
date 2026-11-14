@@ -59,7 +59,23 @@ Each episode must tell a different story from its own journal: vary the hook typ
 script as a template. Every video gets a human review before publishing and is labelled
 as AI-made.
 
-## 3. Validate
+## 3. Voice (VieNeu-TTS)
+
+```powershell
+D:	oolsenv-post\Scripts\python.exe -X utf8 -m post.voice episodes/e001-ngay-1/script.vi.json
+```
+
+Local, offline, **Apache-2.0 including its preset voices** (commercial and monetised use
+allowed; never clone a real person's voice without permission). `pip install vieneu` in
+the venv `D:	oolsenv-post`; on CPU it runs through ONNX, no torch (~2× real time on
+this machine). Set `HF_HOME=D:	ools\hf-cache` so the model stays off C:. One WAV per
+line (48 kHz mono) and `build/voice/manifest.json` with the exact durations; unchanged
+lines are not regenerated. The default narrator is **Thiện Minh** (male, northern,
+storytelling); a script may set `"voice"` to any preset (`Vieneu().list_preset_voices()`).
+It speaks ~4.4 syllables/s, a little slower than the validator's 5.0 estimate, so leave
+the Short some margin under 60 s.
+
+## 4. Validate
 
 ```powershell
 python -m post.script episodes/e001-ngay-1/script.vi.json --brief episodes/e001-ngay-1/brief.json
