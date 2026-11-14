@@ -169,6 +169,9 @@ Lessons recorded so far:
   Building Central Avenue over a pylon cut the sewage outlet's power and every service in
   town stopped (found 2026-11-15, 50k run). Builds now report `removed`, and dry runs
   `removesPowerLines`.
+- A service building placed over **grown zoned buildings demolishes them** (they are not
+  a collision). A coal plant dry run said ok and then took three factories with it;
+  dry runs now list `wouldRemove`.
 - In this build the Water Pumping Station (`Water Intake`) is `ShorelineOrGround` and the
   `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
   pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the

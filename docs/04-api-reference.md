@@ -415,7 +415,10 @@ cleared the way the tool clears it (trees, props), the cost is charged, the buil
 its sub-buildings are created, coverage is refreshed, and the placement effect plays. The
 response reports where it actually went: `position`, `angleDegrees`, `snappedTo`. If the
 site clearing removed anything nearby (a power line or pylon, a prop building) the
-response carries `removed` and a `warning`, as for `/commands/build-road`.
+response carries `removed` and a `warning`, as for `/commands/build-road`. **Grown
+(zoned) buildings in the way are demolished** — the game treats them as clearable under a
+service building — so a dry run that passes lists what the site clearing would take in
+`wouldRemove: { segments, buildings: [{id, prefab, x, z}] }` with a `warning`.
 
 ### `/state/map` — a map made of game data
 
