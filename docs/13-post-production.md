@@ -51,7 +51,9 @@ facts. About 5 syllables per second: the validator estimates time from that.
 
 **Visuals.** `clip` ranges come from the brief's `t` values and chapters (a beat's clip
 starts at or just before its `t`); speed up long, slow stretches with `speed` (2–8).
-`timelapse` shows growth over game time; `still` for a saved screenshot.
+`timelapse` shows growth over game time; `still` for a saved screenshot or a story map
+(`city_map overlay=landValue|pollution|noise|traffic saveAs=<name>` writes
+`<recordings>/maps/<name>.png` — show the problem as data, then show it fixed).
 
 **Variation (platform policy).** YouTube demonetises mass-produced, templated AI content.
 Each episode must tell a different story from its own journal: vary the hook type

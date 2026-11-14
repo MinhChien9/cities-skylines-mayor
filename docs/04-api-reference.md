@@ -53,7 +53,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 | GET | `/state/zone-anomalies` | Zone defects. `?limit=`, `?minMinorityCells=`, `?minUnzonedCells=`, `?includeUnzonedHoles=`. |
 | GET | `/state/external-connections` | Highway / rail / sea connections. `?limit=`. |
 | GET | `/state/saves` | Saved games on disk. |
-| GET | `/state/map` | Semantic top-down raster of an area: land/water/road/zone/building classes, terrain heights, locked tiles, road dead ends. `?x=&z=` centre, `?size=` metres (default 1024), `?cell=` metres (default 8). See below. |
+| GET | `/state/map` | Semantic top-down raster of an area: land/water/road/zone/building classes, terrain heights, locked tiles, road dead ends. `?x=&z=` centre, `?size=` metres (default 1024), `?cell=` metres (default 8), `?overlay=` `landValue`\|`pollution`\|`noise`\|`traffic` (optional data layer). See below. |
 | GET | `/prefabs/buildings` | Available building prefabs. `?service=`. |
 | GET | `/prefabs/roads` | Available road prefabs. |
 | GET | `/prefabs/networks` | Available network prefabs. `?service=`. |
@@ -417,6 +417,13 @@ edge (min x): `x = west + (col + 0.5) * cell`, `z = north - (row + 0.5) * cell`.
 unlocked area. `heights` is base64, one little-endian `uint16` per cell = terrain height ×
 4. `roadDeadEnds` lists road nodes with a single segment (the natural places to extend
 from). The MCP tool `city_map` renders it as a PNG with labelled coordinates.
+
+**Overlays.** `?overlay=` adds `overlay` (`name`, `unit`, `rawMax`) and `overlayValues`
+(base64, one byte per cell, same layout as `classes`): land value and noise from
+`ImmaterialResourceManager.CheckLocalResource`, ground pollution from
+`NaturalResourceManager.CheckPollution` (0–255), traffic from each road segment's
+`m_trafficDensity` (0–100 % scaled to 1–255 along the road; 0 = not a road). Values are
+the game's own, clamped to 0–255. An unknown overlay name is a 400.
 
 ### `/commands/transport-line` — the line editor
 

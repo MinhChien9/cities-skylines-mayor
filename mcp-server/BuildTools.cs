@@ -31,24 +31,44 @@ namespace Cs1Mayor.Mcp;
 public sealed class BuildTools
 {
     private readonly BridgeClient _bridge;
+    private readonly StudioSettings? _studio;
 
-    public BuildTools(BridgeClient bridge)
+    public BuildTools(BridgeClient bridge, StudioSettings? studio = null)
     {
         _bridge = bridge;
+        _studio = studio;
     }
 
     // ------------------------------------------------------------------- seeing
 
-    [Description("GET /state/map rendered as a PNG: a top-down semantic map of a square area built from game data, not a screenshot. Colours: shaded tan = buildable land (darker = lower), blue = water, dark grey = road, orange = highway, purple = rail/power line/path, red = service building, yellow = growable building, green/blue/yellow/cyan tints = residential/commercial/industrial/office zones, dimmed = locked map tile (cannot build). White dashed lines with labels = world coordinates; white rings = road dead ends (good places to extend from). Pixel -> world: x = west + (px/scale + 0.5)*cell, z = north - (py/scale + 0.5)*cell (north is up, +z). The text part lists the bounds, scale, counts and the dead-end node ids. Use it before planning any construction.")]
+    [Description("GET /state/map rendered as a PNG: a top-down semantic map of a square area built from game data, not a screenshot. Colours: shaded tan = buildable land (darker = lower), blue = water, dark grey = road, orange = highway, purple = rail/power line/path, red = service building, yellow = growable building, green/blue/yellow/cyan tints = residential/commercial/industrial/office zones, dimmed = locked map tile (cannot build). White dashed lines with labels = world coordinates; white rings = road dead ends (good places to extend from). Pixel -> world: x = west + (px/scale + 0.5)*cell, z = north - (py/scale + 0.5)*cell (north is up, +z). The text part lists the bounds, scale, counts and the dead-end node ids. Use it before planning any construction. overlay adds a data layer from the game: 'landValue' (green = higher), 'pollution' (ground, brown), 'noise' (purple), 'traffic' (roads green -> yellow -> red by density) - for decisions and for the story maps of the videos. saveAs also writes the PNG to <recording folder>/maps/<saveAs>.png (usable as a 'still' visual in a script).")]
     [McpServerTool(Name = "city_map", Title = "Semantic Map", ReadOnly = true)]
     public async Task<CallToolResult> CityMap(
         [Description("World x of the centre.")] double x = 0,
         [Description("World z of the centre.")] double z = 0,
         [Description("Side length in metres (default 1024, max 4096). The start tile is 1920 m wide, centred on 0,0.")] double size = 1024,
         [Description("Metres per cell (default 8 = one zone cell; use 16 for 2048 m overviews).")] double cell = 8,
+        [Description("Optional data layer: landValue, pollution, noise or traffic.")] string? overlay = null,
+        [Description("Optional file name (letters, digits, '-', '_') to also save the PNG for a video.")] string? saveAs = null,
         CancellationToken cancellationToken = default)
     {
         string path = FormattableString.Invariant($"/state/map?x={x}&z={z}&size={size}&cell={cell}");
+        if (!string.IsNullOrWhiteSpace(overlay))
+        {
+            path += "&overlay=" + Uri.EscapeDataString(overlay.Trim());
+        }
+        string? savePath = null;
+        if (!string.IsNullOrWhiteSpace(saveAs))
+        {
+            string name = saveAs.Trim();
+            if (name.Length > 80 || !name.All(ch => char.IsAsciiLetterOrDigit(ch) || ch is '-' or '_'))
+            {
+                return ErrorResult("saveAs may only contain letters, digits, '-' and '_'.");
+            }
+            string root = _studio?.RecordDirectory
+                          ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "cs1-mayor");
+            savePath = Path.Combine(root, "maps", name + ".png");
+        }
         JsonNode? map;
         try
         {
@@ -68,6 +88,13 @@ public sealed class BuildTools
         var summary = map.DeepClone().AsObject();
         summary.Remove("classes");
         summary.Remove("heights");
+        summary.Remove("overlayValues");
+        if (savePath is not null)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
+            await File.WriteAllBytesAsync(savePath, image.Png, cancellationToken).ConfigureAwait(false);
+            summary["savedTo"] = savePath;
+        }
         summary["image"] = new JsonObject
         {
             ["pixelsPerCell"] = image.Scale,

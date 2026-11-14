@@ -116,7 +116,12 @@ namespace SkylinesAgentBridge
                     float z = request.GetQueryFloat("z", 0f);
                     float size = request.GetQueryFloat("size", 1024f);
                     float cell = request.GetQueryFloat("cell", 8f);
-                    return OnGameThread(delegate { return CommandResult.FromJson(MapCollector.BuildMapJson(x, z, size, cell)); });
+                    string overlay = request.GetQueryString("overlay", "");
+                    if (overlay.Length > 0 && !MapOverlay.IsKnown(overlay))
+                    {
+                        return HttpResponse.Json(400, "{\"ok\":false,\"error\":\"overlay must be one of: " + string.Join(", ", MapOverlay.Names) + "\"}");
+                    }
+                    return OnGameThread(delegate { return CommandResult.FromJson(MapCollector.BuildMapJson(x, z, size, cell, overlay)); });
                 });
 
             MapGet("/state/road-anomalies", "Inspect road anomalies",

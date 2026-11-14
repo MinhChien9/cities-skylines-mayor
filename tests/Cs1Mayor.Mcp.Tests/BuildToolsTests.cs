@@ -179,7 +179,7 @@ public class BuildToolsTests
     {
         var handler = StubHandler.Json(MapJson());
 
-        CallToolResult result = await Tools(handler).CityMap(0, 0, 128, 8, CancellationToken.None);
+        CallToolResult result = await Tools(handler).CityMap(0, 0, 128, 8, cancellationToken: CancellationToken.None);
 
         Assert.Equal("/state/map?x=0&z=0&size=128&cell=8", Assert.Single(handler.Requests).Path);
         Assert.NotEqual(true, result.IsError);
@@ -191,6 +191,71 @@ public class BuildToolsTests
         Assert.Null(summary["heights"]);
         Assert.NotNull(summary["image"]!["pixelToWorld"]);
         Assert.Equal(5, summary["roadDeadEnds"]![0]!["nodeId"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public async Task CityMap_requests_an_overlay_tints_it_and_can_save_the_png()
+    {
+        const int n = 16;
+        var map = JsonNode.Parse(MapJson())!.AsObject();
+        var values = new byte[n * n];
+        for (int c = 0; c < n; c++) { values[8 * n + c] = 255; }   // a jammed road
+        map["overlay"] = new JsonObject { ["name"] = "traffic", ["rawMax"] = 100 };
+        map["overlayValues"] = Convert.ToBase64String(values);
+        var handler = StubHandler.Json(map.ToJsonString());
+        string folder = Path.Combine(Path.GetTempPath(), $"cs1-maps-{Guid.NewGuid():N}");
+        var tools = new BuildTools(new BridgeClient("http://127.0.0.1:32123", 5, new HttpClient(handler)),
+            new StudioSettings { RecordDirectory = folder });
+        try
+        {
+            CallToolResult result = await tools.CityMap(0, 0, 128, 8, overlay: "traffic", saveAs: "jam", cancellationToken: CancellationToken.None);
+
+            Assert.Equal("/state/map?x=0&z=0&size=128&cell=8&overlay=traffic", Assert.Single(handler.Requests).Path);
+            var summary = JsonNode.Parse(Assert.IsType<TextContentBlock>(result.Content[1]).Text)!;
+            Assert.Null(summary["overlayValues"]);
+            Assert.Equal("traffic", summary["overlay"]!["name"]!.GetValue<string>());
+            string saved = summary["savedTo"]!.GetValue<string>();
+            Assert.Equal(Path.Combine(folder, "maps", "jam.png"), saved);
+            var (width, _, rgb) = DecodePng(File.ReadAllBytes(saved));
+            int scale = width / n;
+            int px = ((8 * scale + scale / 2) * width + 4 * scale + 1) * 3;   // inside the jammed road row, off the z = 0 gridline
+            Assert.Equal((220, 40, 30), (rgb[px], rgb[px + 1], rgb[px + 2]));
+        }
+        finally
+        {
+            if (Directory.Exists(folder)) Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task CityMap_rejects_a_bad_saveAs_before_calling_the_bridge()
+    {
+        var handler = StubHandler.Json(MapJson());
+
+        CallToolResult result = await Tools(handler).CityMap(saveAs: "../x", cancellationToken: CancellationToken.None);
+
+        Assert.True(result.IsError);
+        Assert.Empty(handler.Requests);
+    }
+
+    [Theory]
+    [InlineData("traffic", 1, 40, 190, 70)]       // a road with no traffic: green
+    [InlineData("traffic", 0, 10, 20, 30)]        // not a road: untouched
+    [InlineData("landValue", 0, 10, 20, 30)]
+    public void Tint_colours_by_overlay(string overlay, byte value, int r, int g, int b)
+    {
+        Assert.Equal(((byte)r, (byte)g, (byte)b), MapRenderer.Tint(overlay, value, 255, (10, 20, 30)));
+    }
+
+    [Fact]
+    public void Tint_blends_towards_the_overlay_hue_by_share_of_the_maximum()
+    {
+        var full = MapRenderer.Tint("landValue", 100, 100, (0, 0, 0));
+        var half = MapRenderer.Tint("landValue", 50, 100, (0, 0, 0));
+        Assert.Equal(((byte)24, (byte)168, (byte)88), full);         // 80 % of (30, 210, 110)
+        Assert.True(half.G < full.G);
+        var weak = MapRenderer.Tint("landValue", 4, 4, (0, 0, 0));   // tiny values stay faint
+        Assert.True(weak.G < 20);
     }
 
     [Fact]

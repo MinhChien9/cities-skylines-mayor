@@ -97,6 +97,8 @@ silently reintroduced exactly the race the design exists to prevent, and it was 
 | `ZoneAnomalyCollector.cs` | 367 | `state/zone-anomalies` | Mottled and unzoned blocks, and zoned clusters. |
 | `BuildingAnomalyCollector.cs` | 159 | `state/building-anomalies` | Buildings sitting on top of roads. |
 | `ExternalConnectionCollector.cs` | 230 | `state/external-connections` | The road network split into connected components. |
+| `MapCollector.cs` | ~420 | `state/map` | The semantic raster: land, water, zones, networks, buildings, locked tiles, dead ends. |
+| `MapOverlay.cs` | ~150 | `state/map?overlay=` | Land value, pollution, noise and traffic layers, one byte per map cell. |
 | `GameInfoHelpers.cs` | 93 | — | Shared predicates over game objects (see below). |
 | `ZoneHelpers.cs` | 19 | — | Clamps a zone block's row count to the range the game accepts. |
 

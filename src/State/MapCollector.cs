@@ -52,6 +52,12 @@ namespace SkylinesAgentBridge.State
 
         public static string BuildMapJson(float centerX, float centerZ, float size, float cell)
         {
+            return BuildMapJson(centerX, centerZ, size, cell, null);
+        }
+
+        /// <param name="overlay">Optional data layer, see <see cref="MapOverlay"/>.</param>
+        public static string BuildMapJson(float centerX, float centerZ, float size, float cell, string overlay)
+        {
             cell = Mathf.Clamp(cell, 2f, 64f);
             size = Mathf.Clamp(size, cell * 8f, 4096f);
             int n = Mathf.Clamp(Mathf.RoundToInt(size / cell), 8, 512);
@@ -266,6 +272,12 @@ namespace SkylinesAgentBridge.State
             json.Append(",\"roadDeadEnds\":[").Append(ends).Append(']');
             json.Append(",\"classes\":\"").Append(Convert.ToBase64String(classes)).Append('"');
             json.Append(",\"heights\":\"").Append(Convert.ToBase64String(heights)).Append('"');
+            if (!string.IsNullOrEmpty(overlay))
+            {
+                byte[] values;
+                json.Append(",\"overlay\":").Append(MapOverlay.Build(overlay, n, west, north, cell, out values));
+                json.Append(",\"overlayValues\":\"").Append(Convert.ToBase64String(values)).Append('"');
+            }
             json.Append('}');
             return json.ToString();
         }
