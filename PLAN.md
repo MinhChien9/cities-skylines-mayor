@@ -155,6 +155,10 @@ Lessons recorded so far:
 - An unprimed `small` Whisper pass over the final mix is a good intelligibility check
   (93 % on e001) but mishears Vietnamese tones; it flags words for a human ear, it does
   not prove a TTS error.
+- Roadside placement: when no zone slot fits (any building deeper than the 4-cell zone
+  block: schools, fire stations, cemeteries), `BuildingTool` still accepts the snapped
+  spot if `BuildingTool.CheckSpace` passes. The bridge skipped that step and refused every
+  5+-deep service with `GridNotFound` (found in free play 2026-11-15, fixed in #35).
 - OBS writes two chapters of its own into every hybrid MP4: "Start" at 0 and a trailing
   "Dummy"; post-production must skip them. `StopRecord` answers before the output
   stops, so `studio_record stop` polls until it is inactive.

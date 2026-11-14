@@ -115,6 +115,14 @@ namespace SkylinesAgentBridge.Commands
                         angle = snappedAngle;
                         r.Snap = "zoneGrid";
                         errors = TryZoneSlot(info, relocating, ref position, angle, segs, blds, tools);
+                        if (errors != ToolBase.ToolErrors.None)
+                        {
+                            // The zone grid is only the tool's first choice: a building deeper
+                            // than a zone block (4 cells, e.g. a 6x5 school) never fits a slot,
+                            // and the tool then accepts the snapped spot if nothing collides.
+                            tools.ResetColliding();
+                            errors = CheckAt(info, relocating, ref position, angle, segs, blds);
+                        }
                     }
                     if (errors != ToolBase.ToolErrors.None)
                     {

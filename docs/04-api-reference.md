@@ -396,7 +396,7 @@ checks (`BuildingTool.CheckSpace`, `BuildingTool.SnapToPath`,
 
 | Placement mode | What happens to the requested point |
 |---|---|
-| `Roadside` (most services) | Snaps to the nearest zone-grid slot within 8 m, facing the road; else to the nearest road within 40 m. Aim at the kerb. |
+| `Roadside` (most services) | Snaps to the nearest zone-grid slot within 8 m, facing the road; a building deeper than a zone block (5+ cells, e.g. schools, fire stations) is accepted at that slot when nothing collides; else the nearest road within 40 m. Aim at the kerb. |
 | `Shoreline` | Snaps to the water's edge within 50 m, facing the water. |
 | `ShorelineOrGround` | The shore if one is within 50 m, else like `OnGround`. |
 | `PathsideOrGround` | Snaps to a nearby road/path, else like `OnGround`. |
