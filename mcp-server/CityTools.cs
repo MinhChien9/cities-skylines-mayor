@@ -66,7 +66,7 @@ public sealed class CityTools
         };
     }
 
-    [System.ComponentModel.Description("GET /state/capabilities. What the running game supports: version, DLC, milestone list, current milestone, unlocked/locked features, and the IThreading simulation clock (simulationTime/frame/tick) — compare two reads to know how much simulated time actually elapsed.")]
+    [System.ComponentModel.Description("GET /state/capabilities. What the running game supports: version, DLC, milestone list, current milestone, unlocked/locked features, the enabled mods and which are cheat mods (cheatMods: UnlimitedMoney, UnlockAll...), and the IThreading simulation clock (simulationTime/frame/tick) — compare two reads to know how much simulated time actually elapsed.")]
     [McpServerTool(Name = "city_capabilities", Title = "Game Capabilities")]
     public Task<JsonNode?> CityCapabilities(CancellationToken cancellationToken)
         => Get("/state/capabilities", cancellationToken);

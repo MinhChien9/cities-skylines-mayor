@@ -37,14 +37,20 @@ namespace SkylinesAgentBridge.Commands
             return properties != null && (properties.m_mode & ItemClass.Availability.Game) != 0;
         }
 
-        /// <summary>True when the city treasury can pay <paramref name="cost"/> right now.</summary>
+        /// <summary>
+        /// True when the city treasury can pay <paramref name="cost"/> right now. This is the
+        /// test vanilla <c>PeekResource</c> makes (cash at least the cost), read from the real
+        /// cash: a mod can answer PeekResource itself, and the game's own Unlimited Money mod
+        /// answers yes to anything, so a mayor would build into debt (found live: one service
+        /// building took the treasury from +30k to -27k). The AI mayor plays fair.
+        /// </summary>
         public static bool CanAfford(int cost)
         {
             if (cost <= 0)
             {
                 return true;
             }
-            return Singleton<EconomyManager>.instance.PeekResource(EconomyManager.Resource.Construction, cost) == cost;
+            return Singleton<EconomyManager>.instance.InternalCashAmount >= cost;
         }
 
         /// <summary>Renders a ToolErrors bit set as a JSON array of flag names.</summary>

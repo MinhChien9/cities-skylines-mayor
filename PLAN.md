@@ -183,6 +183,11 @@ Lessons recorded so far:
 - The zone grid of a 4-lane (or wider) road starts 4 m past the kerb, so its first cell
   centre is 8 m out and an aim at the kerb missed the tool's 8 m zone snap (GridNotFound
   everywhere on Park Avenue). The bridge now widens the search to 16 m once.
+- This game has the built-in **Unlimited Money** and **Unlock All** mods enabled (now
+  shown in `city_capabilities.cheatMods`). Unlock All is why every milestone feature was
+  open from the start. Unlimited Money answers the game's money test with "yes", so the
+  bridge let a ₡60k police HQ through with ₡30k in the bank (cash −₡27k). The bridge now
+  checks the real cash itself.
 - In this build the Water Pumping Station (`Water Intake`) is `ShorelineOrGround` and the
   `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
   pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the

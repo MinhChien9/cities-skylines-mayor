@@ -103,6 +103,12 @@ namespace SkylinesAgentBridge.Commands
                     .Append(',').Append(SnapJson("end", leg.End)).Append('}');
             }
 
+            // NetTool's own money test asks PeekResource, which a cheat mod can answer;
+            // check the real treasury for the whole build (all legs) too.
+            if (needMoney && !GameValidation.CanAfford(totalCost))
+            {
+                allErrors |= ToolBase.ToolErrors.NotEnoughMoney;
+            }
             bool wet = totalUnderwater >= 4f;
             bool passed = allErrors == ToolBase.ToolErrors.None && !wet;
             if (!passed || dryRun)
