@@ -339,10 +339,10 @@ public sealed class CityTools
             ["empty"] = empty,
         }, cancellationToken).ConfigureAwait(false);
 
-    [System.ComponentModel.Description("POST /commands/transport-line. Manage an EXISTING transport line as the line editor does: action='activate' (day/night service), action='rename', action='set-vehicle' (asset name from city_transport_prefabs), action='remove-stop' (index, -1 = last). Lines and their stops are drawn with the cursor in the game's own transport tool; this office only manages them afterwards. Every action returns the live game readback for the line.")]
+    [System.ComponentModel.Description("POST /commands/transport-line. Create and manage transport lines as the line editor does: action='create' (transportInfo, e.g. 'Bus' - needs a depot), action='add-stop' (x,z near a road; the game moves the stop onto the road, read the real positions in lineData.stops; close=true adds the closing stop on the first stop and completes the loop), action='remove-stop' (index, -1 = last), action='activate' (day/night service), action='rename', action='set-vehicle' (asset name from city_transport_prefabs). Every action returns the live game readback for the line.")]
     [McpServerTool(Name = "city_transport_line", Title = "Transport Line Management")]
     public async Task<JsonNode?> CityTransportLine(
-        [System.ComponentModel.Description("Action: 'activate', 'rename', 'set-vehicle' or 'remove-stop'.")] string action,
+        [System.ComponentModel.Description("Action: 'create', 'add-stop', 'remove-stop', 'activate', 'rename' or 'set-vehicle'.")] string action,
         [System.ComponentModel.Description("Line id from city_transport.")] int line = 0,
         [System.ComponentModel.Description("For 'remove-stop': stop index (-1 = last).")] int index = -1,
         [System.ComponentModel.Description("For 'activate': day service (default true).")] bool day = true,
@@ -350,6 +350,10 @@ public sealed class CityTools
         [System.ComponentModel.Description("For 'activate': short for day=true, night=true (default true); false disables all service.")] bool active = true,
         [System.ComponentModel.Description("For 'rename': the new line name.")] string? name = null,
         [System.ComponentModel.Description("For 'set-vehicle': the vehicle asset name.")] string? vehicle = null,
+        [System.ComponentModel.Description("For 'create': transport type name from city_transport_prefabs (e.g. 'Bus', 'Metro').")] string? transportInfo = null,
+        [System.ComponentModel.Description("For 'add-stop': stop x (world metres, near a road).")] double? x = null,
+        [System.ComponentModel.Description("For 'add-stop': stop z.")] double? z = null,
+        [System.ComponentModel.Description("For 'add-stop': true adds the closing stop on the first stop (no x/z needed) and completes the loop.")] bool close = false,
         [System.ComponentModel.Description("Validate only, do not mutate (default false).")] bool dryRun = false,
         CancellationToken cancellationToken = default)
     {
@@ -359,6 +363,18 @@ public sealed class CityTools
             ["line"] = Clamp(line, 0, 65535),
             ["dryRun"] = dryRun,
         };
+        if (!string.IsNullOrWhiteSpace(transportInfo))
+        {
+            body["transportInfo"] = transportInfo;
+        }
+        if (x.HasValue && z.HasValue)
+        {
+            body["position"] = new Dictionary<string, object?> { ["x"] = x.Value, ["z"] = z.Value };
+        }
+        if (close)
+        {
+            body["close"] = true;
+        }
         if (index != -1)
         {
             body["index"] = index;
