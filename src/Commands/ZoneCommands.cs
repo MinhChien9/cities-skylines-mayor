@@ -74,9 +74,10 @@ namespace SkylinesAgentBridge.Commands
             {
                 return CommandResult.Fail("Unsupported zone: " + zoneName);
             }
-            if (side != "left" && side != "right" && side != "both")
+            if (side != "left" && side != "right" && side != "both" &&
+                side != "north" && side != "south" && side != "east" && side != "west")
             {
-                return CommandResult.Fail("side must be left, right or both.");
+                return CommandResult.Fail("side must be left, right, both, north, south, east or west.");
             }
 
             NetSegment[] segments = NetManager.instance.m_segments.m_buffer;
@@ -87,16 +88,53 @@ namespace SkylinesAgentBridge.Commands
             }
 
             NetSegment segment = segments[segmentId];
-            List<ushort> blocks = new List<ushort>();
-            if (side != "right")
+            List<ushort> all = new List<ushort>();
+            AddBlock(all, segment.m_blockStartLeft);
+            AddBlock(all, segment.m_blockEndLeft);
+            AddBlock(all, segment.m_blockStartRight);
+            AddBlock(all, segment.m_blockEndRight);
+
+            // Sides are decided by where each block lies, not by the game's field names: the
+            // end blocks are named from the end node's point of view, so m_blockEndLeft sits
+            // on the geometric right of the start-to-end direction. (Adding StartLeft and
+            // EndLeft zoned half a street on each side - found live.)
+            NetNode[] nodes = NetManager.instance.m_nodes.m_buffer;
+            Vector3 a = nodes[segment.m_startNode].m_position;
+            Vector3 b = nodes[segment.m_endNode].m_position;
+            Vector2 dir = new Vector2(b.x - a.x, b.z - a.z);
+            if (dir.sqrMagnitude < 0.01f)
             {
-                AddBlock(blocks, segment.m_blockStartLeft);
-                AddBlock(blocks, segment.m_blockEndLeft);
+                return CommandResult.Fail("Segment " + segmentId + " has no length.");
             }
-            if (side != "left")
+            dir.Normalize();
+            Vector2 leftNormal = new Vector2(-dir.y, dir.x);
+            Vector2 compass = Vector2.zero;
+            if (side == "north") compass = new Vector2(0f, 1f);
+            else if (side == "south") compass = new Vector2(0f, -1f);
+            else if (side == "east") compass = new Vector2(1f, 0f);
+            else if (side == "west") compass = new Vector2(-1f, 0f);
+            if (compass != Vector2.zero && Mathf.Abs(Vector2.Dot(leftNormal, compass)) < 0.5f)
             {
-                AddBlock(blocks, segment.m_blockStartRight);
-                AddBlock(blocks, segment.m_blockEndRight);
+                return CommandResult.Fail("Segment " + segmentId + " runs " + (Mathf.Abs(dir.x) > Mathf.Abs(dir.y) ? "east-west" : "north-south") +
+                    ": it has no " + side + " side. Use " + (Mathf.Abs(dir.x) > Mathf.Abs(dir.y) ? "north or south" : "east or west") + ".");
+            }
+
+            ZoneBlock[] zoneBlocks = ZoneManager.instance.m_blocks.m_buffer;
+            List<ushort> blocks = new List<ushort>();
+            for (int i = 0; i < all.Count; i++)
+            {
+                Vector3 p = zoneBlocks[all[i]].m_position;
+                float across = Vector2.Dot(new Vector2(p.x - a.x, p.z - a.z), leftNormal);
+                bool onLeft = across > 0f;
+                bool take;
+                if (side == "both") take = true;
+                else if (side == "left") take = onLeft;
+                else if (side == "right") take = !onLeft;
+                else take = (Vector2.Dot(leftNormal, compass) > 0f) == onLeft;
+                if (take)
+                {
+                    blocks.Add(all[i]);
+                }
             }
             if (blocks.Count == 0)
             {

@@ -173,6 +173,13 @@ Lessons recorded so far:
   a collision). A coal plant dry run said ok and then took three factories with it;
   dry runs now list `wouldRemove`. Roads demolish grown buildings in their way too; road
   dry runs list them the same way (footprint test against the route).
+- `zone-segment` with one side used to zone half a street on each side: it added
+  `m_blockStartLeft` and `m_blockEndLeft`, but end blocks are named from the end node, so
+  EndLeft is the geometric right. Sides are now decided geometrically, and compass sides
+  (`north`/`south`/`east`/`west`) exist (found 2026-11-15: houses grew south of Factory
+  Road and shops north of College Road).
+- Shore-snapped buildings move with the live water surface: a drain pipe landed 13 m
+  from its dry-run spot. Aim pipes at the position the build returned.
 - In this build the Water Pumping Station (`Water Intake`) is `ShorelineOrGround` and the
   `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
   pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the
