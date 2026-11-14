@@ -95,7 +95,7 @@ class ScriptTests(unittest.TestCase):
     def test_valid_script(self):
         errors, warnings, timings = validate(script(), BRIEF)
         self.assertEqual(errors, [])
-        self.assertEqual(timings[1]["seconds"], 5.0)        # 10 s clip at 2x
+        self.assertAlmostEqual(timings[1]["seconds"], 4 / 5.0 + 0.6)   # voice-driven: 4 syllables + pad
 
     def test_shape_rules(self):
         lines = script()["lines"]
@@ -128,12 +128,19 @@ class ScriptTests(unittest.TestCase):
     def test_short_budget_and_timelapse_frames(self):
         lines = script()["lines"]
         lines[1] = dict(lines[1], visual={"type": "timelapse", "viewpoint": "overview", "fps": 8})
-        errors, _, timings = validate(script(lines=lines), BRIEF)
+        errors, _, _ = validate(script(lines=lines), BRIEF)
         self.assertEqual(errors, [])
-        self.assertEqual(timings[1]["seconds"], 2.0)        # 16 frames at 8 fps
-        lines[1] = dict(lines[1], visual={"type": "clip", "in": 0, "out": 99})
+        lines[1] = dict(lines[1], vo=" ".join(["một"] * 300))
         errors, _, _ = validate(script(lines=lines), BRIEF)
         self.assertTrue(any("a short must be" in e for e in errors))
+
+    def test_chapter_visual_must_exist(self):
+        brief = dict(BRIEF, recording={"duration": 100.0, "chapters": [{"title": "Plan B", "start": 1, "end": 9}]})
+        lines = script()["lines"]
+        lines[1] = dict(lines[1], visual={"type": "chapter", "title": "Plan B"})
+        self.assertEqual(validate(script(lines=lines), brief)[0], [])
+        lines[1] = dict(lines[1], visual={"type": "chapter", "title": "Plan C"})
+        self.assertTrue(any("no recording chapter" in e for e in validate(script(lines=lines), brief)[0]))
 
     def test_missing_timelapse_viewpoint(self):
         lines = script()["lines"]

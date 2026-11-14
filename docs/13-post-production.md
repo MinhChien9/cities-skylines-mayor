@@ -101,6 +101,34 @@ python -m post.script episodes/e001-ngay-1/script.vi.json --brief episodes/e001-
 ```
 
 Checks the shape (hook first, punchline last), the hook's 3-second budget, the Short's
-60-second budget (from syllables and clip lengths), clip ranges inside the recording,
-timelapse frames that exist, and that every beat cites journal entries that exist. Prints
-the estimated timing per line. Fix errors by rewriting, not by squeezing the numbers.
+60-second budget (voice estimate + 0.6 s per line), clip ranges inside the recording,
+chapters and timelapse frames that exist, and that every beat cites journal entries that
+exist. Prints the estimated timing per line. Fix errors by rewriting, not by squeezing
+the numbers.
+
+## 6. Edit (ffmpeg)
+
+```powershell
+python -X utf8 -m post.edit episodes/e001-ngay-1/script.vi.json [--music bed.mp3] [--game-audio 0.1]
+```
+
+The voice drives the timeline: a line lasts 0.15 s + its voice + 0.45 s, and its visual
+is fitted to that — a `clip` is trimmed, or slowed when it is too short at its `speed`
+(the speed ramp is the clip's `speed`); a `chapter` is the recording chapter of that
+title (cut by marker); a `timelapse` spreads its frames over the line; a `still` holds.
+
+- **Picture:** 1920×1080 at 30 fps, NVENC H.264. The 9:16 Short crops the centre of the
+  frame *above* the game's bottom toolbar and scales it to 1080×1920.
+- **Text:** the word-timed subtitles (chunks sized to the frame width) and the lines'
+  `onScreen` cards (large, yellow, upper part of the frame), burned in with libass.
+- **Sound:** the voice; a music bed ducked under it (`--music`, looped; by default a
+  quiet synthesised A-minor pad, so nothing needs licensing); game audio off by default
+  (the game's soundtrack is not ours); loudness-normalised to −14 LUFS, −1.5 dBTP — the
+  level YouTube and TikTok play at.
+
+Outputs `build/render/<id>-16x9.mp4` (the YouTube master) and `<id>-9x16.mp4` (Shorts,
+TikTok). The e001 pilot renders in ~20 s.
+
+**Film for the edit.** Footage recorded with the game UI on shows the chirper, tooltips
+and the bridge console. Hide the UI (`city_camera hideUi:true`) for any stretch that
+might become a clip, and film B-roll with `studio_camera_move`.
