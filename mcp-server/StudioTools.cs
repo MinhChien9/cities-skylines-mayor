@@ -180,12 +180,27 @@ public sealed class StudioTools
         try
         {
             var recording = await RecordingAsync(cancellationToken).ConfigureAwait(false);
+            // OBS refuses chapters while the recording is paused. A timelapse capture pauses
+            // it for ~3 s (found live: a marker failed with code 702), so wait that out.
+            for (int i = 0; i < 60 && (bool?)recording["active"] == true && (bool?)recording["paused"] == true; i++)
+            {
+                await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+                recording = await RecordingAsync(cancellationToken).ConfigureAwait(false);
+            }
             if ((bool?)recording["active"] != true)
             {
                 return new JsonObject
                 {
                     ["ok"] = false,
                     ["error"] = "Not recording. Markers are chapters inside a recording; start one with studio_record action='start'.",
+                };
+            }
+            if ((bool?)recording["paused"] == true)
+            {
+                return new JsonObject
+                {
+                    ["ok"] = false,
+                    ["error"] = "The recording is paused; OBS only adds chapters while it runs. Resume it with studio_record action='resume'.",
                 };
             }
             await _obs.RequestAsync("CreateRecordChapter", new JsonObject { ["chapterName"] = name.Trim() }, cancellationToken)

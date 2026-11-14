@@ -41,7 +41,9 @@ internal sealed class FakeObs
                 : fail(501, "Output is not running"),
             "PauseRecord" => Recording && !Paused ? Set(() => Paused = true) : fail(502, "Output is paused"),
             "ResumeRecord" => Paused ? Set(() => Paused = false) : fail(503, "Output is not paused"),
-            "CreateRecordChapter" => Recording ? Set(() => Chapters.Add((string)data!["chapterName"]!)) : fail(501, "Output is not running"),
+            "CreateRecordChapter" => !Recording ? fail(501, "Output is not running")
+                : Paused ? fail(702, "Verify that the output is not paused.")
+                : Set(() => Chapters.Add((string)data!["chapterName"]!)),
             "GetSourceScreenshot" => Then(() => Screenshots.Add(data),
                 new JsonObject { ["imageData"] = "data:image/jpg;base64," + Convert.ToBase64String(new byte[] { 0xFF, 0xD8, 0xFF, 0xD9 }) }),
             "SaveSourceScreenshot" => Set(() => Screenshots.Add(data)),
@@ -185,6 +187,32 @@ public sealed class StudioToolsTests : IAsyncLifetime
         Assert.True((bool?)result!["ok"]);
         Assert.Equal(["Water tower online"], _obs.Chapters);
         Assert.Equal("00:01:02.500", (string?)result["timecode"]);
+    }
+
+    [Fact]
+    public async Task Marker_WaitsOutAShortPause()
+    {
+        _obs.Recording = true;
+        _obs.Paused = true;
+        _ = Task.Run(async () => { await Task.Delay(300); _obs.Paused = false; });
+
+        var result = await _tools.StudioMarker("During a timelapse capture");
+
+        Assert.True((bool?)result!["ok"]);
+        Assert.Equal(["During a timelapse capture"], _obs.Chapters);
+    }
+
+    [Fact]
+    public async Task Marker_OnAPausedRecording_SaysResume()
+    {
+        _obs.Recording = true;
+        _obs.Paused = true;
+
+        var result = await _tools.StudioMarker("Paused");
+
+        Assert.False((bool?)result!["ok"]);
+        Assert.Contains("resume", (string?)result["error"]);
+        Assert.Empty(_obs.Chapters);
     }
 
     [Fact]

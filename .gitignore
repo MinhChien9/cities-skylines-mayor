@@ -11,6 +11,7 @@ upstream-skyline-agent-skill/
 
 # Local agent state
 *.log
+__pycache__/
 journal/
 .DS_Store
 Thumbs.db
