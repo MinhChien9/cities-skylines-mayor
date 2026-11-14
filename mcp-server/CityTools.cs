@@ -401,9 +401,10 @@ public sealed class CityTools
         [System.ComponentModel.Description("World z of the target point.")] double? z = null,
         [System.ComponentModel.Description("World height of the target point; omit for sea level.")] double? y = null,
         [System.ComponentModel.Description("Camera distance to the target (default 400).")] double? distance = null,
-        [System.ComponentModel.Description("Vertical viewing angle in degrees (default: keep current).")] double? verticalAngle = null,
-        [System.ComponentModel.Description("Horizontal viewing angle in degrees (default: keep current).")] double? horizontalAngle = null,
+        [System.ComponentModel.Description("Pitch in degrees: 0 = level with the horizon, 90 = straight down (default: keep current).")] double? verticalAngle = null,
+        [System.ComponentModel.Description("Yaw (compass direction the camera faces) in degrees, -180..180 (default: keep current).")] double? horizontalAngle = null,
         [System.ComponentModel.Description("True/false to toggle edge scrolling; omit to leave it alone.")] bool? edgeScroll = null,
+        [System.ComponentModel.Description("False = glide to the target over a few frames (smoother on video); default true = snap.")] bool? instant = null,
         CancellationToken cancellationToken = default)
     {
         var body = new Dictionary<string, object?>();
@@ -414,6 +415,7 @@ public sealed class CityTools
         if (verticalAngle.HasValue) { body["verticalAngle"] = verticalAngle.Value; }
         if (horizontalAngle.HasValue) { body["horizontalAngle"] = horizontalAngle.Value; }
         if (edgeScroll.HasValue) { body["edgeScroll"] = edgeScroll.Value; }
+        if (instant.HasValue) { body["instant"] = instant.Value; }
         return await Post("/commands/set-camera", body, cancellationToken).ConfigureAwait(false);
     }
 
