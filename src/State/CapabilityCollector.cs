@@ -29,6 +29,7 @@ namespace SkylinesAgentBridge.State
             AppendMilestones(json, managers);
             AppendFeatures(json);
             AppendClock(json, managers);
+            AppendMods(json);
             json.Append("}");
             return CommandResult.FromJson(json.ToString());
         }
@@ -177,6 +178,61 @@ namespace SkylinesAgentBridge.State
                         json.Append(",");
                     }
                     json.Append("\"").Append(locked[i]).Append("\"");
+                }
+                json.Append("]");
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        /// <summary>
+        /// The enabled mods, and which of them are the game's own cheat mods. Unlimited Money
+        /// makes the game (and so the bridge) accept any build whatever the cash, and Unlock
+        /// All opens every milestone: an agent reading the economy needs to know.
+        /// </summary>
+        private static void AppendMods(StringBuilder json)
+        {
+            try
+            {
+                List<string> enabled = new List<string>();
+                List<string> cheats = new List<string>();
+                foreach (ColossalFramework.Plugins.PluginManager.PluginInfo plugin in ColossalFramework.Plugins.PluginManager.instance.GetPluginsInfo())
+                {
+                    if (plugin == null || !plugin.isEnabled)
+                    {
+                        continue;
+                    }
+                    string name = plugin.name;
+                    try
+                    {
+                        IUserMod[] mods = plugin.GetInstances<IUserMod>();
+                        if (mods != null && mods.Length > 0 && !string.IsNullOrEmpty(mods[0].Name))
+                        {
+                            name = mods[0].Name;
+                        }
+                    }
+                    catch (Exception)
+                    {
+                    }
+                    enabled.Add(name);
+                    string folder = plugin.name ?? "";
+                    if (plugin.isBuiltin && (folder == "UnlimitedMoney" || folder == "UnlockAll" || folder == "UnlimitedOilAndOre" || folder == "UnlimitedSoil"))
+                    {
+                        cheats.Add(folder);
+                    }
+                }
+                json.Append(",\"enabledMods\":[");
+                for (int i = 0; i < enabled.Count; i++)
+                {
+                    if (i > 0) json.Append(",");
+                    json.Append("\"").Append(JsonUtil.Escape(enabled[i])).Append("\"");
+                }
+                json.Append("],\"cheatMods\":[");
+                for (int i = 0; i < cheats.Count; i++)
+                {
+                    if (i > 0) json.Append(",");
+                    json.Append("\"").Append(cheats[i]).Append("\"");
                 }
                 json.Append("]");
             }

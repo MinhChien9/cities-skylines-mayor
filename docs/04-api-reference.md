@@ -117,6 +117,7 @@ a verified run on 2026-11-11.
 |---|---|
 | `knownExpansions` / `supportedExpansions` | Every `ICities.Expansion` value except `None`, and the subset the install reports as supported (`SupportsExpansion`). |
 | `milestones` / `currentMilestone` | Milestone names as the game knows them, and what the city is currently working towards. |
+| `enabledMods` / `cheatMods` | The enabled mods by name, and which of them are the game's built-in cheat mods (`UnlimitedMoney`, `UnlockAll`, `UnlimitedOilAndOre`, `UnlimitedSoil`). With `UnlockAll` every milestone feature is open; with `UnlimitedMoney` the game would accept any build (the bridge still checks the real cash). |
 | `unlockedFeatures` / `lockedFeatures` | `UnlockManager.Feature` state: the gate list for milestone-gated gameplay (GameAreas, ParkAreas, CampusAreas, Ferry, Trolleybus, PedestrianZones, …). Ask here before assuming transit or special areas are available. |
 | `clock` | The `ICities.IThreading` simulation clock. Read it twice and diff to know how much **simulated** time actually elapsed mid-build — never conclude anything from a zero-sim-time pair of reads. |
 
@@ -378,7 +379,11 @@ control points the tool would make:
   under water unless `elevation >= 4` (the bridge variant) or `allowWater: true`. Pipes
   and power lines are exempt. `hint` says what to change.
 - **Money.** `cost` is the construction cost in ₡ (from the test pass); the build pass
-  charges it, and `moneyBefore` / `moneyAfter` show the treasury.
+  charges it, and `moneyBefore` / `moneyAfter` show the treasury. The bridge checks the
+  **real** cash (`NotEnoughMoney` when the cost exceeds it) for roads and buildings even
+  when a mod answers the game's own money test: with the built-in Unlimited Money mod the
+  player's tools build into any debt, the AI mayor does not. `city_capabilities` lists
+  such mods in `cheatMods`.
 - **Collateral is reported.** Like the player's tool, the build removes non-important
   objects in its way. The one that matters is a **power line whose pylon stands where the
   road goes**: the game deletes that line (crossing the wire between pylons is fine), and
