@@ -57,6 +57,10 @@ EXPECTED_TOOLS = {
     "city_district",
     "city_save",
     "city_request",
+    "studio_status",
+    "studio_record",
+    "studio_marker",
+    "studio_screenshot",
 }
 
 

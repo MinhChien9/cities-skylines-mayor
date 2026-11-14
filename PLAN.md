@@ -59,7 +59,7 @@ session journal written by the server.
       `D:\cs1-mayor-recordings`, NVENC H.264, hybrid MP4 (chapter markers)
 - [x] **S2 `ObsClient`** — Hello/Identify (SHA-256 auth), request/response, reconnect;
       unit tests against a stub server
-- [ ] **S3 `StudioTools`**: `studio_status`, `studio_record` (start/stop/pause/resume),
+- [x] **S3 `StudioTools`**: `studio_status`, `studio_record` (start/stop/pause/resume),
       `studio_marker` (record chapter + journal entry), `studio_screenshot` (game
       capture frame as an image — a cheap real render when the map is not enough)
 - [ ] **S4 Decision journal**: `studio_note(text, kind)` + automatic entries for every
@@ -115,6 +115,9 @@ Lessons recorded so far:
 - `CameraController.m_targetAngle` is (x = yaw, y = pitch 0..90).
 - Repo line endings are mixed: most of `src/` is CRLF, the rest LF — keep each file's.
 - Repo CI is disabled on GitHub; run the checks locally before merging.
+- OBS writes two chapters of its own into every hybrid MP4: "Start" at 0 and a trailing
+  "Dummy"; post-production must skip them. `StopRecord` answers before the output
+  stops, so `studio_record stop` polls until it is inactive.
 - OBS 33.0.1 ships obs-websocket 5.7.6; `CreateRecordChapter` is available (S3 markers).
   `SetInputMute` takes `inputMuted`, not `inputMute`.
 - The game runs windowed at 1600×900, so the 1080p capture is upscaled; a 1920×1080

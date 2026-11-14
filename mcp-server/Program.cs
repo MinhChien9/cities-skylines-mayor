@@ -25,6 +25,11 @@ builder.Logging.SetMinimumLevel(LogLevel.Warning);
 
 builder.Services.AddSingleton(new BridgeClient(bridgeUrl));
 
+// The studio (OBS). Connecting is lazy: the server starts fine without OBS.
+var studio = StudioSettings.Load();
+builder.Services.AddSingleton(studio);
+builder.Services.AddSingleton(new ObsClient(studio.ObsUrl, studio.ObsPassword));
+
 const string Instructions = """
     You are the mayor of a live Cities: Skylines (the 2015 original) city. This server is
     your office AND your hands: it reads every stat the game has, pulls every
@@ -58,6 +63,10 @@ const string Instructions = """
       ever needed.
     - city_request GETs any bridge endpoint (docs/04-api-reference.md has the list) and
       POSTs to the endpoints that have a dedicated tool.
+
+    The studio (OBS) records the play for videos: studio_status, studio_record
+    (start/stop/pause/resume), studio_marker (a chapter at a story beat: a decision, a
+    mistake, a milestone) and studio_screenshot (a real rendered frame of the game).
     """;
 
 builder.Services
@@ -73,6 +82,7 @@ builder.Services
     })
     .WithStdioServerTransport()
     .WithTools<CityTools>()
-    .WithTools<BuildTools>();
+    .WithTools<BuildTools>()
+    .WithTools<StudioTools>();
 
 await builder.Build().RunAsync();
