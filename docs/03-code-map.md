@@ -194,6 +194,8 @@ game. That is what [`07-verification.md`](07-verification.md) is for.
 | `build-mod.ps1` | Builds `src/` against the game's assemblies and installs the DLL |
 | `install-mod.ps1` | Build + copy, then prints the thread-proof instructions |
 | `start-game.ps1` | Launches Cities: Skylines and waits for the bridge to pass the thread gate |
+| `restart-game.ps1` | Saves the city, rebuilds and installs the mod, relaunches and resumes the save |
+| `setup-obs.ps1` | Enables obs-websocket, creates the "CS1 Mayor" scene and recording settings, writes `studio.local.json` |
 | `smoke-test-mcp.py` | Drives the MCP server over stdio exactly like a real client |
 | `game-ui.ps1` | OS-level mouse/keyboard injection into the game window |
 | `check-api-docs.py` | Fails if an endpoint in the API reference is missing from the route table |

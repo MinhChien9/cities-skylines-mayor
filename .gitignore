@@ -18,3 +18,6 @@ Thumbs.db
 # Editor
 .idea/
 .vscode/
+
+# Local studio secrets (OBS websocket password), written by scripts/setup-obs.ps1
+studio.local.json
