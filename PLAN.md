@@ -12,9 +12,6 @@ before the task's PR is merged.**
    one PR (`.github/CONTRIBUTING.md`). Do not start a second task in the same PR.
 3. **End of task:** tick the boxes, record decisions and anything learned in the
    decision log, update "Environment state", and commit this file in the same PR.
-4. **Task boundary:** when the next task is a different area (e.g. bridge → studio →
-   post-production), stop and ask the user to run `/compact` before starting it. This
-   file must hold everything the next session needs — nothing lives only in the chat.
 
 ## Goal
 
