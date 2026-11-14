@@ -62,6 +62,9 @@ namespace SkylinesAgentBridge
                     return OnGameThread(delegate { return GameState.BuildProblemsJson(limit); });
                 });
 
+            MapGet("/state/utilities", "Read city-wide service capacity against usage (power, water, sewage, garbage, health, education, jobs)",
+                delegate { return OnGameThread(delegate { return UtilitiesCollector.BuildUtilitiesJson(); }); });
+
             MapGet("/state/demand", "Read R/C/I demand",
                 delegate { return OnGameThread(delegate { return GameState.BuildDemandJson(); }); });
 

@@ -31,6 +31,7 @@ EXPECTED_TOOLS = {
     "city_summary",
     "city_problems",
     "city_demand",
+    "city_utilities",
     "city_chirps",
     "city_zones",
     "city_economy",

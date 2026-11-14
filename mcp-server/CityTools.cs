@@ -88,6 +88,11 @@ public sealed class CityTools
     public Task<JsonNode?> CityDemand(CancellationToken cancellationToken)
         => Get("/state/demand", cancellationToken);
 
+    [System.ComponentModel.Description("GET /state/utilities. City-wide capacity against usage for every capacity-limited service: electricity (kW), water, sewage, garbage, healthcare, deathcare, education (capacity vs need per level), crime, jobs and unemployment. Check it before growing the city: a negative surplus is the next thing to build.")]
+    [McpServerTool(Name = "city_utilities", Title = "Utility Capacity")]
+    public Task<JsonNode?> CityUtilities(CancellationToken cancellationToken)
+        => Get("/state/utilities", cancellationToken);
+
     [System.ComponentModel.Description("GET /state/chirps. Citizen chirper messages, newest first.")]
     [McpServerTool(Name = "city_chirps", Title = "Citizen Chirps")]
     public async Task<JsonNode?> CityChirps(

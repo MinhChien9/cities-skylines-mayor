@@ -38,6 +38,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 | GET | `/state/summary` | Compact city overview. |
 | GET | `/state/problems` | Problem icons. `?limit=` (default 200). |
 | GET | `/state/demand` | RCI demand values. |
+| GET | `/state/utilities` | City-wide capacity against usage: electricity (kW), water, sewage, garbage, healthcare, deathcare, education per level, crime, jobs. |
 | GET | `/state/chirps` | Citizen chatter. `?limit=` (default 50). |
 | GET | `/state/zones` | Zoning summary. |
 | GET | `/state/economy` | Money, income, expenses, tax rates, budgets. |
