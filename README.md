@@ -1,20 +1,22 @@
 # CS1 Mayor
 
-A thin MCP server that is the AI agent's **office** while it plays the mayor of a live
-Cities: Skylines (2015) city with its own cursor.
+An MCP server that lets an AI agent play the mayor of a live Cities: Skylines (2015)
+city — reading every stat, pulling every lever, and **building through the game's own
+tool code**, without a cursor or screenshots.
 
-The office **sees everything** — every stat the game has, in one call, without the agent
-opening a single in-game info panel — and **controls everything that needs no spatial
-judgement**: the simulation clock, taxes, budgets, policies, saves. It **never builds
-anything**. Roads, zones, buildings, bulldozing, transit lines and district painting are
-spatial work: the agent does those **with its cursor** through the game's own UI (a CUA
-/ computer-use channel), where snapping, slope checks and visual judgement live. The
-server contains no decision logic; the agent reasons from the stats the office returns.
+- **Eyes:** `city_map` renders a top-down map made of game data (land shaded by height,
+  water, roads, zones, buildings, locked tiles) with world coordinates on it.
+- **Hands:** `city_build_road`, `city_place_building`, `city_zone_segment` run the same
+  code the player's tools run — `NetTool.CreateNode` for every network, the
+  `BuildingTool` placement rules for buildings — test pass first. Snapping, junctions,
+  collision, slope, locked tiles and money are checked exactly as for the player; a
+  refusal comes back as the game's own error names plus a hint.
+- **Office:** the clock, taxes, budgets, policies, saves, line and district management.
 
 ```
-opencode + CUA cursor ─┬─MCP stdio──▶ Cs1Mayor.Mcp (.NET 10) ──HTTP──▶ SkylinesAgentBridge.dll (in-game)
-  plays the city       │                                                              │
-  (hands + eyes)       └──── the office: numbers, clock, policies ────────────────────┘
+Claude Code / opencode ──MCP stdio──▶ Cs1Mayor.Mcp (.NET 10) ──HTTP──▶ SkylinesAgentBridge.dll (in-game)
+   plays the city                       41 tools, PNG map renderer        NetTool / BuildingTool rules,
+                                                                          simulation-thread dispatch
                                                        Cities: Skylines 1.21.1-f9 · Unity 5.6.7f1
 ```
 
@@ -27,7 +29,8 @@ opencode + CUA cursor ─┬─MCP stdio──▶ Cs1Mayor.Mcp (.NET 10) ──H
 | In-game bridge mod | ✅ **Verified running in a live city** |
 | Threading fix | ✅ **Verified** — `probeThreadId == simulationThreadId`, `runsOnMainThread: false` |
 | MCP server | ✅ **Verified end-to-end** against the live game |
-| Tool surface | ✅ **32 office tools** — all stats, the clock, policies, taxes, budgets, saves; spatial building is the cursor's job (CUA) |
+| Tool surface | ✅ **41 tools** — all stats, the semantic map, game-validated building (roads, networks, zones, buildings, bulldoze), the clock, policies, taxes, budgets, saves |
+| Validated building | ✅ **Verified live** — a street grid with T-junctions and crossings, zoning, water/power/sewage, and the first 115 citizens, with no cursor |
 | Knowledge base | ✅ `docs/05-game-mechanics.md`, `docs/06-expansions.md` |
 | Automated tests | ✅ 53 xunit tests over the MCP server and the bridge's JSON reader |
 | opencode wiring | ✅ `✓ cs1-mayor connected` |
@@ -77,11 +80,11 @@ Full walkthrough, including the game path and the thread gate:
 
 ## The tools
 
-**32 office tools.** All reads are one call each; `city_overview` bundles the pulse
+**41 tools.** All reads are one call each; `city_overview` bundles the pulse
 (summary, demand, economy, problems, chirps) so the agent never opens an in-game info
-panel. The mutating tools are the office levers only — every spatial action (roads,
-zones, buildings, bulldozing, transit stops, district painting) belongs to the cursor
-through the game's own UI, and `city_request`'s POST allowlist refuses those endpoints.
+panel; `city_map` is the spatial read. The build tools run the game's own tool code and
+always test before they build. `city_request` reaches any GET and the POST endpoints that
+have a dedicated tool; the legacy unvalidated `repair-*` / `batch` endpoints are refused.
 
 | Tool | Bridge endpoint |
 |---|---|
@@ -94,9 +97,12 @@ through the game's own UI, and `city_request`'s POST allowlist refuses those end
 | `city_set_simulation_speed` · `city_set_tax_rate` · `city_set_budget` · `city_set_policy` · `city_set_building_active` · `city_save` | matching `/commands/*` office levers |
 | `city_transport_line` (activate / rename / set-vehicle / remove-stop) | `/commands/transport-line` |
 | `city_district` (rename / specialize / release / state) | `/commands/district` |
-| `city_request` | GET any endpoint; POST office-allowlisted endpoints only |
+| `city_map` | `/state/map`, rendered to PNG |
+| `city_build_road` · `city_place_building` · `city_move_building` | `/commands/build-road` · `/place-building` · `/move-building` (game-validated) |
+| `city_zone_segment` · `city_zone_area` · `city_bulldoze` | `/commands/zone-segment` · `/set-zone` · `/bulldoze` |
+| `city_request` | GET any endpoint; POST endpoints that have a dedicated tool |
 
-Full list with parameters in `mcp-server/CityTools.cs`; the plan to cover the whole game
+Full list with parameters in `mcp-server/CityTools.cs` and `mcp-server/BuildTools.cs`; the plan to cover the whole game
 in [`docs/12-command-surface.md`](docs/12-command-surface.md).
 
 ---
@@ -153,7 +159,7 @@ cs1-mayor/
 │  ├─ Commands/               every mutation the agent can perform
 │  ├─ State/                  every read of city state, plus the anomaly detectors
 │  └─ Support/                JSON reader and the command result envelope
-├─ mcp-server/                the MCP server (C#, .NET 10) — the mayor's office, 32 tools over stdio
+├─ mcp-server/                the MCP server (C#, .NET 10) — 41 tools over stdio, PNG map renderer
 ├─ tests/                     xunit tests for the MCP server and the bridge's JSON reader
 ├─ scripts/                   build, install, launch, smoke test, doc check
 ├─ docs/                      start at docs/README.md

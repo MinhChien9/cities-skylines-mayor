@@ -155,7 +155,9 @@ C# / .NET 10, `ModelContextProtocol` 2.4.0, stdio transport.
 |---|---|
 | `Program.cs` | DI setup, stdio transport, server instructions. |
 | `BridgeClient.cs` | HTTP client for the bridge, with agent-friendly error wrapping. |
-| `CityTools.cs` | The 32 office tools: reads, `city_overview`, the office levers, the allowlisted passthrough. |
+| `CityTools.cs` | The 34 office tools: reads, `city_overview`, the office levers, camera, the allowlisted passthrough. |
+| `BuildTools.cs` | The 7 spatial tools: `city_map` and the game-validated build tools. |
+| `MapRenderer.cs` | Renders `/state/map` to a PNG (hand-written encoder). |
 
 ### `tests/` — automated checks
 
@@ -167,20 +169,24 @@ it can only be verified against a running game, which is what
 
 ## Tool surface
 
-Thirty-two tools — the mayor's **office**: all reads, plus the non-spatial levers
-(clock, taxes, budgets, policies, saves, line and district management) and
-`city_overview`, a composite of the five pulse reads in one call. Every tool relays
-HTTP calls and returns the bridge's responses — no decision logic in the server; what
-to do with the data is the agent's call.
+Forty-one tools in two classes. `CityTools` is the mayor's **office**: all reads, plus
+the non-spatial levers (clock, taxes, budgets, policies, saves, line and district
+management, camera) and `city_overview`, a composite of the five pulse reads in one call.
+`BuildTools` is the **eyes and hands**: `city_map` (the `/state/map` raster rendered to
+PNG) and the build tools. Every tool relays HTTP calls and returns the bridge's
+responses — no decision logic in the server; what to do with the data is the agent's
+call.
 
-**What is deliberately absent: the build tools.** Roads, zones, buildings, bulldozing,
-transit-stop placement and district painting are spatial work. Doing them blind, by
-coordinate, always produced ugly or failing results, because the API skips the
-validation and visual judgement the game's own UI tools provide. They are now the
-agent's cursor work (via its CUA channel), and `city_request`'s POST allowlist refuses
-the build endpoints so the division cannot leak. The bridge keeps the endpoints (see
-[`04-api-reference.md`](04-api-reference.md)); they are just not agent-exposed. The
-master tool list lives in [`12-command-surface.md`](12-command-surface.md).
+**Why building is safe to expose now.** The upstream build endpoints wrote straight to
+the storage layer (`NetManager.CreateSegment`, `BuildingManager.CreateBuilding`) and
+skipped every rule the player's tools enforce; that, not "building by API", is why
+coordinate building produced ugly or failing results, and why spatial work spent a while
+as cursor (CUA) work. The build endpoints now call the game's own tool code —
+`NetTool.CreateNode` and a port of `BuildingTool`'s placement rules — with the test pass
+first, so the agent gets the player's snapping, junctions, collision, slope, locked-tile
+and money checks. `city_request`'s POST allowlist still refuses the legacy `repair-*` and
+`batch` endpoints, which bypass those checks. The master tool list lives in
+[`12-command-surface.md`](12-command-surface.md).
 
 ### Reads
 
@@ -231,7 +237,8 @@ opencode  ──MCP over stdio──▶  mcp-server/
 
 | Addition | Where it lives | Why it is there |
 |---|---|---|
-| **Office tool surface** | MCP server | All reads plus the non-spatial levers; `city_request` GETs any endpoint and POSTs only the office allowlist. Spatial work stays with the agent's cursor (CUA), not the server. |
+| **Tool surface** | MCP server | All reads, the non-spatial levers, the semantic map and the game-validated build tools; `city_request` GETs any endpoint and POSTs only endpoints with a dedicated tool. |
+| **Validated building** | In the bridge | Build commands call the game's own tool code (`NetTool.CreateNode`, `BuildingTool` placement rules) in test mode first, on the simulation thread — the thread the tools' own `SimulationStep` runs on. |
 | **Main-thread render queue** | In the bridge | The one sanctioned exception to the thread rule — screenshots. It may not mutate city state. |
 
 The rule in this document does not change: **all game-state reads and writes stay on the
