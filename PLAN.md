@@ -92,7 +92,8 @@ session journal written by the server.
 
 ### Phase 4 — Series ⬅ current
 
-- [ ] Episode format and naming, thumbnail generation, upload checklist (AI disclosure)
+- [x] Episode format and naming, thumbnail generation, upload checklist (AI disclosure)
+      (`docs/14-series.md`; `post.thumbnail` → 1280×720 thumbnail + 9:16 cover; e001 done)
 - [ ] Mayor persona and running storyline across episodes
 - [ ] Map overlays for the story (land value, traffic, pollution) via `/state/map`
 
