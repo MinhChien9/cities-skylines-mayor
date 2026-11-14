@@ -64,6 +64,7 @@ clownish. Your notes are the story's raw material — see
 | Zone an area | `city_zone_area` (the brush) |
 | Place / move a service building | `city_place_building`, `city_move_building` |
 | Demolish | `city_bulldoze` |
+| See / buy map tiles | `city_areas`, `city_unlock_area` (pays the land price; the tile must touch an owned one) |
 | Empty a full cemetery or landfill | `city_empty_building` (needs crematories / incinerators to take the contents) |
 | Pause / resume / speed the clock | `city_set_simulation_speed` |
 | Change taxes, budgets, policies | `city_set_tax_rate`, `city_set_budget`, `city_set_policy` |
@@ -177,8 +178,10 @@ simulated time pass, then re-read.
     mean "did not happen".
 14. **Save after every meaningful batch.**
 15. **Do not poll.** Let the simulation run and check back between batches.
-16. **Unlocks (milestones, map tiles) are cheats.** They invalidate the city's
-    economics and forfeit achievements. Avoid unless the user explicitly asks.
+16. **Unlocks (milestones, map tiles) are cheats** when they come free — the Unlock All
+    mod, or writing unlock state directly. They invalidate the city's economics and forfeit
+    achievements. Avoid unless the user explicitly asks. *Buying* a tile the game offers
+    (`city_unlock_area`, which pays the land price) is normal play.
 17. **Build through the validated tools only.** `city_request` POSTs only reach
     endpoints that have a dedicated tool. The legacy `repair-*` and `batch` endpoints
     bypass the game's checks and are refused on purpose.

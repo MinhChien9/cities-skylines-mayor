@@ -104,6 +104,7 @@ session journal written by the server.
 
 - District painting as a validated tool (transit lines: done, #47)
 - `/state/progress` (milestones) as story triggers; `/commands/load`
+- Map tiles: done (`city_areas`, `city_unlock_area`, #48)
 
 ## Decision log
 
@@ -199,6 +200,10 @@ Lessons recorded so far:
   sometimes onto a cross street; a "closing" stop aimed at the first stop's requested
   point became a duplicate 15th stop. `add-stop close: true` now closes the loop. Lines
   are creatable from the MCP tool (`city_transport_line create / add-stop`).
+- Map tiles: `GameAreaManager.UnlockArea` does not charge; the area tool's coroutine pays
+  `FetchResource(LandPrice, CalculateTilePrice)` first. The bridge does the same
+  (`city_unlock_area`). With Unlock All on, 9 tiles are allowed; the first extra tile
+  (south, flat, with the highway) cost ₡3,700.
 - In this build the Water Pumping Station (`Water Intake`) is `ShorelineOrGround` and the
   `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
   pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the
