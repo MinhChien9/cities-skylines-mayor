@@ -62,6 +62,10 @@ Every command would be racing the game's simulation and silently corrupting the 
 | Rename / specialize / release a district | `city_district` |
 | Show the viewer something | `city_camera` (frames the game camera on a world point) |
 | Find a prefab name | `city_request` GET `/prefabs/networks`, `/prefabs/buildings?service=...` |
+| Check the recording setup | `studio_status` (OBS reachable, scene, capture showing the game, recording state) |
+| Record the session | `studio_record` start / stop / pause / resume |
+| Mark a story beat in the video | `studio_marker` (a chapter at a decision, a mistake, a milestone) |
+| See the real rendered game | `studio_screenshot` (costs image tokens; `city_map` stays the planning eye) |
 
 Drawing new transit lines and painting districts are not exposed as tools yet.
 

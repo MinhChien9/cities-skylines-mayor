@@ -28,6 +28,7 @@ public sealed class StubObsServer : IAsyncDisposable
     private readonly ConcurrentDictionary<WebSocket, (TcpClient Tcp, SemaphoreSlim SendLock)> _clients = new();
     private readonly Task _acceptLoop;
     private int _connections;
+    private int _disposed;
 
     public StubObsServer(string? password = "secret")
     {
@@ -212,6 +213,7 @@ public sealed class StubObsServer : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) == 1) return;
         _cts.Cancel();
         _listener.Stop();
         DropAll();
