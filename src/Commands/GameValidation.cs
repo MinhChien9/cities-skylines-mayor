@@ -120,7 +120,7 @@ namespace SkylinesAgentBridge.Commands
             }
             if ((errors & ToolBase.ToolErrors.GridNotFound) != 0)
             {
-                return "Needs free road frontage: aim within ~8 m of a road edge where no other building stands (grown houses occupy zoned frontage - pick another street, or bulldoze).";
+                return "Needs free road frontage: aim at or just past the kerb (within ~8 m of the first zone cells) where no other building stands (grown houses occupy zoned frontage - pick another street, or bulldoze).";
             }
             if ((errors & ToolBase.ToolErrors.CannotConnect) != 0)
             {
