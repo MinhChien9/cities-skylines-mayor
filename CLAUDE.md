@@ -1,5 +1,12 @@
 # CLAUDE.md
 
+**Read `PLAN.md` first, every session.** It holds the goal, the phases, the decision
+log and the environment state, and its session protocol is binding: work the next
+unchecked item, update `PLAN.md` in the same PR, and ask the user to `/compact` at
+every task boundary.
+
+@PLAN.md
+
 This repository has two audiences, and both instruction sets live in `AGENTS.md` and
 `docs/`:
 
