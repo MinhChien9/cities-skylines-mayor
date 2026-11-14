@@ -338,7 +338,7 @@ All accept a JSON body. All support `"dryRun": true` where validation is meaning
 | POST | `/commands/zone-segment` | Zone along one road: `segmentId`, `zone`, `side?` (`left`\|`right`\|`both`), `depth?` (1–4), `overwrite?`, `dryRun?` |
 | POST | `/commands/place-building` | `buildingPrefab`, `position:{x,z}`, `angleDegrees?`, `dryRun?`. Game-validated; see below. |
 | POST | `/commands/move-building` | `id`, `position:{x,z}`, `angleDegrees?`, `dryRun?`. Same rules; relocates in place (`RelocateBuilding`). |
-| POST | `/commands/set-building-active` | `id`, `active` |
+| POST | `/commands/set-building-active` | `id`, `active` — the player's on/off button (`SetProductionRate` 100/0; the game derives `Active` from it). Response: `productionRateBefore/After`, flags. `/state/facilities` reports `productionRate`. |
 | POST | `/commands/bulldoze` | `entityType` (`building`\|`netSegment`\|`netNode`), `id`, `keepNodes?`, `dryRun?` |
 | POST | `/commands/set-simulation-speed` | `speed` (1–3), `paused` |
 | POST | `/commands/set-tax-rate` | `service` (`Residential`\|`Commercial`\|`Industrial`\|`Office`), `rate` (0–20) |

@@ -124,6 +124,13 @@ Lessons recorded so far:
   terrain-adjusted `y`, so they hold steady.
 - At speed 3 one 5 s timelapse poll is ~3 game days: that is the finest cadence.
 - This ffmpeg build has no `-pattern_type glob`; use a concat list for image sequences.
+- `Building.Flags.Active` is derived by the game from `m_productionRate` (the player's
+  on/off) *and* whether the building can run; writing the flag alone is undone next step.
+  A powered, switched-on, problem-free building that stays inactive is broken, not off.
+- Buildings from the pre-#12 direct-write endpoints may be non-functional (the first
+  drain pipe never ran). Replace them through the validated tools.
+- A water pipe connects to a building by ending on its pipe node: aim at the building
+  centre and the test pass snaps to it. A pipe ending nearby gives `WaterNotConnected`.
 - OBS writes two chapters of its own into every hybrid MP4: "Start" at 0 and a trailing
   "Dummy"; post-production must skip them. `StopRecord` answers before the output
   stops, so `studio_record stop` polls until it is inactive.
