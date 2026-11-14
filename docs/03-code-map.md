@@ -122,6 +122,8 @@ C#, .NET 10, `ModelContextProtocol` 2.4.0. Namespace `Cs1Mayor.Mcp`.
 | `BuildTools.cs` | ~260 | `city_map` (PNG) and the game-validated build tools: road/network, building place/move, zoning, bulldoze. |
 | `MapRenderer.cs` | ~240 | Renders the `/state/map` raster to PNG: palette, height shading, labelled grid, dead-end rings. |
 | `BridgeClient.cs` | 181 | The HTTP client, the error translation, and body truncation so errors stay small in the agent's context. |
+| `ObsClient.cs` | ~390 | The studio's obs-websocket v5 client: Hello/Identify with SHA-256 auth, requests matched by id, events, reconnect on the next request (a request in flight when the connection drops fails instead of being resent). |
+| `StudioSettings.cs` | ~80 | Finds and reads the git-ignored `studio.local.json` written by `scripts/setup-obs.ps1` (OBS url, password, scene). |
 
 ### The tool surface (the mayor's office)
 
@@ -178,6 +180,8 @@ And the bridge gains one named exception to the thread rule:
 | `BridgeClientTests.cs` | JSON parsing, error translation, unreachable-bridge handling |
 | `CityToolsTests.cs` | Every tool's endpoint mapping, limit clamping, request bodies, error shape |
 | `JsonUtilTests.cs` | The bridge's regex JSON reader, linked straight from `src/Support/` |
+| `ObsClientTests.cs` | `ObsClient` auth, request/response, errors, timeouts, reconnect, events; `StudioSettings` parsing |
+| `StubObsServer.cs` | A raw-TCP obs-websocket v5 stub the OBS tests run against (no ASP.NET dependency) |
 
 The JSON reader is compiled into the test project from `src/Support/JsonUtil.cs`
 rather than copied, so the tests exercise the exact file the game loads.

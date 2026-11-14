@@ -57,7 +57,7 @@ session journal written by the server.
       auth on, generated password written to a git-ignored `studio.local.json`), create
       scene "CS1 Mayor" with a Game Capture of `Cities.exe`, recording to
       `D:\cs1-mayor-recordings`, NVENC H.264, hybrid MP4 (chapter markers)
-- [ ] **S2 `ObsClient`** — Hello/Identify (SHA-256 auth), request/response, reconnect;
+- [x] **S2 `ObsClient`** — Hello/Identify (SHA-256 auth), request/response, reconnect;
       unit tests against a stub server
 - [ ] **S3 `StudioTools`**: `studio_status`, `studio_record` (start/stop/pause/resume),
       `studio_marker` (record chapter + journal entry), `studio_screenshot` (game
@@ -102,6 +102,7 @@ session journal written by the server.
 | 2026-11-15 | Studio inside the existing MCP server | One server for the agent; the journal can see build calls |
 | 2026-11-15 | `setup-obs.ps1` writes only the websocket config file; everything else goes over obs-websocket | OBS owns its scene/profile files and rewrites them on exit; the websocket keeps them consistent |
 | 2026-11-15 | Canvas 1920×1080 @ 60 fps, Simple output, quality "Small", Game Capture matched on the executable | Standard YouTube master; the capture survives a title change; the game is scaled to fit |
+| 2026-11-15 | `ObsClient` never resends a request whose connection dropped after sending; it only retries a send that failed | Same rule as the mayor's: a lost answer does not mean OBS did not act (e.g. `StartRecord`) |
 
 Lessons recorded so far:
 
