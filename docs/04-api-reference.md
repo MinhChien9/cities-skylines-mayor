@@ -336,7 +336,7 @@ All accept a JSON body. All support `"dryRun": true` where validation is meaning
 | POST | `/commands/build-road` | `roadPrefab` (any network), `start:{x,z}`, `end:{x,z}`, `control?:{x,z}` (curve), `elevation?`, `snapRadius?` (8), `autoSplit?` (true), `allowWater?`, `name?`, `dryRun?`. Game-validated; see below. |
 | POST | `/commands/build-network` | Alias for `build-road`, kept for older agent scripts. |
 | POST | `/commands/set-zone` | The zone brush: `zone`, `center:{x,z}`, `radius`, `overwrite?` (false), `dryRun?` |
-| POST | `/commands/zone-segment` | Zone along one road: `segmentId`, `zone`, `side?` (`left`\|`right`\|`both`), `depth?` (1–4), `overwrite?`, `dryRun?` |
+| POST | `/commands/zone-segment` | Zone along one road: `segmentId`, `zone`, `side?` (`both`, `north`\|`south`\|`east`\|`west`, or `left`\|`right` of the start→end direction), `depth?` (1–4), `overwrite?`, `dryRun?`. Sides are geometric: each zone block is classified by where it lies. A compass side the road does not have (east on an east-west road) is refused. |
 | POST | `/commands/place-building` | `buildingPrefab`, `position:{x,z}`, `angleDegrees?`, `dryRun?`. Game-validated; see below. |
 | POST | `/commands/move-building` | `id`, `position:{x,z}`, `angleDegrees?`, `dryRun?`. Same rules; relocates in place (`RelocateBuilding`). |
 | POST | `/commands/set-building-active` | `id`, `active` — the player's on/off button (`SetProductionRate` 100/0; the game derives `Active` from it). Response: `productionRateBefore/After`, flags. `/state/facilities` reports `productionRate`. |

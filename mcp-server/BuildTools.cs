@@ -201,7 +201,7 @@ public sealed class BuildTools
     public async Task<JsonNode?> CityZoneSegment(
         [Description("Road segment id.")] int segmentId,
         [Description("Zone name.")] string zone,
-        [Description("'left', 'right' or 'both' (default).")] string side = "both",
+        [Description("'both' (default); 'north'/'south' for an east-west road, 'east'/'west' for a north-south one; or 'left'/'right' of the segment's start->end direction (geometric).")] string side = "both",
         [Description("Cells back from the road, 1-4 (default 4).")] int depth = 4,
         [Description("Replace cells that already have another zone.")] bool overwrite = false,
         [Description("Count only, change nothing.")] bool dryRun = false,
