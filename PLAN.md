@@ -47,7 +47,7 @@ current policy before monetizing).
 - [x] Claude Code wiring: `.mcp.json`, `CLAUDE.md` (#14)
 - [x] Live proof: street grid, services, 144 citizens, zero cursor clicks
 
-### Phase 2 — Studio: record the play ⬅ current
+### Phase 2 — Studio: record the play ✅
 
 Design (decided): a separate MCP tool class `StudioTools` in the same server, talking to
 OBS through obs-websocket v5 (a minimal `ClientWebSocket` client, no dependency), plus a
@@ -68,9 +68,11 @@ session journal written by the server.
 - [x] **S5 Cinematic camera**: orbit / fly-over helper (glide via `city_camera`
       `instant:false`), hide UI for B-roll, fixed timelapse viewpoints
 - [x] **S6 Timelapse capture**: snapshot from fixed viewpoints every N game days
-- [ ] Live proof: one recorded session with markers and a journal
+- [x] Live proof: one recorded session with markers and a journal (2026-11-15: 10 min
+      recording, 6 chapters, 35-entry journal, 23 timelapse frames, save
+      `mayor-live-proof-1`; the mayor found and fixed the town's sewage failure)
 
-### Phase 3 — Post-production
+### Phase 3 — Post-production ⬅ current
 
 - [ ] Script writer: journal + stats → hook (3 s), story beats, punchline; Vietnamese
 - [ ] TTS: decide between VieNeu-TTS (local, open source, GPU/CPU) and ElevenLabs (paid);
@@ -106,6 +108,7 @@ session journal written by the server.
 | 2026-11-15 | Hide UI through the game's free-camera mode (`m_freeCamera`), not by hiding panels | The game's own hide-UI path also hides problem icons, names and borders, and the bridge console with them |
 | 2026-11-15 | Camera shots streamed from the MCP server as ~30 Hz glide targets | No new bridge code per move; the game's camera smoothing evens out the steps |
 | 2026-11-15 | Timelapse runs inside the MCP server, keyed on game days, and pauses an active recording around each capture (+0.7 s guard on each side) | Without the guard ~0.35 s of each cut leaked into the video (game capture lag); the guard measured clean |
+| 2026-11-15 | `studio_marker` waits out a short recording pause (up to 6 s) | A timelapse capture pauses the recording ~3 s; OBS refuses chapters while paused (code 702, found live) |
 | 2026-11-15 | `ObsClient` never resends a request whose connection dropped after sending; it only retries a send that failed | Same rule as the mayor's: a lost answer does not mean OBS did not act (e.g. `StartRecord`) |
 
 Lessons recorded so far:
@@ -145,8 +148,8 @@ Lessons recorded so far:
 | Item | State |
 |---|---|
 | Game | Epic, `D:\Epic Games\CitiesSkylines`, map "Cannes", test town around (330, -640) |
-| Bridge | Installed from the S5 branch (`set-camera hideUi`), `runsOnSimulationThread: true` |
-| MCP | Release build current with `main`; `.mcp.json` wires it into Claude Code |
+| Bridge | Installed from `main` (#22), `runsOnSimulationThread: true` |
+| MCP | Debug build current with `main`. The Release build in `bin/Release` is held by this Claude Code session's running server: rebuild it after the session ends (or `/mcp` reconnect) to get the studio tools in Claude Code |
 | OBS | 33.0.1 portable at `D:\tools\obs-studio`, configured by `scripts/setup-obs.ps1`: websocket 4455 (password in `studio.local.json`), scene "CS1 Mayor", recordings in `D:\cs1-mayor-recordings` |
 | ffmpeg | 8.1 at `D:\tools\ffmpeg\bin` (NVENC available), not on PATH |
 | GPU | RTX 2060 (Turing: NVENC H.264 / HEVC; no AV1 encode) |
