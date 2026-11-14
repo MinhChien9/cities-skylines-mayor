@@ -168,8 +168,8 @@ Lessons recorded so far:
 
 | Item | State |
 |---|---|
-| Game | Epic, `D:\Epic Games\CitiesSkylines`, map "Cannes", test town around (330, -640) |
-| Bridge | Installed from the map-overlay branch (`/state/map?overlay=`), `runsOnSimulationThread: true` |
+| Game | Epic, `D:\Epic Games\CitiesSkylines`, map "Cannes", town around (330, -640): sewage fixed (new drain pipe at (-884, -59)), population ~164, save `mayor-live-proof-1`; open threads for day 2: jobs (workplace demand 100), 28 abandoned homes |
+| Bridge | Installed from `main` (#33), `runsOnSimulationThread: true` |
 | MCP | Debug build current with `main`. The Release build in `bin/Release` is held by this Claude Code session's running server: rebuild it after the session ends (or `/mcp` reconnect) to get the studio tools in Claude Code |
 | OBS | 33.0.1 portable at `D:\tools\obs-studio`, configured by `scripts/setup-obs.ps1`: websocket 4455 (password in `studio.local.json`), scene "CS1 Mayor", recordings in `D:\cs1-mayor-recordings` |
 | ffmpeg | 8.1 at `D:\tools\ffmpeg\bin` (NVENC available), not on PATH; no `-pattern_type glob` |
