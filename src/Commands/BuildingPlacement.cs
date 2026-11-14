@@ -87,6 +87,89 @@ namespace SkylinesAgentBridge.Commands
             }
         }
 
+        /// <summary>
+        /// For a dry run: the buildings and segments the tool would clear away at the
+        /// resolved spot (what the player sees highlighted red): the same CheckSpace call as
+        /// <see cref="ClearSite"/> but in test mode, read back from the colliding bitmasks.
+        /// Grown (zoned) buildings count: the game demolishes them under a new service building.
+        /// </summary>
+        public static string WouldRemoveJson(BuildingInfo info, Result r, ushort relocating)
+        {
+            ToolController tools = Singleton<ToolManager>.instance.m_properties;
+            ulong[] collidingSegments;
+            ulong[] collidingBuildings;
+            tools.BeginColliding(out collidingSegments, out collidingBuildings);
+            System.Text.StringBuilder b = new System.Text.StringBuilder();
+            System.Text.StringBuilder s = new System.Text.StringBuilder();
+            int bc = 0;
+            int sc = 0;
+            int grown = 0;
+            try
+            {
+                float minY;
+                float maxY;
+                float buildingY;
+                Building.SampleBuildingHeight(r.Position, r.Angle, info.m_cellWidth, info.m_cellLength, info, out minY, out maxY, out buildingY);
+                Vector3 pos = r.Position;
+                pos.y = buildingY;
+                BuildingTool.CheckSpace(info, info.m_placementMode, relocating, pos, minY, buildingY + info.m_collisionHeight, r.Angle,
+                    info.m_cellWidth, info.m_cellLength, true, collidingSegments, collidingBuildings);
+
+                Building[] blds = Singleton<BuildingManager>.instance.m_buildings.m_buffer;
+                for (int w = 0; w < collidingBuildings.Length; w++)
+                {
+                    ulong bits = collidingBuildings[w];
+                    if (bits == 0) continue;
+                    for (int k = 0; k < 64; k++)
+                    {
+                        if ((bits & (1UL << k)) == 0) continue;
+                        int id = (w << 6) | k;
+                        if (id == relocating || id >= blds.Length) continue;
+                        BuildingInfo other = blds[id].Info;
+                        if (other == null) continue;
+                        if (other.m_class != null && (other.m_class.m_service == ItemClass.Service.Residential ||
+                            other.m_class.m_service == ItemClass.Service.Commercial ||
+                            other.m_class.m_service == ItemClass.Service.Industrial ||
+                            other.m_class.m_service == ItemClass.Service.Office))
+                        {
+                            grown++;
+                        }
+                        if (bc++ > 0) b.Append(',');
+                        b.Append("{\"id\":").Append(id).Append(",\"prefab\":\"").Append(SkylinesAgentBridge.Support.JsonUtil.Escape(other.name))
+                            .Append("\",\"x\":").Append(SkylinesAgentBridge.Support.JsonUtil.Number(blds[id].m_position.x))
+                            .Append(",\"z\":").Append(SkylinesAgentBridge.Support.JsonUtil.Number(blds[id].m_position.z)).Append('}');
+                    }
+                }
+                NetSegment[] segs = Singleton<NetManager>.instance.m_segments.m_buffer;
+                for (int w = 0; w < collidingSegments.Length; w++)
+                {
+                    ulong bits = collidingSegments[w];
+                    if (bits == 0) continue;
+                    for (int k = 0; k < 64; k++)
+                    {
+                        if ((bits & (1UL << k)) == 0) continue;
+                        int id = (w << 6) | k;
+                        if (id >= segs.Length || segs[id].Info == null) continue;
+                        if (sc++ > 0) s.Append(',');
+                        s.Append("{\"id\":").Append(id).Append(",\"prefab\":\"").Append(SkylinesAgentBridge.Support.JsonUtil.Escape(segs[id].Info.name)).Append("\"}");
+                    }
+                }
+            }
+            finally
+            {
+                tools.EndColliding();
+            }
+            if (bc == 0 && sc == 0)
+            {
+                return "";
+            }
+            string warning = grown > 0
+                ? "Placing here demolishes " + grown + " grown building(s) (the game clears zoned buildings under a service building). Pick a free spot unless that is intended."
+                : "Placing here clears the objects listed in wouldRemove, as the player's tool would.";
+            return ",\"wouldRemove\":{\"segments\":[" + s + "],\"buildings\":[" + b + "]},\"warning\":\"" +
+                SkylinesAgentBridge.Support.JsonUtil.Escape(warning) + "\"";
+        }
+
         private static void Evaluate(BuildingInfo info, Vector3 target, float angleDegrees, ushort relocating,
             ulong[] segs, ulong[] blds, ToolController tools, Result r)
         {

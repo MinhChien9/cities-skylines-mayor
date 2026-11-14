@@ -43,6 +43,7 @@ namespace SkylinesAgentBridge.Commands
                     ",\"buildingPrefab\":\"" + JsonUtil.Escape(prefabName) + "\"" +
                     ",\"placementMode\":\"" + info.m_placementMode + "\"" +
                     PlacementJson(placement) +
+                    (placement.Errors == ToolBase.ToolErrors.None ? BuildingPlacement.WouldRemoveJson(info, placement, 0) : "") +
                     "," + GameValidation.ErrorFields(placement.Errors) + "}");
             }
 
