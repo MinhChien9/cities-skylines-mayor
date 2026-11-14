@@ -13,6 +13,10 @@ upstream-skyline-agent-skill/
 *.log
 __pycache__/
 journal/
+
+# Episode folders: the script is authored and committed; everything generated is not
+episodes/*/brief.json
+episodes/*/build/
 .DS_Store
 Thumbs.db
 

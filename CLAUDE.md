@@ -31,5 +31,6 @@ This repository has two audiences, and both instruction sets live in `AGENTS.md`
   Keep each file's existing ending (`git ls-files --eol`); new `src/` files use CRLF.
 - Verify before a PR: `scripts/build-mod.ps1 -NoInstall` (0 warnings),
   `dotnet test tests/Cs1Mayor.Mcp.Tests/Cs1Mayor.Mcp.Tests.csproj`,
-  `python scripts/smoke-test-mcp.py`, `python scripts/check-api-docs.py`, and a live
+  `python scripts/smoke-test-mcp.py`, `python scripts/check-api-docs.py`,
+  `python -m unittest discover -s post/tests -t .` (post-production), and a live
   check against the running game (`GET /debug/threads`).

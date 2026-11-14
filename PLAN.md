@@ -74,7 +74,9 @@ session journal written by the server.
 
 ### Phase 3 — Post-production ⬅ current
 
-- [ ] Script writer: journal + stats → hook (3 s), story beats, punchline; Vietnamese
+- [x] Script writer: journal + stats → hook (3 s), story beats, punchline; Vietnamese
+      (`post.brief` → Claude writes `episodes/<id>/script.vi.json` by
+      `docs/13-post-production.md` → `post.script` validates; pilot script e001 written)
 - [ ] TTS: decide between VieNeu-TTS (local, open source, GPU/CPU) and ElevenLabs (paid);
       default VieNeu for cost and licensing clarity
 - [ ] Subtitles from the script with word timing (forced alignment), burned-in
@@ -109,6 +111,7 @@ session journal written by the server.
 | 2026-11-15 | Camera shots streamed from the MCP server as ~30 Hz glide targets | No new bridge code per move; the game's camera smoothing evens out the steps |
 | 2026-11-15 | Timelapse runs inside the MCP server, keyed on game days, and pauses an active recording around each capture (+0.7 s guard on each side) | Without the guard ~0.35 s of each cut leaked into the video (game capture lag); the guard measured clean |
 | 2026-11-15 | `studio_marker` waits out a short recording pause (up to 6 s) | A timelapse capture pauses the recording ~3 s; OBS refuses chapters while paused (code 702, found live) |
+| 2026-11-15 | Claude writes the script in-session from a deterministic brief; code only builds the brief and validates | The writing is the judgement; the brief and validator keep it truthful (beats cite journal `seq`) and inside the 3 s / 60 s budgets |
 | 2026-11-15 | `ObsClient` never resends a request whose connection dropped after sending; it only retries a send that failed | Same rule as the mayor's: a lost answer does not mean OBS did not act (e.g. `StartRecord`) |
 
 Lessons recorded so far:
