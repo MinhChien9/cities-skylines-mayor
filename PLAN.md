@@ -150,8 +150,11 @@ Lessons recorded so far:
   A powered, switched-on, problem-free building that stays inactive is broken, not off.
 - Buildings from the pre-#12 direct-write endpoints may be non-functional (the first
   drain pipe never ran). Replace them through the validated tools.
-- A water pipe connects to a building by ending on its pipe node: aim at the building
-  centre and the test pass snaps to it. A pipe ending nearby gives `WaterNotConnected`.
+- A water building connects through **its own pipe node at its landward end**, not its
+  centre. A pipe ending at the centre leaves a free node and the building stays
+  `WaterNotConnected` (a second drain pipe sat unconnected while 19 factories were
+  abandoned for sewage). The bridge now snaps a network end that falls inside a building
+  to that building's own compatible node.
 - An unprimed `small` Whisper pass over the final mix is a good intelligibility check
   (93 % on e001) but mishears Vietnamese tones; it flags words for a human ear, it does
   not prove a TTS error.
