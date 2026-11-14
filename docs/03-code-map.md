@@ -124,6 +124,8 @@ C#, .NET 10, `ModelContextProtocol` 2.4.0. Namespace `Cs1Mayor.Mcp`.
 | `BridgeClient.cs` | 181 | The HTTP client, the error translation, and body truncation so errors stay small in the agent's context. |
 | `ObsClient.cs` | ~390 | The studio's obs-websocket v5 client: Hello/Identify with SHA-256 auth, requests matched by id, events, reconnect on the next request (a request in flight when the connection drops fails instead of being resent). |
 | `StudioTools.cs` | ~330 | The studio tools: `studio_status`, `studio_record`, `studio_marker` (recording chapters), `studio_screenshot` (a frame from the OBS game capture). |
+| `Journal.cs` | ~330 | The decision journal: `journal/<session>.jsonl`, entries stamped with wall time, recording timecode and game date/population/cash; the call-tool filter that journals every mutating tool call (dry runs skipped). |
+| `JournalTools.cs` | ~75 | `studio_note` (the mayor's why) and `studio_journal` (read the story so far). |
 | `StudioSettings.cs` | ~80 | Finds and reads the git-ignored `studio.local.json` written by `scripts/setup-obs.ps1` (OBS url, password, scene). |
 
 ### The tool surface (the mayor's office)
@@ -149,6 +151,7 @@ C#, .NET 10, `ModelContextProtocol` 2.4.0. Namespace `Cs1Mayor.Mcp`.
 | `city_save` | `POST /commands/save` |
 | `city_request` | GET any endpoint; POST only the office allowlist |
 | `studio_status` · `studio_record` · `studio_marker` · `studio_screenshot` | OBS through obs-websocket (`ObsClient`), not the bridge |
+| `studio_note` · `studio_journal` | The decision journal file (`Journal`); no bridge or OBS call of their own |
 
 The **build endpoints are deliberately not tools**: roads, zones, buildings,
 bulldozing, stop placement and district painting are spatial work the agent does with
@@ -184,6 +187,7 @@ And the bridge gains one named exception to the thread rule:
 | `JsonUtilTests.cs` | The bridge's regex JSON reader, linked straight from `src/Support/` |
 | `ObsClientTests.cs` | `ObsClient` auth, request/response, errors, timeouts, reconnect, events; `StudioSettings` parsing |
 | `StudioToolsTests.cs` | The studio tools against a small model of OBS's recording state |
+| `JournalTests.cs` | Journal lines and context (game, recording, both offline), what gets journalled, result summaries, the note/journal tools |
 | `StubObsServer.cs` | A raw-TCP obs-websocket v5 stub the OBS tests run against (no ASP.NET dependency) |
 
 The JSON reader is compiled into the test project from `src/Support/JsonUtil.cs`

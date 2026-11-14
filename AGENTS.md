@@ -66,6 +66,8 @@ Every command would be racing the game's simulation and silently corrupting the 
 | Record the session | `studio_record` start / stop / pause / resume |
 | Mark a story beat in the video | `studio_marker` (a chapter at a decision, a mistake, a milestone) |
 | See the real rendered game | `studio_screenshot` (costs image tokens; `city_map` stays the planning eye) |
+| Explain a decision for the video | `studio_note` (kind: decision / mistake / milestone / observation / plan) |
+| Recall the story so far | `studio_journal` (newest journal entries) |
 
 Drawing new transit lines and painting districts are not exposed as tools yet.
 
@@ -102,6 +104,12 @@ after placing a service, `city_road_anomalies` after road work, `city_map` to se
 
 **SAVE** — `city_save` with a **new incrementing name**, then `city_saves` to confirm
 the file is on disk.
+
+**JOURNAL** — every build, office and recording action is journalled automatically
+(`journal/<session>.jsonl`, with the game date, population, cash and the recording
+timecode). The videos are scripted from it, so add the *why* with `studio_note`: one or
+two plain sentences per batch — what you saw, what you chose and why, and every mistake
+with what you learned. Mistakes make the story; do not hide them.
 
 ### The clock is the simulation
 

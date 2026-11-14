@@ -23,12 +23,17 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConsole(o => o.LogToStandardErrorThreshold = LogLevel.Trace);
 builder.Logging.SetMinimumLevel(LogLevel.Warning);
 
-builder.Services.AddSingleton(new BridgeClient(bridgeUrl));
+var bridge = new BridgeClient(bridgeUrl);
+builder.Services.AddSingleton(bridge);
 
 // The studio (OBS). Connecting is lazy: the server starts fine without OBS.
 var studio = StudioSettings.Load();
+var obs = new ObsClient(studio.ObsUrl, studio.ObsPassword);
 builder.Services.AddSingleton(studio);
-builder.Services.AddSingleton(new ObsClient(studio.ObsUrl, studio.ObsPassword));
+builder.Services.AddSingleton(obs);
+
+// The decision journal: one file per server session, written on the first entry.
+builder.Services.AddSingleton(new Journal(Journal.DefaultDirectory(), bridge, obs));
 
 const string Instructions = """
     You are the mayor of a live Cities: Skylines (the 2015 original) city. This server is
@@ -67,6 +72,9 @@ const string Instructions = """
     The studio (OBS) records the play for videos: studio_status, studio_record
     (start/stop/pause/resume), studio_marker (a chapter at a story beat: a decision, a
     mistake, a milestone) and studio_screenshot (a real rendered frame of the game).
+    Build, office and recording actions are journalled automatically; add the WHY with
+    studio_note (decision / mistake / milestone / observation / plan) - the video
+    scripts are written from that journal. studio_journal reads the story so far.
     """;
 
 builder.Services
@@ -83,6 +91,8 @@ builder.Services
     .WithStdioServerTransport()
     .WithTools<CityTools>()
     .WithTools<BuildTools>()
-    .WithTools<StudioTools>();
+    .WithTools<StudioTools>()
+    .WithTools<JournalTools>()
+    .WithRequestFilters(filters => filters.AddCallToolFilter(Journal.ToolCallFilter));
 
 await builder.Build().RunAsync();
