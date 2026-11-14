@@ -37,6 +37,41 @@ public static class MapRenderer
 
     public sealed record Rendered(byte[] Png, int Scale, double GridStep);
 
+    /// <summary>
+    /// Colours one cell for a data overlay (value 0 = no data). Traffic paints road cells
+    /// green → yellow → red by density; the others tint the base map by the value relative
+    /// to the highest value in view (with a floor, so weak signals stay faint): land value
+    /// green, pollution brown, noise purple.
+    /// </summary>
+    public static (byte R, byte G, byte B) Tint(string? overlay, byte value, int max, (byte R, byte G, byte B) baseColor)
+    {
+        if (value == 0)
+        {
+            return baseColor;
+        }
+        if (overlay == "traffic")
+        {
+            double t = (value - 1) / 254.0;
+            return t < 0.5
+                ? Mix((40, 190, 70), (240, 210, 40), t * 2)
+                : Mix((240, 210, 40), (220, 40, 30), (t - 0.5) * 2);
+        }
+        (byte R, byte G, byte B) hue = overlay switch
+        {
+            "landValue" => (30, 210, 110),
+            "pollution" => (120, 70, 20),
+            "noise" => (160, 60, 200),
+            _ => (230, 40, 30),
+        };
+        // Scale to the highest value in view, but never below a floor: a town whose land
+        // value is 4 everywhere must not look as vivid as one at 60.
+        double scaleMax = Math.Max(max, overlay switch { "landValue" => 60, "pollution" => 60, "noise" => 80, _ => 1 });
+        return Mix(baseColor, hue, 0.8 * Math.Min(1.0, value / scaleMax));
+    }
+
+    private static (byte R, byte G, byte B) Mix((byte R, byte G, byte B) a, (byte R, byte G, byte B) b, double t)
+        => ((byte)(a.R + (b.R - a.R) * t), (byte)(a.G + (b.G - a.G) * t), (byte)(a.B + (b.B - a.B) * t));
+
     public static Rendered Render(JsonNode map)
     {
         int n = map["cols"]!.GetValue<int>();
@@ -45,6 +80,9 @@ public static class MapRenderer
         double north = map["bounds"]!["north"]!.GetValue<double>();
         byte[] classes = Convert.FromBase64String(map["classes"]!.GetValue<string>());
         byte[] heightBytes = Convert.FromBase64String(map["heights"]!.GetValue<string>());
+        byte[]? overlay = map["overlayValues"] is JsonValue ov ? Convert.FromBase64String(ov.GetValue<string>()) : null;
+        string? overlayName = map["overlay"]?["name"]?.GetValue<string>();
+        int overlayMax = overlay is null ? 1 : Math.Max(1, overlay.Max(b => (int)b));
 
         var heights = new double[n * n];
         double lo = double.MaxValue, hi = double.MinValue;
@@ -75,6 +113,10 @@ public static class MapRenderer
                 {
                     double t = (heights[i] - lo) / span;
                     color = ((byte)(120 + 100 * t), (byte)(116 + 84 * t), (byte)(80 + 64 * t));
+                }
+                if (overlay is not null)
+                {
+                    color = Tint(overlayName, overlay[i], overlayMax, color);
                 }
                 if ((classes[i] & 0x80) != 0)
                 {

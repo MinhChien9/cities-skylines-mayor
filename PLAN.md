@@ -90,14 +90,15 @@ session journal written by the server.
       rendered; `episodes/e001-ngay-1/REVIEW.md` has the fact check, QA and the
       **human review still to do before publishing**)
 
-### Phase 4 — Series ⬅ current
+### Phase 4 — Series ✅
 
 - [x] Episode format and naming, thumbnail generation, upload checklist (AI disclosure)
       (`docs/14-series.md`; `post.thumbnail` → 1280×720 thumbnail + 9:16 cover; e001 done)
 - [x] Mayor persona and running storyline across episodes (`docs/15-mayor-persona.md`;
       `episodes/series.json` + `post.series` context/check/publish; threads in scripts;
       the brief carries the story so far; AGENTS.md start step 5)
-- [ ] Map overlays for the story (land value, traffic, pollution) via `/state/map`
+- [x] Map overlays for the story (land value, traffic, pollution) via `/state/map`
+      (`?overlay=landValue|pollution|noise|traffic`; `city_map overlay/saveAs` → stills)
 
 ### Backlog (not scheduled)
 
@@ -120,6 +121,7 @@ session journal written by the server.
 | 2026-11-15 | Camera shots streamed from the MCP server as ~30 Hz glide targets | No new bridge code per move; the game's camera smoothing evens out the steps |
 | 2026-11-15 | Timelapse runs inside the MCP server, keyed on game days, and pauses an active recording around each capture (+0.7 s guard on each side) | Without the guard ~0.35 s of each cut leaked into the video (game capture lag); the guard measured clean |
 | 2026-11-15 | `studio_marker` waits out a short recording pause (up to 6 s) | A timelapse capture pauses the recording ~3 s; OBS refuses chapters while paused (code 702, found live) |
+| 2026-11-15 | Overlay tints scale to the highest value in view but with a floor per layer | Pure relative scaling made a town with land value 4 everywhere look vivid; the floor keeps weak signals faint and the maps truthful |
 | 2026-11-15 | The edit is voice-driven; visuals are fitted to each line | The voice is the story's clock; fitting clips (trim, or slow down) keeps lines tight without hand timing |
 | 2026-11-15 | Default music bed is a synthesised pad; game audio off by default | No licensing question for monetised uploads; the CS1 soundtrack is not ours. A licensed track can be passed with `--music` |
 | 2026-11-15 | Word timing from faster-whisper matched to the script, not a phoneme forced aligner | Whisper (CTranslate2, no torch) gives good word times on clean TTS audio; the script stays the on-screen text; a wav2vec2 aligner would pull torch in for little gain |
@@ -167,7 +169,7 @@ Lessons recorded so far:
 | Item | State |
 |---|---|
 | Game | Epic, `D:\Epic Games\CitiesSkylines`, map "Cannes", test town around (330, -640) |
-| Bridge | Installed from `main` (#22), `runsOnSimulationThread: true` |
+| Bridge | Installed from the map-overlay branch (`/state/map?overlay=`), `runsOnSimulationThread: true` |
 | MCP | Debug build current with `main`. The Release build in `bin/Release` is held by this Claude Code session's running server: rebuild it after the session ends (or `/mcp` reconnect) to get the studio tools in Claude Code |
 | OBS | 33.0.1 portable at `D:\tools\obs-studio`, configured by `scripts/setup-obs.ps1`: websocket 4455 (password in `studio.local.json`), scene "CS1 Mayor", recordings in `D:\cs1-mayor-recordings` |
 | ffmpeg | 8.1 at `D:\tools\ffmpeg\bin` (NVENC available), not on PATH; no `-pattern_type glob` |
