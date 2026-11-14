@@ -164,6 +164,15 @@ Lessons recorded so far:
   stops, so `studio_record stop` polls until it is inactive.
 - OBS 33.0.1 ships obs-websocket 5.7.6; `CreateRecordChapter` is available (S3 markers).
   `SetInputMute` takes `inputMuted`, not `inputMute`.
+- A road built over a power line's **pylon** makes the game delete that line (the
+  player's tool only shows a red highlight); crossing the wire between pylons is fine.
+  Building Central Avenue over a pylon cut the sewage outlet's power and every service in
+  town stopped (found 2026-11-15, 50k run). Builds now report `removed`, and dry runs
+  `removesPowerLines`.
+- In this build the Water Pumping Station (`Water Intake`) is `ShorelineOrGround` and the
+  `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
+  pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the
+  game does.
 - The game runs windowed at 1600×900, so the 1080p capture is upscaled; a 1920×1080
   game window would be sharper. The bridge's debug console overlay shows in the capture
   (S5 hides UI for B-roll).

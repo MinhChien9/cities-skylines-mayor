@@ -47,6 +47,8 @@ namespace SkylinesAgentBridge.Commands
             }
 
             int moneyBefore = RoadCommands.MoneyNow();
+            float reach = Mathf.Max(info.m_cellWidth, info.m_cellLength) * 8f + 32f;
+            Collateral collateral = Collateral.Take(placement.Position.x, placement.Position.z, placement.Position.x, placement.Position.z, reach);
             BuildingPlacement.ClearSite(info, placement, 0);
 
             if (GameValidation.NeedMoney() && placement.Cost > 0)
@@ -77,7 +79,8 @@ namespace SkylinesAgentBridge.Commands
                 ",\"placementMode\":\"" + info.m_placementMode + "\"" +
                 PlacementJson(placement) +
                 ",\"moneyBefore\":" + moneyBefore +
-                ",\"moneyAfter\":" + RoadCommands.MoneyNow() + "}");
+                ",\"moneyAfter\":" + RoadCommands.MoneyNow() +
+                collateral.RemovedJson(null) + "}");
         }
 
         /// <summary>
