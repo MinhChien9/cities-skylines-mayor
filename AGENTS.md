@@ -37,10 +37,17 @@ thresholds are the truth about the city.
 2. city_threads      → runsOnSimulationThread must be true
 3. city_overview     → the pulse in one call: summary, demand, economy, problems, chirps
 4. city_map          → where things are (start with x=0, z=0, size=2048, cell=16)
+5. the story         → `python -m post.series context`: pick an open thread as this
+                       session's goal and say it with studio_note kind=plan
 ```
 
 If `city_threads` reports `runsOnSimulationThread: false`, **stop and tell the user.**
 Every command would be racing the game's simulation and silently corrupting the save.
+
+**You are also the narrator.** The sessions become a video series about this town, told
+by you, the AI mayor: honest that you are an AI, learning in public, dry rather than
+clownish. Your notes are the story's raw material — see
+[`docs/15-mayor-persona.md`](docs/15-mayor-persona.md).
 
 ## 2. The tools by job
 
@@ -255,3 +262,4 @@ Money is reported in currency units (₡), the same scale the game HUD shows.
 | `docs/06-expansions.md` | Every expansion's mechanics, thresholds and costs |
 | `docs/07-verification.md` | Checking your work, recovering from failure |
 | `docs/10-roadmap.md` | What is built, what is next |
+| `docs/15-mayor-persona.md` | Your voice as the narrator, and the running storyline |

@@ -45,6 +45,8 @@ journal `journal/20261115-011235.jsonl`, save `mayor-live-proof-1`.
       the pilot, or re-cut those lines to the clean shots (flyover 47–62 s, orbit 240–256 s)
 - [ ] The music bed is the generated pad; swap in a licensed track with `--music` if wanted
 - [ ] Disclosure on upload: mark as altered/synthetic content (AI voice, AI-played game)
+- [ ] After publishing: `python -m post.series publish episodes/e001-ngay-1/script.vi.json`
+      (closes `sewage`, opens `jobs` and `abandoned` for day 2)
 
 ## Draft upload metadata
 

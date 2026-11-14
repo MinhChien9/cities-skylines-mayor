@@ -94,7 +94,9 @@ session journal written by the server.
 
 - [x] Episode format and naming, thumbnail generation, upload checklist (AI disclosure)
       (`docs/14-series.md`; `post.thumbnail` → 1280×720 thumbnail + 9:16 cover; e001 done)
-- [ ] Mayor persona and running storyline across episodes
+- [x] Mayor persona and running storyline across episodes (`docs/15-mayor-persona.md`;
+      `episodes/series.json` + `post.series` context/check/publish; threads in scripts;
+      the brief carries the story so far; AGENTS.md start step 5)
 - [ ] Map overlays for the story (land value, traffic, pollution) via `/state/map`
 
 ### Backlog (not scheduled)
