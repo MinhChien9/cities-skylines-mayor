@@ -75,7 +75,26 @@ storytelling); a script may set `"voice"` to any preset (`Vieneu().list_preset_v
 It speaks ~4.4 syllables/s, a little slower than the validator's 5.0 estimate, so leave
 the Short some margin under 60 s.
 
-## 4. Validate
+## 4. Subtitles (word timing)
+
+```powershell
+D:\tools\venv-post\Scripts\python.exe -X utf8 -m post.subtitles episodes/e001-ngay-1/script.vi.json
+```
+
+faster-whisper (`small`, CPU int8; `pip install faster-whisper` in the same venv)
+transcribes each voiced line with word timestamps, primed with the line's own text. The
+recognised words are matched to the script's words; matched words take the recognised
+times and the rest (numbers such as `1,2` are often split) are interpolated between their
+neighbours. The text on screen is always the script's. The match share per line is
+printed: below 60 % the TTS probably misread the line (the priming makes this a soft
+check, not a proof). Output: `build/subtitles/words.json` (line-local word times).
+
+`post.subtitles.to_ass()` turns placed lines into ASS for ffmpeg's `ass` filter (libass):
+chunks of up to 4 words / 22 characters, broken after punctuation, bold white with a
+black outline in the lower third of a 9:16 frame, and the word being spoken in yellow.
+Arial renders every Vietnamese diacritic.
+
+## 5. Validate
 
 ```powershell
 python -m post.script episodes/e001-ngay-1/script.vi.json --brief episodes/e001-ngay-1/brief.json
