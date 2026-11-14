@@ -180,6 +180,9 @@ Lessons recorded so far:
   Road and shops north of College Road).
 - Shore-snapped buildings move with the live water surface: a drain pipe landed 13 m
   from its dry-run spot. Aim pipes at the position the build returned.
+- The zone grid of a 4-lane (or wider) road starts 4 m past the kerb, so its first cell
+  centre is 8 m out and an aim at the kerb missed the tool's 8 m zone snap (GridNotFound
+  everywhere on Park Avenue). The bridge now widens the search to 16 m once.
 - In this build the Water Pumping Station (`Water Intake`) is `ShorelineOrGround` and the
   `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
   pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the

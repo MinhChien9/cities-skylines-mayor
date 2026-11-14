@@ -192,7 +192,17 @@ namespace SkylinesAgentBridge.Commands
                     Vector3 snapped = position;
                     float snappedAngle = angle;
                     FindClosestZoneSlot(info, position, relocating, ref minD, ref min2, ref snapped, ref snappedAngle);
-                    if (minD < 8f)
+                    if (minD >= 8f)
+                    {
+                        // The zone grid of a 4-lane or wider road starts 4 m past the kerb,
+                        // so the first cell centre is 8 m from it and an aim at the kerb just
+                        // misses the tool's 8 m snap. A player nudges the mouse; the bridge
+                        // widens the search once instead.
+                        minD = 16f;
+                        min2 = 1000000f;
+                        FindClosestZoneSlot(info, position, relocating, ref minD, ref min2, ref snapped, ref snappedAngle);
+                    }
+                    if (minD < 16f)
                     {
                         position = snapped;
                         angle = snappedAngle;
