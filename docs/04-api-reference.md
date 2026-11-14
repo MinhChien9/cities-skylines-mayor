@@ -382,8 +382,9 @@ control points the tool would make:
 - **Collateral is reported.** Like the player's tool, the build removes non-important
   objects in its way. The one that matters is a **power line whose pylon stands where the
   road goes**: the game deletes that line (crossing the wire between pylons is fine), and
-  everything it fed loses power. A dry run lists such lines in `removesPowerLines` with a
-  `warning`; a build lists every incompatible segment and building that disappeared nearby
+  everything it fed loses power. **Grown (zoned) buildings in the way are demolished**
+  as well. A dry run lists such lines in `removesPowerLines` and the grown buildings in
+  `wouldRemove: { buildings: [{id, prefab, x, z}] }`, with one `warning`; a build lists every incompatible segment and building that disappeared nearby
   in `removed: { segments: [{id, prefab}], buildings: [{id, prefab, x, z}] }`, plus a
   `warning`. Compatible roads split into junctions by design are not listed.
 - **A refusal is HTTP 200 with `"ok": false`** — the command ran; the game said no.
