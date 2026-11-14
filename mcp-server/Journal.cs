@@ -37,6 +37,7 @@ public sealed class Journal
         ["city_set_policy"] = "office",
         ["city_set_building_active"] = "office",
         ["city_empty_building"] = "office",
+        ["city_unlock_area"] = "office",
         ["city_set_simulation_speed"] = "office",
         ["city_transport_line"] = "office",
         ["city_district"] = "office",

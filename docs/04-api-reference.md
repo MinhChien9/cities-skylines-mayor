@@ -38,6 +38,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 | GET | `/state/summary` | Compact city overview. |
 | GET | `/state/problems` | Problem icons. `?limit=` (default 200). |
 | GET | `/state/demand` | RCI demand values. |
+| GET | `/state/areas` | Map tiles (5 × 5 of 1920 m): `areaCount`, `maxAreaCount`, and per tile `x`, `z`, `unlocked`, `canUnlock`, `price`, `bounds`. |
 | GET | `/state/utilities` | City-wide capacity against usage: electricity (kW), water, sewage, garbage, healthcare, deathcare, education per level, crime, jobs. |
 | GET | `/state/chirps` | Citizen chatter. `?limit=` (default 50). |
 | GET | `/state/zones` | Zoning summary. |
@@ -340,6 +341,7 @@ All accept a JSON body. All support `"dryRun": true` where validation is meaning
 | POST | `/commands/zone-segment` | Zone along one road: `segmentId`, `zone`, `side?` (`both`, `north`\|`south`\|`east`\|`west`, or `left`\|`right` of the start→end direction), `depth?` (1–4), `overwrite?`, `dryRun?`. Sides are geometric: each zone block is classified by where it lies. A compass side the road does not have (east on an east-west road) is refused. |
 | POST | `/commands/place-building` | `buildingPrefab`, `position:{x,z}`, `angleDegrees?`, `dryRun?`. Game-validated; see below. |
 | POST | `/commands/move-building` | `id`, `position:{x,z}`, `angleDegrees?`, `dryRun?`. Same rules; relocates in place (`RelocateBuilding`). |
+| POST | `/commands/unlock-area` | `x`,`z` (tile grid) or `position:{x,z}` (a world point in the tile), `dryRun?` — buys the tile like the game's area tool: `CalculateTilePrice`, `FetchResource(LandPrice)` (real cash checked), `GameAreaManager.UnlockArea` (`CanUnlock`: adjacent to an owned tile, within the milestone limit). |
 | POST | `/commands/empty-building` | `id`, `empty?` (default true) — the info panel's "Empty building" for a cemetery or landfill (`BuildingAI.SetEmptying`; refused unless `CanBeEmptied`). Response: `emptyingBefore/After`. |
 | POST | `/commands/set-building-active` | `id`, `active` — the player's on/off button (`SetProductionRate` 100/0; the game derives `Active` from it). Response: `productionRateBefore/After`, flags. `/state/facilities` reports `productionRate`. |
 | POST | `/commands/bulldoze` | `entityType` (`building`\|`netSegment`\|`netNode`), `id`, `keepNodes?`, `dryRun?` |

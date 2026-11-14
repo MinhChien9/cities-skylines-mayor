@@ -62,6 +62,9 @@ namespace SkylinesAgentBridge
                     return OnGameThread(delegate { return GameState.BuildProblemsJson(limit); });
                 });
 
+            MapGet("/state/areas", "Read the map tiles: owned, buyable, price, bounds",
+                delegate { return OnGameThread(delegate { return AreaCommands.BuildAreasJson(); }); });
+
             MapGet("/state/utilities", "Read city-wide service capacity against usage (power, water, sewage, garbage, health, education, jobs)",
                 delegate { return OnGameThread(delegate { return UtilitiesCollector.BuildUtilitiesJson(); }); });
 
@@ -263,6 +266,13 @@ namespace SkylinesAgentBridge
                 {
                     string body = request.Body;
                     return OnGameThread(delegate { return BuildingCommands.SetBuildingActive(body); });
+                });
+
+            MapPost("/commands/unlock-area", "Buy a map tile (the game's area tool: land price, then unlock)",
+                delegate(HttpRequest request)
+                {
+                    string body = request.Body;
+                    return OnGameThread(delegate { return AreaCommands.UnlockArea(body); });
                 });
 
             MapPost("/commands/empty-building", "Empty a cemetery or landfill (or stop emptying it)",

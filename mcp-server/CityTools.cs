@@ -88,6 +88,34 @@ public sealed class CityTools
     public Task<JsonNode?> CityDemand(CancellationToken cancellationToken)
         => Get("/state/demand", cancellationToken);
 
+    [System.ComponentModel.Description("GET /state/areas. The map tiles (5 x 5 grid of 1920 m): which the city owns, which it can buy now (canUnlock: touches an owned tile and milestones allow another), the price and the world bounds of each. areaCount / maxAreaCount say how many are owned / allowed.")]
+    [McpServerTool(Name = "city_areas", Title = "Map Tiles")]
+    public Task<JsonNode?> CityAreas(CancellationToken cancellationToken)
+        => Get("/state/areas", cancellationToken);
+
+    [System.ComponentModel.Description("POST /commands/unlock-area. Buy a map tile as the game's area tool does (pays the land price, then unlocks it). Give the tile's grid x/z from city_areas, or a world point inside it. Refused when it does not touch an owned tile, the milestone limit is reached or the cash is short. dryRun to check.")]
+    [McpServerTool(Name = "city_unlock_area", Title = "Buy Map Tile")]
+    public async Task<JsonNode?> CityUnlockArea(
+        [System.ComponentModel.Description("Tile grid x (0-4) from city_areas; or -1 and give worldX/worldZ.")] int x = -1,
+        [System.ComponentModel.Description("Tile grid z (0-4) from city_areas.")] int z = -1,
+        [System.ComponentModel.Description("A world x inside the tile (instead of grid x/z).")] double? worldX = null,
+        [System.ComponentModel.Description("A world z inside the tile.")] double? worldZ = null,
+        [System.ComponentModel.Description("Validate only (price, adjacency, money).")] bool dryRun = false,
+        CancellationToken cancellationToken = default)
+    {
+        var body = new Dictionary<string, object?> { ["dryRun"] = dryRun };
+        if (worldX.HasValue && worldZ.HasValue)
+        {
+            body["position"] = new Dictionary<string, object?> { ["x"] = worldX.Value, ["z"] = worldZ.Value };
+        }
+        else
+        {
+            body["x"] = x;
+            body["z"] = z;
+        }
+        return await Post("/commands/unlock-area", body, cancellationToken).ConfigureAwait(false);
+    }
+
     [System.ComponentModel.Description("GET /state/utilities. City-wide capacity against usage for every capacity-limited service: electricity (kW), water, sewage, garbage, healthcare, deathcare, education (capacity vs need per level), crime, jobs and unemployment. Check it before growing the city: a negative surplus is the next thing to build.")]
     [McpServerTool(Name = "city_utilities", Title = "Utility Capacity")]
     public Task<JsonNode?> CityUtilities(CancellationToken cancellationToken)
@@ -486,7 +514,7 @@ public sealed class CityTools
 
     // ------------------------------------------------------------- passthrough
 
-    [System.ComponentModel.Description("Raw passthrough for anything with no dedicated tool. GET reaches any endpoint (endpoint list: docs/04-api-reference.md). POST is limited to endpoints that also have a dedicated tool: /commands/set-simulation-speed, set-tax-rate, set-budget, set-policy, set-building-active, empty-building, transport-line, district, save, set-camera, project-point, build-road, place-building, move-building, zone-segment, set-zone, bulldoze. The legacy repair/batch endpoints are not reachable.")]
+    [System.ComponentModel.Description("Raw passthrough for anything with no dedicated tool. GET reaches any endpoint (endpoint list: docs/04-api-reference.md). POST is limited to endpoints that also have a dedicated tool: /commands/set-simulation-speed, set-tax-rate, set-budget, set-policy, set-building-active, empty-building, unlock-area, transport-line, district, save, set-camera, project-point, build-road, place-building, move-building, zone-segment, set-zone, bulldoze. The legacy repair/batch endpoints are not reachable.")]
     [McpServerTool(Name = "city_request", Title = "Raw Bridge Request")]
     public async Task<JsonNode?> CityRequest(
         [System.ComponentModel.Description("HTTP method: 'GET' or 'POST'.")] string method,
@@ -545,6 +573,7 @@ public sealed class CityTools
         "/commands/set-policy",
         "/commands/set-building-active",
         "/commands/empty-building",
+        "/commands/unlock-area",
         "/commands/transport-line",
         "/commands/district",
         "/commands/save",

@@ -25,6 +25,7 @@ public class CityToolsTests
     [InlineData("CitySummary", "/state/summary")]
     [InlineData("CityDemand", "/state/demand")]
     [InlineData("CityUtilities", "/state/utilities")]
+    [InlineData("CityAreas", "/state/areas")]
     [InlineData("CityZones", "/state/zones")]
     [InlineData("CityEconomy", "/state/economy")]
     [InlineData("CityBudgets", "/state/budgets")]
@@ -316,6 +317,22 @@ public class CityToolsTests
         Assert.Contains("\"transportInfo\":\"Bus\"", handler.Requests[2].Body);
     }
 
+    [Fact]
+    public async Task CityUnlockArea_posts_grid_or_world_point()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityUnlockArea(3, 2, dryRun: true, cancellationToken: CancellationToken.None);
+        await tools.CityUnlockArea(worldX: 2500, worldZ: 100, cancellationToken: CancellationToken.None);
+
+        Assert.Equal("/commands/unlock-area", handler.Requests[0].Path);
+        Assert.Contains("\"x\":3", handler.Requests[0].Body);
+        Assert.Contains("\"z\":2", handler.Requests[0].Body);
+        Assert.Contains("\"dryRun\":true", handler.Requests[0].Body);
+        Assert.Contains("\"position\":{\"x\":2500", handler.Requests[1].Body);
+    }
+
     // ------------------------------------------------------------ passthrough
 
     [Fact]
@@ -553,6 +570,7 @@ public class CityToolsTests
             "/commands/set-policy",
             "/commands/set-building-active",
             "/commands/empty-building",
+            "/commands/unlock-area",
             "/commands/transport-line",
             "/commands/district",
             "/commands/save",
