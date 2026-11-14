@@ -362,8 +362,10 @@ Every network (roads, highways, `Water Pipe`, `Power Line`, paths, rails) is bui
 `NetTool.CreateNode`, the static method the road tool calls on a click, with the same
 control points the tool would make:
 
-- **Ends snap.** Within `snapRadius` (default 8 m) an end attaches to an existing node,
-  else onto an existing segment, which the game splits into a T-junction. `start` / `end`
+- **Ends snap.** An end inside a building that owns a node of the same network (a water
+  building's pipe connection, at its landward end) attaches to that node. Otherwise, within
+  `snapRadius` (default 8 m) an end attaches to an existing node, else onto an existing
+  segment, which the game splits into a T-junction. `start` / `end`
   in each leg say what that end snapped to.
 - **Straight roads split themselves** (`autoSplit`, default true) at every existing node
   on the line and every point where the line crosses an existing segment. The tool's test

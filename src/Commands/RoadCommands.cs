@@ -540,6 +540,18 @@ namespace SkylinesAgentBridge.Commands
 
             if (snapRadius > 0f)
             {
+                // An end inside a building that owns a node of this network (a water
+                // building's pipe connection, at its landward end) goes to that node: a pipe
+                // ending anywhere else on the building - its centre included - leaves a free
+                // node that conducts nothing (found live: a drain pipe stayed "not connected").
+                ushort own = FindBuildingNode(info, point, excludeNode);
+                if (own != 0)
+                {
+                    p.m_node = own;
+                    p.m_position = Singleton<NetManager>.instance.m_nodes.m_buffer[own].m_position;
+                    return p;
+                }
+
                 ushort node = FindNode(info, point, snapRadius, excludeNode);
                 if (node != 0)
                 {
@@ -560,6 +572,65 @@ namespace SkylinesAgentBridge.Commands
 
             p.m_position.y = NetSegment.SampleTerrainHeight(info, point, false, elevation);
             return p;
+        }
+
+        /// <summary>
+        /// The compatible node owned by the building whose footprint contains the point (the
+        /// nearest one if it owns several), or 0.
+        /// </summary>
+        private static ushort FindBuildingNode(NetInfo info, Vector3 point, ushort excludeNode)
+        {
+            Building[] blds = Singleton<BuildingManager>.instance.m_buildings.m_buffer;
+            NetNode[] nodes = Singleton<NetManager>.instance.m_nodes.m_buffer;
+            ushort found = 0;
+            float best = float.MaxValue;
+            for (int i = 1; i < blds.Length; i++)
+            {
+                if ((blds[i].m_flags & Building.Flags.Created) == Building.Flags.None || blds[i].m_netNode == 0)
+                {
+                    continue;
+                }
+                BuildingInfo bi = blds[i].Info;
+                if (bi == null)
+                {
+                    continue;
+                }
+                Vector3 c = blds[i].m_position;
+                float hw = bi.m_cellWidth * 4f;
+                float hl = bi.m_cellLength * 4f;
+                float dx = point.x - c.x;
+                float dz = point.z - c.z;
+                if (dx * dx + dz * dz > (hw + hl) * (hw + hl))
+                {
+                    continue;
+                }
+                float cos = Mathf.Cos(blds[i].m_angle);
+                float sin = Mathf.Sin(blds[i].m_angle);
+                float lx = dx * cos + dz * sin;
+                float lz = -dx * sin + dz * cos;
+                if (Mathf.Abs(lx) > hw || Mathf.Abs(lz) > hl)
+                {
+                    continue;
+                }
+                ushort n = blds[i].m_netNode;
+                int guard = 0;
+                while (n != 0 && guard++ < 64)
+                {
+                    if (n != excludeNode && (nodes[n].m_flags & NetNode.Flags.Created) != NetNode.Flags.None && Compatible(nodes[n].Info, info))
+                    {
+                        float ex = nodes[n].m_position.x - point.x;
+                        float ez = nodes[n].m_position.z - point.z;
+                        float d = ex * ex + ez * ez;
+                        if (d < best)
+                        {
+                            best = d;
+                            found = n;
+                        }
+                    }
+                    n = nodes[n].m_nextBuildingNode;
+                }
+            }
+            return found;
         }
 
         private static ushort FindNode(NetInfo info, Vector3 point, float radius, ushort excludeNode)
