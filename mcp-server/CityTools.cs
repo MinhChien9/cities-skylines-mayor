@@ -5,30 +5,18 @@ using ModelContextProtocol.Server;
 namespace Cs1Mayor.Mcp;
 
 /// <summary>
-/// The tool surface exposed to the AI agent.
+/// The office half of the tool surface: every read, and every lever that needs no
+/// spatial judgement (clock, taxes, budgets, policies, saves, line and district
+/// management, camera).
 ///
-/// DESIGN NOTES — THE MAYOR'S OFFICE MODEL
-/// ---------------------------------------
-/// This server is the mayor's office: it sees everything and controls everything
-/// that needs no spatial judgement, but it never builds anything. Roads, zones,
-/// buildings, bulldozing, transit-stop placement and district painting are SPATIAL
-/// work — they are done by the agent with its cursor through the game's own UI
-/// (via a CUA / computer-use channel), where snapping, slope checks and visual
-/// judgement live. Every attempt to do that work blind, by coordinate, produced
-/// ugly or failing results, so the surface no longer exposes it.
-///
-/// What stays here:
 ///   * READS  — every stat the game has, so the agent never has to open an
 ///              in-game info panel. `city_overview` is one call for the pulse.
 ///   * OFFICE — pause/speed, taxes, budgets, policies, save, line management,
-///              district naming/specialising: one API call replaces navigating
-///              the game's menus and sliders with a cursor.
-///   * `city_request` — raw passthrough, but POSTs are restricted to the office
-///              endpoint allowlist so the build endpoints stay cursor-only.
+///              district naming/specialising.
+///   * `city_request` — raw passthrough: GET anything, POST to any endpoint that has a
+///              dedicated tool (the allowlist below).
 ///
-/// `docs/04-api-reference.md` still documents the full HTTP surface, including
-/// the build endpoints the bridge keeps for completeness — they are just not in
-/// the agent's tool box any more.
+/// Spatial work — seeing the land and building on it — lives in <see cref="BuildTools"/>.
 /// </summary>
 [McpServerToolType]
 public sealed class CityTools
@@ -249,11 +237,10 @@ public sealed class CityTools
 
     // ------------------------------------------------------------------ office
     // Everything here is non-spatial: one API call replaces opening the game's
-    // menus and moving its sliders with a cursor. Spatial work (roads, zones,
-    // buildings, bulldozing, stop placement, district painting) is done with the
-    // cursor through the game's own UI — not from this server.
+    // menus and moving its sliders. Building lives in BuildTools. Drawing transit
+    // lines and painting districts are not exposed yet - those stay cursor work.
 
-    [System.ComponentModel.Description("POST /commands/set-simulation-speed. Set simulation speed (1-3) and/or pause state. This is the office's hands on the clock: pause while you think or while the cursor works, then resume.")]
+    [System.ComponentModel.Description("POST /commands/set-simulation-speed. Set simulation speed (1-3) and/or pause state. This is the office's hands on the clock: pause while you plan a batch of construction, then run at speed 3 so the city reacts.")]
     [McpServerTool(Name = "city_set_simulation_speed", Title = "Set Simulation Speed")]
     public async Task<JsonNode?> CitySetSimulationSpeed(
         [System.ComponentModel.Description("Simulation speed 1-3 (default 1).")] int speed = 1,
@@ -407,7 +394,7 @@ public sealed class CityTools
         return await Post("/commands/district", body, cancellationToken).ConfigureAwait(false);
     }
 
-    [System.ComponentModel.Description("POST /commands/set-camera. The office's eye: frame the game camera on a world position (one from city_problems or an anomaly read), read the current camera state, or toggle edge scrolling so the camera stays put while the cursor works. x/z given -> the camera snaps to the target the same frame (instant: false lets it glide). distance defaults to keeping the current zoom; verticalAngle/horizontalAngle default to the current framing. edgeScroll true/false flips the live edge-scrolling setting (no restart needed). Runs on the Unity main thread - the named exception to the simulation-thread rule.")]
+    [System.ComponentModel.Description("POST /commands/set-camera. The office's eye: frame the game camera on a world position (one from city_problems or an anomaly read), read the current camera state, or toggle edge scrolling so the camera stays put. Use it to show the viewer what was just built (or before a screenshot). x/z given -> the camera snaps to the target the same frame (instant: false lets it glide). distance defaults to keeping the current zoom; verticalAngle/horizontalAngle default to the current framing. edgeScroll true/false flips the live edge-scrolling setting (no restart needed). Runs on the Unity main thread - the named exception to the simulation-thread rule.")]
     [McpServerTool(Name = "city_camera", Title = "Camera")]
     public async Task<JsonNode?> CityCamera(
         [System.ComponentModel.Description("World x of the target point.")] double? x = null,
@@ -462,7 +449,7 @@ public sealed class CityTools
 
     // ------------------------------------------------------------- passthrough
 
-    [System.ComponentModel.Description("Raw passthrough for anything with no dedicated tool. GET reaches any endpoint (endpoint list: docs/04-api-reference.md). POST is restricted to the office allowlist: /commands/set-simulation-speed, set-tax-rate, set-budget, set-policy, set-building-active, transport-line, district, save, set-camera, project-point. The build endpoints (build-road, set-zone, place-building, bulldoze, batch, ...) are deliberately NOT reachable — spatial work is done with the cursor through the game's own UI.")]
+    [System.ComponentModel.Description("Raw passthrough for anything with no dedicated tool. GET reaches any endpoint (endpoint list: docs/04-api-reference.md). POST is limited to endpoints that also have a dedicated tool: /commands/set-simulation-speed, set-tax-rate, set-budget, set-policy, set-building-active, transport-line, district, save, set-camera, project-point, build-road, place-building, move-building, zone-segment, set-zone, bulldoze. The legacy repair/batch endpoints are not reachable.")]
     [McpServerTool(Name = "city_request", Title = "Raw Bridge Request")]
     public async Task<JsonNode?> CityRequest(
         [System.ComponentModel.Description("HTTP method: 'GET' or 'POST'.")] string method,
@@ -496,9 +483,9 @@ public sealed class CityTools
                 return new JsonObject
                 {
                     ["ok"] = false,
-                    ["error"] = $"POST '{cleanPath}' is not on the office allowlist",
+                    ["error"] = $"POST '{cleanPath}' is not on the allowlist",
                     ["allowed"] = new JsonArray(OfficeEndpoints.Select(e => (JsonNode)e).ToArray()),
-                    ["hint"] = "Spatial work (roads, zones, buildings, bulldozing) is done with the cursor through the game's own UI, not through this server.",
+                    ["hint"] = "Use the dedicated tools (city_build_road, city_place_building, city_zone_segment, ...).",
                 };
             }
             JsonNode? body = string.IsNullOrWhiteSpace(jsonBody) ? new JsonObject() : JsonNode.Parse(jsonBody);
@@ -509,9 +496,9 @@ public sealed class CityTools
     }
 
     /// <summary>
-    /// The office allowlist for <see cref="CityRequest"/> POSTs. Reads stay open for
-    /// anything; mutations are limited to the non-spatial levers this server already
-    /// exposes as dedicated tools, so a raw call can never reach the build endpoints.
+    /// The allowlist for <see cref="CityRequest"/> POSTs. Reads stay open for anything;
+    /// mutations are limited to endpoints that also have a dedicated tool. The legacy
+    /// repair and batch endpoints stay unreachable: they bypass the validated paths.
     /// </summary>
     private static readonly string[] OfficeEndpoints =
     [
@@ -525,6 +512,12 @@ public sealed class CityTools
         "/commands/save",
         "/commands/set-camera",
         "/commands/project-point",
+        "/commands/build-road",
+        "/commands/place-building",
+        "/commands/move-building",
+        "/commands/zone-segment",
+        "/commands/set-zone",
+        "/commands/bulldoze",
     ];
 
     // ------------------------------------------------------------- internals

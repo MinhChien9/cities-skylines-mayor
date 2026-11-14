@@ -416,19 +416,33 @@ public class CityToolsTests
     }
 
     [Fact]
-    public async Task CityRequest_refuses_post_to_a_build_endpoint()
+    public async Task CityRequest_relays_post_to_a_validated_build_endpoint()
     {
         var handler = Always("{\"ok\":true}");
         var tools = Tools(handler);
 
-        var result = await tools.CityRequest("POST", "/commands/build-road",
+        await tools.CityRequest("POST", "/commands/build-road",
             "{\"roadPrefab\":\"Basic Road\",\"start\":{\"x\":0,\"z\":0},\"end\":{\"x\":1,\"z\":1}}",
             CancellationToken.None);
 
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("/commands/build-road", request.Path);
+    }
+
+    [Theory]
+    [InlineData("/commands/batch")]
+    [InlineData("/commands/repair-zone-clusters")]
+    [InlineData("/commands/repair-zones-to-growables")]
+    public async Task CityRequest_refuses_post_to_legacy_unvalidated_endpoints(string path)
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        var result = await tools.CityRequest("POST", path, "{}", CancellationToken.None);
+
         Assert.Empty(handler.Requests);
         Assert.False(result!["ok"]!.GetValue<bool>());
-        Assert.Contains("office allowlist", result["error"]!.GetValue<string>());
-        Assert.Contains("cursor", result["hint"]!.GetValue<string>());
+        Assert.Contains("allowlist", result["error"]!.GetValue<string>());
     }
 
     [Fact]
@@ -510,6 +524,12 @@ public class CityToolsTests
             "/commands/save",
             "/commands/set-camera",
             "/commands/project-point",
+            "/commands/build-road",
+            "/commands/place-building",
+            "/commands/move-building",
+            "/commands/zone-segment",
+            "/commands/set-zone",
+            "/commands/bulldoze",
         }, allowlist);
     }
 
