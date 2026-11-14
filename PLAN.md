@@ -203,8 +203,8 @@ Lessons recorded so far:
 
 | Item | State |
 |---|---|
-| Game | Epic, `D:\Epic Games\CitiesSkylines`, map "Cannes", town around (330, -640). After unrecorded free play (2026-11-15, game date 2031-04): police, fire house, school, cemetery, landfill on Service Street (x 198) and Factory Road (z -745, industrial); 30 abandoned/burned homes cleared; parks; north block (Hill Street, z -425); 6 wind turbines, 2 water towers. Population 579, happiness 84, 0 problems, cash ₡476k but −₡1.2k/week. Save `mayor-free-play-2`, game paused. The e001 threads (jobs, abandoned homes) were resolved off camera |
-| Bridge | Installed from `main` (#35), `runsOnSimulationThread: true` |
+| Game | Epic, `D:\Epic Games\CitiesSkylines`, map "Cannes". **50k free-play run** (2026-11-15, game date 2035): population ~12k, a grid from x −718 to 762 and z −745 to 375 (west, north and industrial districts, Central/West/Industry/North/Park/Hill avenues); nuclear + 3 coal plants (electricity budget 60%), 3 drain pipes and 2 pumping stations on the west coast, landfills + 2 incinerators in the utility corner (x 522-762, z -25..55), university, 2 high schools. Taxes 10%. **Built-in cheat mods Unlimited Money and Unlock All are enabled** (see `city_capabilities.cheatMods`); the bridge checks real cash anyway. Saves `mayor-50k-NN` |
+| Bridge | Installed from `main` (#44), `runsOnSimulationThread: true` |
 | MCP | Debug build current with `main`. The Release build in `bin/Release` is held by this Claude Code session's running server: rebuild it after the session ends (or `/mcp` reconnect) to get the studio tools in Claude Code |
 | OBS | 33.0.1 portable at `D:\tools\obs-studio`, configured by `scripts/setup-obs.ps1`: websocket 4455 (password in `studio.local.json`), scene "CS1 Mayor", recordings in `D:\cs1-mayor-recordings` |
 | ffmpeg | 8.1 at `D:\tools\ffmpeg\bin` (NVENC available), not on PATH; no `-pattern_type glob` |
