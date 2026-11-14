@@ -62,7 +62,7 @@ session journal written by the server.
 - [x] **S3 `StudioTools`**: `studio_status`, `studio_record` (start/stop/pause/resume),
       `studio_marker` (record chapter + journal entry), `studio_screenshot` (game
       capture frame as an image — a cheap real render when the map is not enough)
-- [ ] **S4 Decision journal**: `studio_note(text, kind)` + automatic entries for every
+- [x] **S4 Decision journal**: `studio_note(text, kind)` + automatic entries for every
       build tool call, each with wall time, recording timecode, game date, population,
       cash → `journal/<session>.jsonl` (already git-ignored)
 - [ ] **S5 Cinematic camera**: orbit / fly-over helper (glide via `city_camera`
@@ -102,6 +102,7 @@ session journal written by the server.
 | 2026-11-15 | Studio inside the existing MCP server | One server for the agent; the journal can see build calls |
 | 2026-11-15 | `setup-obs.ps1` writes only the websocket config file; everything else goes over obs-websocket | OBS owns its scene/profile files and rewrites them on exit; the websocket keeps them consistent |
 | 2026-11-15 | Canvas 1920×1080 @ 60 fps, Simple output, quality "Small", Game Capture matched on the executable | Standard YouTube master; the capture survives a title change; the game is scaled to fit |
+| 2026-11-15 | Journal through one MCP call-tool filter, not per tool; dry runs and reads are not journalled, refusals are | One place covers every mutating tool; refusals and mistakes are story material |
 | 2026-11-15 | `ObsClient` never resends a request whose connection dropped after sending; it only retries a send that failed | Same rule as the mayor's: a lost answer does not mean OBS did not act (e.g. `StartRecord`) |
 
 Lessons recorded so far:

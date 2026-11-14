@@ -61,6 +61,8 @@ EXPECTED_TOOLS = {
     "studio_record",
     "studio_marker",
     "studio_screenshot",
+    "studio_note",
+    "studio_journal",
 }
 
 
