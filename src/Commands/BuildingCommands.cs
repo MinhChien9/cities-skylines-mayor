@@ -255,6 +255,41 @@ namespace SkylinesAgentBridge.Commands
             return CommandResult.FromJson(json);
         }
 
+        /// <summary>
+        /// The info panel's "Empty building" button for cemeteries and landfills: the
+        /// building stops accepting and sends what it stores away (bodies to crematories,
+        /// garbage to incinerators or other landfills). <c>empty: false</c> stops it.
+        /// </summary>
+        public static CommandResult EmptyBuilding(string body)
+        {
+            ushort id = (ushort)JsonUtil.GetNumber(body, "id", 0f);
+            bool empty = JsonUtil.GetBool(body, "empty", true);
+            if (id == 0)
+            {
+                return CommandResult.Fail("id is required.");
+            }
+            BuildingManager buildings = BuildingManager.instance;
+            Building building = buildings.m_buildings.m_buffer[id];
+            if ((building.m_flags & Building.Flags.Created) == Building.Flags.None)
+            {
+                return CommandResult.Fail("Building was not found: " + id);
+            }
+            BuildingInfo info = building.Info;
+            if (info == null || info.m_buildingAI == null || !info.m_buildingAI.CanBeEmptied(id, ref building))
+            {
+                return CommandResult.Fail("Building " + id + " (" + (info == null ? "?" : info.name) + ") cannot be emptied. Only cemeteries and landfills (and similar storage) can.");
+            }
+            bool before = (building.m_flags & Building.Flags.Downgrading) != Building.Flags.None;
+            info.m_buildingAI.SetEmptying(id, ref building, empty);
+            buildings.m_buildings.m_buffer[id] = building;
+            bool after = (buildings.m_buildings.m_buffer[id].m_flags & Building.Flags.Downgrading) != Building.Flags.None;
+            Debug.Log("[SkylinesAgentBridge] Set building " + id + " emptying=" + empty);
+            return CommandResult.FromJson("{\"ok\":true,\"id\":" + id +
+                ",\"prefab\":\"" + JsonUtil.Escape(info.name) + "\"" +
+                ",\"emptyingBefore\":" + JsonUtil.Bool(before) +
+                ",\"emptyingAfter\":" + JsonUtil.Bool(after) + "}");
+        }
+
         private static void InvokeManualActivation(BuildingAI ai, ushort id, ref Building building, bool active)
         {
             string methodName = active ? "ManualActivation" : "ManualDeactivation";

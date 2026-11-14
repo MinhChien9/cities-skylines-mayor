@@ -284,6 +284,20 @@ public class CityToolsTests
         Assert.Contains("\"active\":false", request.Body);
     }
 
+    [Fact]
+    public async Task CityEmptyBuilding_posts_id_and_empty_flag()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityEmptyBuilding(7, true, CancellationToken.None);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("/commands/empty-building", request.Path);
+        Assert.Contains("\"id\":7", request.Body);
+        Assert.Contains("\"empty\":true", request.Body);
+    }
+
     // ------------------------------------------------------------ passthrough
 
     [Fact]
@@ -520,6 +534,7 @@ public class CityToolsTests
             "/commands/set-budget",
             "/commands/set-policy",
             "/commands/set-building-active",
+            "/commands/empty-building",
             "/commands/transport-line",
             "/commands/district",
             "/commands/save",

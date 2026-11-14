@@ -340,6 +340,7 @@ All accept a JSON body. All support `"dryRun": true` where validation is meaning
 | POST | `/commands/zone-segment` | Zone along one road: `segmentId`, `zone`, `side?` (`both`, `north`\|`south`\|`east`\|`west`, or `left`\|`right` of the start→end direction), `depth?` (1–4), `overwrite?`, `dryRun?`. Sides are geometric: each zone block is classified by where it lies. A compass side the road does not have (east on an east-west road) is refused. |
 | POST | `/commands/place-building` | `buildingPrefab`, `position:{x,z}`, `angleDegrees?`, `dryRun?`. Game-validated; see below. |
 | POST | `/commands/move-building` | `id`, `position:{x,z}`, `angleDegrees?`, `dryRun?`. Same rules; relocates in place (`RelocateBuilding`). |
+| POST | `/commands/empty-building` | `id`, `empty?` (default true) — the info panel's "Empty building" for a cemetery or landfill (`BuildingAI.SetEmptying`; refused unless `CanBeEmptied`). Response: `emptyingBefore/After`. |
 | POST | `/commands/set-building-active` | `id`, `active` — the player's on/off button (`SetProductionRate` 100/0; the game derives `Active` from it). Response: `productionRateBefore/After`, flags. `/state/facilities` reports `productionRate`. |
 | POST | `/commands/bulldoze` | `entityType` (`building`\|`netSegment`\|`netNode`), `id`, `keepNodes?`, `dryRun?` |
 | POST | `/commands/set-simulation-speed` | `speed` (1–3), `paused` |
