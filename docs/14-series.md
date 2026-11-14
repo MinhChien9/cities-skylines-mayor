@@ -59,4 +59,6 @@ Before an episode goes up — every box, every time:
 - [ ] Title follows the pattern; thumbnail/cover are this episode's, with a true number
 - [ ] Not a re-skin of an earlier episode: different hook type, different beat order,
       a different closing line (YouTube's inauthentic-content policy)
-- [ ] After publishing: record the URL and date in the episode's `REVIEW.md`
+- [ ] `python -m post.series check` passes for the script's `threads` block
+- [ ] After publishing: record the URL and date in the episode's `REVIEW.md`, then
+      `python -m post.series publish episodes/<id>/script.vi.json` and commit `series.json`

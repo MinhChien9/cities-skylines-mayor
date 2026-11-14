@@ -20,6 +20,7 @@ should read it.
 | 11 | [Command surface](12-command-surface.md) | the master table of every tool and endpoint, plus the verified game APIs for what is missing |
 | 13 | [Post-production](13-post-production.md) | turn a recorded session and its journal into a scripted, voiced, subtitled video |
 | 14 | [Series](14-series.md) | episode format and naming, thumbnails, and the upload checklist (AI disclosure) |
+| 15 | [Mayor persona](15-mayor-persona.md) | the narrator's voice and the running storyline across episodes |
 
 Two more files live outside this folder:
 

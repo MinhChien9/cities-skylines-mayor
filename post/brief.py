@@ -15,6 +15,7 @@ import os
 from datetime import datetime
 
 from .common import probe, read_jsonl, timecode_seconds
+from . import series as series_state
 
 NOTE_KINDS = {"decision", "mistake", "milestone", "observation", "plan", "note"}
 
@@ -87,6 +88,8 @@ def build_brief(journal_path, recording=None, timelapse_root=None):
         "stats": stats,
         "beats": beats,
         "timelapse": _timelapse(entries, timelapse_root, recording),
+        # The story so far (episodes/series.json): previous lessons and open threads.
+        "series": series_state.context(series_state.load()),
     }
     if recording and os.path.exists(recording):
         duration, chapters = probe(recording)

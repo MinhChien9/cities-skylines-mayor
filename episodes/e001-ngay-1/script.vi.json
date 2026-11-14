@@ -5,6 +5,14 @@
   "language": "vi",
   "recording": "D:/cs1-mayor-recordings/cs1-mayor 2026-11-15 01-13-42.mp4",
   "thumbnail": {"at": 38.5, "title": "AI CỨU|THỊ TRẤN ĐANG CHẾT", "number": "64 → 164"},
+  "threads": {
+    "closes": ["sewage"],
+    "opens": [
+      {"id": "sewage", "title": "Nước thải không có đường thoát"},
+      {"id": "jobs", "title": "Thị trấn không có việc làm (nhu cầu việc làm 100)"},
+      {"id": "abandoned", "title": "28 căn nhà bỏ hoang"}
+    ]
+  },
   "lines": [
     {
       "role": "hook",
