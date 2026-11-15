@@ -1,6 +1,6 @@
 # Tools
 
-The 47 MCP tools, grouped by job. Every tool returns JSON; `city_map` also returns a PNG.
+The 52 MCP tools, grouped by job. Every tool returns JSON; `city_map` also returns a PNG.
 Each tool's own description (what the agent sees) has the full parameter list.
 
 ## How building works
@@ -55,8 +55,7 @@ Each tool's own description (what the agent sees) has the full parameter list.
 | Tool | Does |
 |---|---|
 | `city_map` | A top-down PNG of any square area, drawn from game data: height, water, roads, zones, buildings, locked tiles, coordinates and dead ends. Overlays: `landValue`, `pollution`, `noise`, `traffic`. `saveAs` also writes the PNG to disk |
-| `city_camera` | Frames the game camera on a world point, reads the camera, toggles edge scrolling or hides the UI |
-| `city_project` | Converts a world point to screen and cursor pixels |
+| `city_camera` | Frames the game camera on a world point, reads the camera, or hides the UI |
 
 ## Build
 

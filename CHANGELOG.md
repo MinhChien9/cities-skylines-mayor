@@ -8,6 +8,12 @@ patch = fixes). Every PR adds its line under `[Unreleased]` with the issue numbe
 
 ## [Unreleased]
 
+### Removed
+- `city_project` and `POST /commands/project-point` (world point → desktop cursor pixels) and
+  the `edgeScroll` option of `city_camera` / `set-camera` (with `camera.edgeScrolling` in its
+  readback): leftovers of the cursor-driven phase that nothing uses since building goes
+  through the game's own tools. 52 tools now (#103).
+
 ### Documentation
 - Removed text that no longer belongs to an MCP-only repo: links and notes about the video
   pipeline, the cursor-era history (and the unused `scripts/game-ui.ps1` click helper), API

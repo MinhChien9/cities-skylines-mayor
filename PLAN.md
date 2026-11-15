@@ -78,6 +78,7 @@ GitHub issues: https://github.com/MinhChien9/cities-skylines-mayor/issues. Next 
 | 2026-11-15 | Cargo is reported as coverage and the industrial level-up score, not as a line type | CS1 has no player-made cargo lines; cargo stations act through `CargoTransport` coverage (#74) |
 | 2026-11-16 | `build-road` auto-splits only at nodes and crossings within 4 m of the road's own level (terrain + `elevation`) | An overpass split at the highway below became an at-grade junction and failed `SlopeTooSteep`; what then blocks an overpass is a pillar, so the hint lists the planned node positions (#99) |
 | 2026-11-16 | Game pop-up panels are read on the Unity main thread every 15 frames into a snapshot that `/state/summary` includes; `close-panel` runs on the main thread and calls each panel's own close path (Escape's) | UI belongs to the main thread, and the summary runs on the simulation thread; a cached snapshot keeps the summary from waiting on a frame. Scenario won/lost is read from `SimulationMetaData`, not the panel: the game only shows a message and keeps running (#98) |
+| 2026-11-16 | Removed `city_project` / `project-point` and the camera's `edgeScroll` | They existed only for clicking with a cursor; the agent builds through the game's tools and never needs pixels, and edge scrolling is a player setting in the game's own options (#103) |
 
 Lessons recorded so far:
 
@@ -266,5 +267,5 @@ Lessons recorded so far:
 | Item | State |
 |---|---|
 | Game | Epic, `D:\Epic Games\CitiesSkylines`, version 1.21.1-f9, started through Epic (`scripts/restart-game.ps1`) so all 14 expansions load. Loaded: scenario City of Gardens (city Peach Trees), **lost** (`scenarioOutcome: lost`), 8,498 people at game 2028-08, paused. Cheat mods off (`city_capabilities.cheatMods` is empty). Free-play saves from the 50k run: `mayor-50k-reached`, `mayor-50k-34` (map Cannes, 53.4k people) |
-| Bridge | Installed from `main` as of #101 (pop-up panels and `close-panel`, same-level `build-road` auto-split); `runsOnSimulationThread: true` |
-| MCP | Release build from `main` as of #101 (`city_close_panel`). A running server locks `bin/Release/net10.0/Cs1Mayor.Mcp.dll`; renaming the locked DLL aside lets the build replace it, then `/mcp` reconnect picks it up |
+| Bridge | Installed from `main` as of #103 (`project-point` and `edgeScroll` removed; pop-up panels, same-level `build-road` auto-split); `runsOnSimulationThread: true` |
+| MCP | Release build from `main` as of #103 (52 tools; `city_project` removed). A running server locks `bin/Release/net10.0/Cs1Mayor.Mcp.dll`; renaming the locked DLL aside lets the build replace it, then `/mcp` reconnect picks it up |

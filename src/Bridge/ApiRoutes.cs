@@ -381,13 +381,6 @@ namespace SkylinesAgentBridge
                     return OnMainThread(delegate { return PanelState.Close(body); });
                 });
 
-            MapPost("/commands/project-point","Project a world position to screen and cursor pixels (main thread)",
-                delegate(HttpRequest request)
-                {
-                    string body = request.Body;
-                    return OnMainThread(delegate { return CameraCommands.ProjectPoint(body); });
-                });
-
             MapPost("/commands/batch", "Run a batch of commands",
                 delegate(HttpRequest request)
                 {
