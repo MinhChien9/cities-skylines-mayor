@@ -12,7 +12,10 @@
          (skipped when the bridge is not answering, e.g. the game is at the main menu)
       2. stop Cities.exe
       3. build and install the mod (scripts/build-mod.ps1)
-      4. relaunch with --continuelastsave, which loads the save from step 1
+      4. relaunch with --continuelastsave, which loads the save from step 1. By default the
+         game is started through the Epic Games Launcher, so it gets the Epic login and
+         loads the owned DLC; the Paradox launcher is skipped, no click on Play needed
+         (scripts/game-launch.ps1). -Launch Direct starts Cities.exe bare: no DLC
       5. wait for /health to report levelLoaded, then print /debug/threads
 
 .EXAMPLE
@@ -23,15 +26,16 @@ param(
     [string]$GamePath = "",
     [string]$Bridge = "http://127.0.0.1:32123",
     [switch]$NoBuild,
+    [ValidateSet("Epic", "Direct")][string]$Launch = "Epic",
     [int]$TimeoutSeconds = 300
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "game-launch.ps1")
 
 if ([string]::IsNullOrWhiteSpace($GamePath)) {
     $GamePath = if ($env:CITIES_SKYLINES_PATH) { $env:CITIES_SKYLINES_PATH } else { "D:\Epic Games\CitiesSkylines" }
 }
-$exe = Join-Path $GamePath "Cities.exe"
 $saves = Join-Path $env:LOCALAPPDATA "Colossal Order\Cities_Skylines\Saves"
 
 # ---- 1. save -----------------------------------------------------------------
@@ -68,6 +72,7 @@ if ($proc) {
     Start-Sleep -Seconds 2
     Write-Host "Stopped Cities: Skylines."
 }
+Stop-ParadoxLauncher
 
 # ---- 3. build + install ------------------------------------------------------
 if (!$NoBuild) {
@@ -76,8 +81,8 @@ if (!$NoBuild) {
 }
 
 # ---- 4. relaunch -------------------------------------------------------------
-Start-Process -FilePath $exe -ArgumentList "--continuelastsave" -WorkingDirectory $GamePath
-Write-Host "Launched with --continuelastsave; waiting for the city to load..."
+Start-CitiesSkylines -GamePath $GamePath -GameArgs @("--continuelastsave") -Launch $Launch
+Write-Host "Waiting for the city to load..."
 
 # ---- 5. wait -----------------------------------------------------------------
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)

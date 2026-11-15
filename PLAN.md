@@ -253,11 +253,14 @@ Lessons recorded so far:
   The scenario's "10 parks" trigger paid ₡10,000 through a Story Message.
 - Scenario zone unlocks are custom: Peach Trees had only low density and industry until
   Milestone 6 (7,500 people) — read `city_scenario.zoneMilestones` before planning density.
-- **This Epic install loads no expansion buildings** (no `CommercialEco`, Leisure, Tourist,
-  disaster or taxi prefabs), so City of Gardens' organic goal cannot be met. An Organic
-  district then keeps demolishing ordinary shops (the game marks them for replacement) with
-  nothing to replace them: commercial fell 213 → 152. `SteamHelper.IsDLCOwned` is false for
-  everything on Epic and proves nothing; count the prefabs instead.
+- **On Epic, DLC loads only with the Epic login.** The game needs Epic's login arguments
+  (`-AUTH_PASSWORD=<exchange code>`, `-epicapp=…`), which Epic hands to the Paradox
+  launcher and the launcher hands to `Cities.exe` on Play. `restart-game.ps1` used to start
+  a bare `Cities.exe`, so no `CommercialEco`, Leisure, Tourist or disaster prefabs loaded and
+  City of Gardens' organic goal looked impossible (#71). The real cause was the launch (#84).
+  Started through Epic, 39 `CommercialEco` and the other DLC buildings load. Without them an
+  Organic district keeps demolishing ordinary shops with nothing to replace them (commercial
+  fell 213 → 152). `SteamHelper.IsDLCOwned` proves nothing on Epic; count the prefabs.
 - Shops spawn only at "good places" (`ZoneBlock.IsGoodPlace`: within ~40 m of a building that
   conducts power) while any good place exists elsewhere.
 - A straight Basic Road over a ridge became a tunnel (`Basic Road Slope`) where the grade was
@@ -270,6 +273,6 @@ Lessons recorded so far:
 
 | Item | State |
 |---|---|
-| Game | Epic, `D:\Epic Games\CitiesSkylines`. **Current: scenario City of Gardens** (Peach Trees, 6,665 people, happiness 82, game 2027-08, save `peach-trees-03-end-video1`; 2 of 9 tiles; win 1/4: parks done, organic impossible on this install). Cheat mods are **off** now. Earlier free-play city: map "Cannes". **50k free-play run reached 50,259 citizens** (2026-11-15, game 2056-06, save `mayor-50k-reached`), then 53.4k (game 2064-11, save `mayor-50k-34`). 5 of 9 tiles owned (start, south, far south, east, south-east): west/north/south/far-south districts, office park, east office district; nuclear + 2 coal + 15 turbines; 5 coastal pumping stations north of all discharge, 6 treatment plants on the south shore; incinerators in the NE, south and east; 2 bus lines; a highway exit/entrance at Lake Avenue. Taxes 9%, electricity 100%, healthcare 130%. Standing issues: ~250 dead awaiting pickup, crime, 15% unemployment (over-educated workforce). **Built-in cheat mods Unlimited Money and Unlock All are enabled**; the bridge checks real cash anyway |
+| Game | Epic, `D:\Epic Games\CitiesSkylines`. **Current: scenario City of Gardens** (Peach Trees, 6,665 people, happiness 82, game 2027-08, save `peach-trees-03-end-video1`; 2 of 9 tiles; win 1/4: parks done; organic shops are possible now that the game starts with the Epic login, #84). Cheat mods are **off** now. Earlier free-play city: map "Cannes". **50k free-play run reached 50,259 citizens** (2026-11-15, game 2056-06, save `mayor-50k-reached`), then 53.4k (game 2064-11, save `mayor-50k-34`). 5 of 9 tiles owned (start, south, far south, east, south-east): west/north/south/far-south districts, office park, east office district; nuclear + 2 coal + 15 turbines; 5 coastal pumping stations north of all discharge, 6 treatment plants on the south shore; incinerators in the NE, south and east; 2 bus lines; a highway exit/entrance at Lake Avenue. Taxes 9%, electricity 100%, healthcare 130%. Standing issues: ~250 dead awaiting pickup, crime, 15% unemployment (over-educated workforce). **Built-in cheat mods Unlimited Money and Unlock All are enabled**; the bridge checks real cash anyway |
 | Bridge | Installed from branch `console-close-button` (#83: the API console's `X` hides it for good, Options brings it back), `runsOnSimulationThread: true` |
 | MCP | Debug and Release rebuilt: city and build tools, `city_scenario`, `city_activity` (no studio tools since the split). A running server locks `bin/Release/net10.0/Cs1Mayor.Mcp.dll`; renaming the locked DLL aside lets the build replace it, then `/mcp` reconnect picks it up |

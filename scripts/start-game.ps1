@@ -1,29 +1,35 @@
 <#
     Starts Cities: Skylines and waits for the CS1 Mayor Bridge to answer.
 
+    The game is started through the Epic Games Launcher by default, so it gets the Epic
+    login and loads the owned DLC; the Paradox launcher is skipped (scripts/game-launch.ps1).
+
     Usage:
         .\scripts\start-game.ps1
         .\scripts\start-game.ps1 -GamePath "D:\Epic Games\CitiesSkylines"
-        .\scripts\start-game.ps1 -Resume      # resume the newest save
+        .\scripts\start-game.ps1 -Resume          # resume the newest save
+        .\scripts\start-game.ps1 -Launch Direct   # Cities.exe bare: no Epic login, no DLC
 #>
 param(
-    [string]$GamePath = "D:\Epic Games\CitiesSkylines",
+    [string]$GamePath = "",
     [switch]$Resume,
+    [ValidateSet("Epic", "Direct")][string]$Launch = "Epic",
     [int]$TimeoutSeconds = 180
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "game-launch.ps1")
 
-$exe = Join-Path $GamePath "Cities.exe"
-if (!(Test-Path $exe)) {
-    throw "Cities.exe was not found at $exe. Pass -GamePath."
+if ([string]::IsNullOrWhiteSpace($GamePath)) {
+    $GamePath = if ($env:CITIES_SKYLINES_PATH) { $env:CITIES_SKYLINES_PATH } else { "D:\Epic Games\CitiesSkylines" }
 }
 
 if (Get-Process -Name "Cities" -ErrorAction SilentlyContinue) {
     Write-Host "Cities: Skylines is already running."
 } else {
     Write-Host "Launching Cities: Skylines..."
-    Start-Process -FilePath $exe
+    $gameArgs = if ($Resume) { @("--continuelastsave") } else { @() }
+    Start-CitiesSkylines -GamePath $GamePath -GameArgs $gameArgs -Launch $Launch
 }
 
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
