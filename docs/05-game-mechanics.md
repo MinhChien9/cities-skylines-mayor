@@ -58,6 +58,12 @@ Workplace (industrial + office):
 ### Interpretation
 
 - **R never drops below 50** while housing exists (`Clamp(100-resOcc, 50, 100)`).
+- **What the bridge (and the game's demand bar) shows is not that target.** `ZoneManager`
+  smooths the target into `m_actualResidentialDemand` (0–100) and then publishes
+  `m_residentialDemand = actual + CalculateResidentialDemandOffset()` — the tax and policy
+  effects of the tax-ceiling section below. The offset is negative when taxes sit above a
+  zone's ceiling, so the reported R can be 0 or **negative** (seen live: R −1 at 10% tax
+  in a mature city whose level-4/5 homes have a 9% ceiling). Same for C and workplace.
 - **C = 0 at 1 commercial worker per 8 citizens** — the `w` term cancels `j` at that ratio. **[W]**
 - **I ≈ unemployment − unfilled vacancies**, capped at 50 base + 50 bonus.
   If I ≈ 0 while unemployment is high, you are job-rich — zone commercial/office, not industry.
