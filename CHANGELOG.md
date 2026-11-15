@@ -8,44 +8,7 @@ patch = fixes). Every PR adds its line under `[Unreleased]` with the issue numbe
 
 ## [Unreleased]
 
-### Removed
-- `city_project` and `POST /commands/project-point` (world point → desktop cursor pixels) and
-  the `edgeScroll` option of `city_camera` / `set-camera` (with `camera.edgeScrolling` in its
-  readback): leftovers of the cursor-driven phase that nothing uses since building goes
-  through the game's own tools. 52 tools now (#103).
-
-### Documentation
-- Removed text that no longer belongs to an MCP-only repo: links and notes about the video
-  pipeline, the cursor-era history (and the unused `scripts/game-ui.ps1` click helper), API
-  notes for finished work, and a stale environment state. The activity log's `ShouldJournal`
-  / `JournalledTools` are now `ShouldLog` / `LoggedTools` (#102).
-- Transport checks re-run on the populated 53k save: buses despawn when a line is switched off
-  and the full fleet respawns when it is switched on; what `passengers` temp / final / average
-  mean (`docs/verification.md` §6) (#76).
-
-### Fixed
-- A milestone's "Congratulations" panel force-paused the game and no tool could see or close
-  it; a lost scenario went unnoticed for weeks. `city_summary` and `city_threads` now report
-  `simulation.forcedPaused`, `openPanels` (milestone, scenario won/lost and other messages,
-  park level, bail-out, pause menu) and `scenarioOutcome` (`lost`/`won`), with a `hint`, and
-  the new `city_close_panel` closes those panels the way Escape does (#98).
-- `build-road` splits a straight road only at nodes and crossings on its own level: an elevated
-  road passes over a highway (and a ground road under an elevated one) instead of being pulled
-  into an at-grade junction, and the response lists them in `crossesWithoutJunction`.
-  When a pillar lands on the road below, the hint lists where the game puts
-  the leg's nodes. `city_build_road` exposes `autoSplit` (#99).
-- `build-road` marks each collision `blocking` (the game's own rule; grown buildings and power
-  lines are removed, not blocking), and the hint names the first blocker. A long power line
-  is refused for a road or turbine its pylons would hit, never for its length (#66).
-- `build-road` names what a refused leg collides with (`collidesWith`: segment or building, id,
-  prefab, `reason` `narrowAngle` / `cannotSplit` / `overlap`) and gives a matching hint. The
-  pipe in #65 snapped to its own node, not a road's. The game refused it for leaving that node
-  within ~41° of an existing pipe (#65).
-- `restart-game.ps1` and `start-game.ps1` start the game through the Epic Games Launcher, so it
-  gets the Epic login and loads the owned DLC. The Paradox launcher is skipped, so nobody
-  has to click Play. `-Launch Direct` keeps the old bare start. `start-game.ps1 -Resume`
-  now resumes the save as documented. This also explains #71: the missing expansion
-  buildings were caused by the launch (#84).
+## [0.2.0] - 2026-11-16
 
 ### Added
 - Cargo for industry: `city_industry.levelUpServices` scores every factory with the game's own
@@ -81,6 +44,45 @@ patch = fixes). Every PR adds its line under `[Unreleased]` with the issue numbe
   plain names (`docs/getting-started.md`, `docs/tools.md`, `docs/architecture.md`,
   `docs/development.md`, …), outdated history removed, the expansions caveat (#71) and the
   happiness levers added (#80).
+
+### Removed
+- `city_project` and `POST /commands/project-point` (world point → desktop cursor pixels) and
+  the `edgeScroll` option of `city_camera` / `set-camera` (with `camera.edgeScrolling` in its
+  readback): leftovers of the cursor-driven phase that nothing uses since building goes
+  through the game's own tools. 52 tools now (#103).
+
+### Fixed
+- A milestone's "Congratulations" panel force-paused the game and no tool could see or close
+  it; a lost scenario went unnoticed for weeks. `city_summary` and `city_threads` now report
+  `simulation.forcedPaused`, `openPanels` (milestone, scenario won/lost and other messages,
+  park level, bail-out, pause menu) and `scenarioOutcome` (`lost`/`won`), with a `hint`, and
+  the new `city_close_panel` closes those panels the way Escape does (#98).
+- `build-road` splits a straight road only at nodes and crossings on its own level: an elevated
+  road passes over a highway (and a ground road under an elevated one) instead of being pulled
+  into an at-grade junction, and the response lists them in `crossesWithoutJunction`.
+  When a pillar lands on the road below, the hint lists where the game puts
+  the leg's nodes. `city_build_road` exposes `autoSplit` (#99).
+- `build-road` marks each collision `blocking` (the game's own rule; grown buildings and power
+  lines are removed, not blocking), and the hint names the first blocker. A long power line
+  is refused for a road or turbine its pylons would hit, never for its length (#66).
+- `build-road` names what a refused leg collides with (`collidesWith`: segment or building, id,
+  prefab, `reason` `narrowAngle` / `cannotSplit` / `overlap`) and gives a matching hint. The
+  pipe in #65 snapped to its own node, not a road's. The game refused it for leaving that node
+  within ~41° of an existing pipe (#65).
+- `restart-game.ps1` and `start-game.ps1` start the game through the Epic Games Launcher, so it
+  gets the Epic login and loads the owned DLC. The Paradox launcher is skipped, so nobody
+  has to click Play. `-Launch Direct` keeps the old bare start. `start-game.ps1 -Resume`
+  now resumes the save as documented. This also explains #71: the missing expansion
+  buildings were caused by the launch (#84).
+
+### Documentation
+- Removed text that no longer belongs to an MCP-only repo: links and notes about the video
+  pipeline, the cursor-era history (and the unused `scripts/game-ui.ps1` click helper), API
+  notes for finished work, and a stale environment state. The activity log's `ShouldJournal`
+  / `JournalledTools` are now `ShouldLog` / `LoggedTools` (#102).
+- Transport checks re-run on the populated 53k save: buses despawn when a line is switched off
+  and the full fleet respawns when it is switched on; what `passengers` temp / final / average
+  mean (`docs/verification.md` §6) (#76).
 
 ## [0.1.0] - 2026-11-15
 
@@ -119,5 +121,6 @@ Cities: Skylines (2015) city without a cursor, through the game's own tool code.
 - The studio (OBS, decision journal, camera moves, timelapse) and post-production moved
   to their own repo, `cities-skylines-video` (#63).
 
-[Unreleased]: https://github.com/MinhChien9/cities-skylines-mayor/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/MinhChien9/cities-skylines-mayor/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/MinhChien9/cities-skylines-mayor/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/MinhChien9/cities-skylines-mayor/releases/tag/v0.1.0
