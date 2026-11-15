@@ -21,3 +21,6 @@ Thumbs.db
 .idea/
 .vscode/
 
+
+# Release assets (scripts/release.ps1)
+dist/

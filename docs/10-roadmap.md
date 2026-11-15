@@ -1,5 +1,8 @@
 # Roadmap
 
+> **Open work is tracked as GitHub issues** (https://github.com/MinhChien9/cities-skylines-mayor/issues), not in this file. This
+> page is the history of what was built and why; unchecked items below link their issue.
+
 **The second pivot (2026-11-15): validated building.** The cursor model below worked,
 but every spatial step cost a screenshot, positions were guessed from pixels, and a
 screenshot even made dry land read as sea. The original problem with API building was
@@ -27,7 +30,7 @@ skipped every rule. The build endpoints now run the game's own tool code:
 
 - [x] **Studio** — moved to its own repo, **cs1-video-making** (OBS, decision journal,
       camera moves, timelapse, post-production). This server keeps an activity log for it.
-- [ ] Transit line drawing and district painting as validated tools
+- [x] Transit lines from the MCP tool (#47); district painting in the tool → #68
 - [ ] `/state/map` overlays: land value, pollution, coverage, traffic
 
 ---
@@ -182,23 +185,23 @@ thread — snap or glide, caller's choice.
 
 ### P3 — load + area reads (bridge)
 
-- [ ] `POST /commands/load` — load a save **[verified: `ISerializableData.LoadGame`]**
-- [ ] `GET /state/game-areas` — unlocked map tiles from `GameAreaManager`, so the
+- [ ] `POST /commands/load` — load a save **[verified: `ISerializableData.LoadGame`]** → #69
+- [x] `GET /state/game-areas` — done as `/state/areas` + `city_areas` (#48): unlocked map tiles from `GameAreaManager`, so the
       office can tell the cursor where it may build *(was R7; the UI tool path already
       does its own unlocked-tile checks, so this is now an information read, not a
       placement guard)*
-- [ ] **Verify**: after load, the summary matches the target save
+- [ ] **Verify**: after load, the summary matches the target save → #69
 
 ### P4 — deeper reads (bridge, opportunistic)
 
-- [ ] `GET /state/progress` — current milestone, progress, unlocked `Feature`s
+- [x] `GET /state/progress` — done: `city_scenario.currentMilestone`, `city_capabilities.unlockedFeatures` / `unlockedZones` (#62): current milestone, progress, unlocked `Feature`s
       **[verified: `UnlockManager.GetCurrentMilestone`, `Unlocked(Feature)]`
-- [ ] `GET /state/resources` — ore, oil, forest, fertility per cell (where to zone
+- [ ] `GET /state/resources` → #72 — ore, oil, forest, fertility per cell (where to zone
       specialized industry) **[verified: `ICities.IResource`]** *(terrain *editing*
       is dropped — terraforming belongs to the cursor's land tool if ever wanted)*
-- [ ] Info-view data the UI shows but the office cannot read yet: land value,
+- [ ] Info-view data the UI shows but the office cannot read yet (land value, pollution, noise and traffic done in #33; coverage → #73): land value,
       pollution, coverage heatmaps — read without opening the panels
-- [ ] MCP tools `city_progress`, `city_resources`
+- [ ] MCP tool `city_resources` → #72 (`city_progress` folded into `city_scenario`)
 
 *Dropped from the roadmap: `render-view` PNG capture (the CUA channel takes
 screenshots), `place-prop` / terrain editing (cursor work), `unlock-milestone` /
@@ -276,7 +279,7 @@ read back); see `docs/07-verification.md`.
       spawned, and population 0 means `passengers` cannot move. Key game behaviour found
       and documented: the game re-snaps non-fixed stop nodes to lane midpoints
       (`TransportLineAI.CheckNodePosition`) — place stops near road-edge midpoints.
-- [ ] *Follow-up: re-run vehicle spawn + ridership on a city that has residents and a
+- [ ] → #76 *Follow-up: re-run vehicle spawn + ridership on a city that has residents and a
       working depot (power + water + sewage).*
 - [x] *No `ICities` transport interface exists — confirmed; this is the one big family
       with no supported API.*

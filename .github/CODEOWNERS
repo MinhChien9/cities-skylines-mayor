@@ -1,0 +1,5 @@
+# CI, release scripts and the simulation-thread dispatcher need the owner's review:
+# the first is the release boundary, the second is the one rule that is not negotiable.
+/.github/ @MinhChien9
+/scripts/release.ps1 @MinhChien9
+/src/Dispatch/ @MinhChien9

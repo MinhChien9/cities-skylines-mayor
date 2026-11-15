@@ -18,6 +18,8 @@ should read it.
 | 09 | [Upstream notes](09-upstream-notes.md) | understand what was forked from `cities-skylines1-agent-skill` and what changed |
 | 10 | [Roadmap](10-roadmap.md) | see what is built and what is next |
 | 11 | [Command surface](12-command-surface.md) | the master table of every tool and endpoint, plus the verified game APIs for what is missing |
+| 13 | [Development process](13-development-process.md) | file, triage and fix work through GitHub issues; labels, milestones, definition of done |
+| 14 | [Releasing](14-releasing.md) | version, changelog and cut a release (mod DLL + MCP server) |
 
 Two more files live outside this folder:
 
@@ -25,6 +27,8 @@ Two more files live outside this folder:
 |------|-----------|
 | [`../AGENTS.md`](../AGENTS.md) | The operating manual the AI mayor follows. Read it if you are writing prompts for the agent or changing the tools. |
 | [`../.github/CONTRIBUTING.md`](../.github/CONTRIBUTING.md) | Branch naming, commit format, PR rules. |
+| [`../CHANGELOG.md`](../CHANGELOG.md) | What shipped in each release. |
+| [Issues](https://github.com/MinhChien9/cities-skylines-mayor/issues) | The backlog: bugs, features, game findings, tasks. |
 
 ## If you only read three things
 

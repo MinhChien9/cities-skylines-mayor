@@ -1,0 +1,7 @@
+<Project>
+  <!-- The release version of the MCP server (reported as its serverInfo version) and the
+       bridge mod. Bumped in the release PR; see docs/14-releasing.md. -->
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+</Project>

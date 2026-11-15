@@ -16,8 +16,13 @@ tool code**, without a cursor or screenshots.
 
 This repo is the MCP server and the in-game bridge, nothing else. Recording the play and
 turning it into videos (OBS, decision journal, timelapse, scripts, subtitles, edit) is the
-separate **cs1-video-making** repo; it follows this server's activity log
-(`activity/<session>.jsonl`, one line per build or office action).
+separate [cities-skylines-video](https://github.com/MinhChien9/cities-skylines-video) repo;
+it follows this server's activity log (`activity/<session>.jsonl`, one line per build or
+office action).
+
+**Download:** the [latest release](https://github.com/MinhChien9/cities-skylines-mayor/releases/latest) has the mod DLL and the
+MCP server. **Work in progress:** [issues](https://github.com/MinhChien9/cities-skylines-mayor/issues) and the
+[v0.2.0 milestone](https://github.com/MinhChien9/cities-skylines-mayor/milestone/1). **What changed:** [`CHANGELOG.md`](CHANGELOG.md).
 
 ```
 Claude Code / opencode ──MCP stdio──▶ Cs1Mayor.Mcp (.NET 10) ──HTTP──▶ SkylinesAgentBridge.dll (in-game)

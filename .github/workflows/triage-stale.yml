@@ -1,0 +1,26 @@
+name: triage-stale
+
+# Only issues waiting on their reporter (`needs-info`) go stale; everything else stays
+# open until a PR closes it or a maintainer decides.
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v9
+        with:
+          only-labels: needs-info
+          days-before-stale: 21
+          days-before-close: 7
+          days-before-pr-stale: -1
+          days-before-pr-close: -1
+          stale-issue-message: "No new information for three weeks. This closes in a week unless someone adds it."
+          close-issue-message: "Closed for lack of information. Reopen with the details and it goes back to triage."

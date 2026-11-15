@@ -16,10 +16,21 @@ between the two codebases without friction.
 Large product-level features need a design conversation first. If you are unsure whether
 a change fits, open an issue and ask before writing the code.
 
+## Start from an issue
+
+Every change starts as a GitHub issue — bug, feature, game finding or task (the forms
+under **New issue**). The issue holds the reproduction and the decision; the PR that
+closes it says `Closes #<number>`. Docs-only PRs may skip the issue. Problems with OBS,
+recording or the video pipeline belong to [cities-skylines-video](https://github.com/MinhChien9/cities-skylines-video).
+
+The full lifecycle (triage, labels, milestones, definition of done) is in
+[`docs/13-development-process.md`](../docs/13-development-process.md); releases are in
+[`docs/14-releasing.md`](../docs/14-releasing.md).
+
 ## Branch names
 
-Use a short branch name of **at most three words, separated by hyphens**. Do not use
-slashes, and do not use type prefixes such as `feat/` or `fix/`.
+Use a short branch name of **at most three words, separated by hyphens**, named after the
+issue it works on. Do not use slashes, and do not use type prefixes such as `feat/` or `fix/`.
 
 ```
 project-structure        ✅ two words, hyphenated
