@@ -285,6 +285,13 @@ Lessons recorded so far:
   ramps and carriageways (spans ≤ ~90 m; a 10 m leg is `TooShort`, and a dry run on a
   route through an existing node re-splits there, so rebuild the span in one piece).
   The Cooper Street line joined the east districts to the main grid.
+- **The cycle at 55k: jobs, then homes.** Once the office tiles brought unemployment to
+  2 % (more vacant jobs than unemployed), the residential target rose to 30+ but the
+  population still drifted down: only ~300 empty residential cells were left, so each
+  spawn spent the demand and deaths outpaced move-ins. A residential district on the
+  south tile (services placed first, a power line from the district coal plant, a pipe on
+  every avenue) restarted growth at once (+1.6k in ten minutes). Watch empty zoned cells
+  per type, not just demand.
 - In this build the Water Pumping Station (`Water Intake`) is `ShorelineOrGround` and the
   `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
   pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the
