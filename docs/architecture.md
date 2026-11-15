@@ -7,7 +7,7 @@ AI agent (Claude Code, opencode, …)
    │  MCP over stdio (JSON-RPC 2.0)
    ▼
 MCP server: mcp-server/, .NET 10
-   │  47 tools: thin relays that aggregate and shape the bridge's answers;
+   │  52 tools: thin relays that aggregate and shape the bridge's answers;
    │  renders city_map to PNG; writes the activity log
    │  HTTP + JSON, 127.0.0.1:32123 (localhost only)
    ▼

@@ -6,13 +6,12 @@ using SkylinesAgentBridge.Support;
 namespace SkylinesAgentBridge.Commands
 {
     /// <summary>
-    /// Camera framing and world→screen projection.
+    /// Camera framing.
     ///
     /// THREADING: every method here runs on the **Unity main thread** through the
     /// bridge's named main-thread queue (see MainThreadQueue). The camera and its
-    /// transform are Unity objects owned by the main thread, and projection needs
-    /// the camera's view matrix — running any of this on the simulation thread or an
-    /// HTTP worker races the renderer exactly the way the simulation dispatcher's
+    /// transform are Unity objects owned by the main thread — running any of this on
+    /// the simulation thread or an HTTP worker races the renderer exactly the way the simulation dispatcher's
     /// comment warns. These commands must never touch city state.
     ///
     /// WHICH CAMERA (a live-game finding, 2026-11-11)
@@ -22,7 +21,7 @@ namespace SkylinesAgentBridge.Commands
     /// a camera nobody renders; the player's view does not change. Verified live: a
     /// SetCameraTarget call through the wrapper changed nothing on screen.
     ///
-    /// The camera the player (and the cursor) actually uses is **CameraController** —
+    /// The camera the player actually uses is **CameraController** —
     /// the free camera. Its state is fields, not methods:
     ///   m_targetPosition / m_currentPosition   the point the camera looks at
     ///   m_targetAngle    / m_currentAngle      Vector2 (x = horizontal° yaw, -180..180;
@@ -47,14 +46,13 @@ namespace SkylinesAgentBridge.Commands
         ///   verticalAngle     - vertical viewing angle in degrees (default: keep current)
         ///   horizontalAngle   - horizontal viewing angle in degrees (default: keep current)
         ///   instant           - true (default) to snap the camera, false to glide
-        ///   edgeScroll        - true/false to toggle the edge-scrolling setting
         ///   hideUi            - true/false to enter/leave the game's free-camera mode, which
         ///                       hides the whole UI (including this bridge's console),
-        ///                       notification icons, district names and borders: clean B-roll
+        ///                       notification icons, district names and borders
         ///
-        /// With no coordinates, no edgeScroll and no hideUi the command is a pure
-        /// camera-state read. The response always carries the live readback: camera
-        /// position, angle, distance, the edge-scrolling and UI state and the screen size.
+        /// With no coordinates and no hideUi the command is a pure camera-state read.
+        /// The response always carries the live readback: camera position, angle,
+        /// distance, the UI state and the screen size.
         /// </summary>
         public static CommandResult SetCamera(string body)
         {
@@ -70,14 +68,6 @@ namespace SkylinesAgentBridge.Commands
             if (float.IsNaN(x) != float.IsNaN(z))
             {
                 return CommandResult.Fail("x and z must be given together.");
-            }
-
-            // ---- optional: toggle edge scrolling (the ergonomics fix) ------------
-            string edgeScrollError = null;
-            if (HasField(body, "edgeScroll"))
-            {
-                bool edgeScroll = JsonUtil.GetBool(body, "edgeScroll", false);
-                edgeScrollError = SetEdgeScrolling(controller, edgeScroll);
             }
 
             // ---- optional: hide the UI (the game's own free-camera mode) -------------
@@ -117,10 +107,6 @@ namespace SkylinesAgentBridge.Commands
                     ",\"instant\":" + JsonUtil.Bool(instant) + "}";
             }
 
-            if (edgeScrollError != null)
-            {
-                return CommandResult.Fail(edgeScrollError);
-            }
             if (hideUiError != null)
             {
                 return CommandResult.Fail(hideUiError);
@@ -133,96 +119,11 @@ namespace SkylinesAgentBridge.Commands
                 (hasTarget
                     ? ",\"note\":\""
                         + (HasField(body, "instant") && !JsonUtil.GetBool(body, "instant", true)
-                            ? "The camera glides to the target over a few frames; re-read or re-project once it settles."
-                            : "The camera snapped to the target; the projection is valid immediately.")
+                            ? "The camera glides to the target over a few frames; re-read once it settles."
+                            : "The camera snapped to the target.")
                         + "\""
                     : "") +
                 "}");
-        }
-
-        // --------------------------------------------------------------- project-point
-
-        /// <summary>
-        /// POST /commands/project-point.
-        ///
-        /// Body: x, z (required), y (optional, default 0).
-        ///
-        /// Projects a world position to pixels. The response carries three coordinate
-        /// spaces: Unity screen coordinates (origin bottom-left, the raw projection),
-        /// client-window coordinates (origin top-left of the game window), and the
-        /// absolute desktop cursor position a CUA channel can click at — plus
-        /// onScreen / inFront flags. Re-project after every camera move.
-        /// </summary>
-        public static CommandResult ProjectPoint(string body)
-        {
-            Camera unityCamera = GetUnityCamera();
-            if (unityCamera == null)
-            {
-                return CommandResult.Fail("No Unity camera found. Is a city loaded?");
-            }
-
-            float x = JsonUtil.GetNumber(body, "x", float.NaN);
-            float z = JsonUtil.GetNumber(body, "z", float.NaN);
-            if (float.IsNaN(x) || float.IsNaN(z))
-            {
-                return CommandResult.Fail("x and z are required.");
-            }
-            float y = JsonUtil.GetNumber(body, "y", 0f);
-
-            Vector3 world = new Vector3(x, y, z);
-            Vector3 screen = unityCamera.WorldToScreenPoint(world);
-
-            bool inFront = screen.z > 0f;
-            bool onScreen = inFront &&
-                screen.x >= 0f && screen.x <= Screen.width &&
-                screen.y >= 0f && screen.y <= Screen.height;
-
-            // Client-window coordinates: Unity's origin is bottom-left, a cursor's is
-            // top-left, so flip y. When the Unity backbuffer and the Win32 client rect
-            // disagree (DPI scaling), scale the point into client pixels first.
-            int winX, winY, winWidth, winHeight;
-            bool haveWindow = WindowGeometry.TryGetClientRect(
-                out winX, out winY, out winWidth, out winHeight);
-
-            string clientX = "null";
-            string clientY = "null";
-            string cursorX = "null";
-            string cursorY = "null";
-
-            if (haveWindow && winWidth > 0 && winHeight > 0)
-            {
-                float scaleX = winWidth / (float)Screen.width;
-                float scaleY = winHeight / (float)Screen.height;
-                float pointX = screen.x * scaleX;
-                float pointY = screen.y * scaleY;
-
-                float flippedY = winHeight - pointY;
-                clientX = JsonUtil.Number(pointX);
-                clientY = JsonUtil.Number(flippedY);
-                cursorX = JsonUtil.Number(winX + pointX);
-                cursorY = JsonUtil.Number(winY + flippedY);
-            }
-
-            return CommandResult.FromJson(
-                "{\"ok\":true" +
-                ",\"point\":{\"x\":" + JsonUtil.Number(x) +
-                ",\"y\":" + JsonUtil.Number(y) +
-                ",\"z\":" + JsonUtil.Number(z) + "}" +
-                ",\"unity\":{\"x\":" + JsonUtil.Number(screen.x) +
-                ",\"y\":" + JsonUtil.Number(screen.y) +
-                ",\"z\":" + JsonUtil.Number(screen.z) +
-                ",\"inFront\":" + JsonUtil.Bool(inFront) + "}" +
-                ",\"screen\":{\"width\":" + Screen.width +
-                ",\"height\":" + Screen.height +
-                ",\"onScreen\":" + JsonUtil.Bool(onScreen) + "}" +
-                ",\"window\":{\"x\":" + winX +
-                ",\"y\":" + winY +
-                ",\"width\":" + winWidth +
-                ",\"height\":" + winHeight +
-                ",\"known\":" + JsonUtil.Bool(haveWindow) + "}" +
-                ",\"client\":{\"x\":" + clientX + ",\"y\":" + clientY + "}" +
-                ",\"cursor\":{\"x\":" + cursorX + ",\"y\":" + cursorY + "}" +
-                ",\"note\":\"cursor is absolute desktop pixels, origin top-left, ready for a CUA click; re-project after every camera move.\"}");
         }
 
         // -------------------------------------------------------------------- internals
@@ -243,7 +144,7 @@ namespace SkylinesAgentBridge.Commands
             if (instant)
             {
                 // Snap the current state to the target and kill the inertia so the
-                // framing is settled the same frame — deterministic for projection.
+                // framing is settled the same frame.
                 SetVector3Field(controller, "m_currentPosition", target);
                 SetVector2Field(controller, "m_currentAngle", new Vector2(horizontalAngle, verticalAngle));
                 SetFloatField(controller, "m_currentSize", distance);
@@ -269,29 +170,9 @@ namespace SkylinesAgentBridge.Commands
                 ",\"angle\":{\"vertical\":" + JsonUtil.Number(angle.y) +
                 ",\"horizontal\":" + JsonUtil.Number(angle.x) + "}" +
                 ",\"distance\":" + JsonUtil.Number(size) +
-                ",\"edgeScrolling\":" + ReadEdgeScrolling(controller) +
                 ",\"uiHidden\":" + ReadFreeCamera(controller) + "}" +
                 ",\"screen\":{\"width\":" + Screen.width +
                 ",\"height\":" + Screen.height + "}";
-        }
-
-        /// <summary>
-        /// The game's render camera. CameraController owns it; its m_camera field is
-        /// private, so reflect it. Unity's Camera.main is the fallback.
-        /// </summary>
-        private static Camera GetUnityCamera()
-        {
-            CameraController controller = FindCameraController();
-            if (controller != null)
-            {
-                Camera camera = GetField(controller, "m_camera") as Camera;
-                if (camera != null)
-                {
-                    return camera;
-                }
-            }
-
-            return Camera.main;
         }
 
         private static bool HasField(string body, string name)
@@ -360,40 +241,6 @@ namespace SkylinesAgentBridge.Commands
         }
 
         /// <summary>
-        /// Toggles the game's edge-scrolling setting through the same SavedBool the
-        /// game's own CameraController reads every frame — the camera stops drifting
-        /// immediately, no restart needed. Returns null on success, an error otherwise.
-        /// </summary>
-        private static string SetEdgeScrolling(CameraController controller, bool value)
-        {
-            FieldInfo field = typeof(CameraController).GetField(
-                "m_edgeScrolling", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-            if (field == null)
-            {
-                return "CameraController.m_edgeScrolling not found (game version changed?).";
-            }
-
-            object saved = field.GetValue(controller);
-            PropertyInfo valueProperty = field.FieldType.GetProperty(
-                "value", BindingFlags.Instance | BindingFlags.Public);
-            if (saved == null || valueProperty == null)
-            {
-                return "Could not reach the edgeScrolling setting.";
-            }
-
-            try
-            {
-                valueProperty.SetValue(saved, value, null);
-            }
-            catch (Exception ex)
-            {
-                return "Failed to set edge scrolling: " + ex.Message;
-            }
-
-            return null;
-        }
-
-        /// <summary>
         /// Enters or leaves the game's free-camera mode by writing the same public field
         /// the game's "hide UI" key toggles. CameraController.UpdateFreeCamera notices the
         /// change on its next frame and does the rest itself: UIView.Show(false),
@@ -417,35 +264,6 @@ namespace SkylinesAgentBridge.Commands
         {
             object value = GetField(controller, "m_freeCamera");
             return value is bool ? JsonUtil.Bool((bool)value) : "null";
-        }
-
-        /// <summary>The current edge-scrolling state, or null if it cannot be read.</summary>
-        private static string ReadEdgeScrolling(CameraController controller)
-        {
-            FieldInfo field = typeof(CameraController).GetField(
-                "m_edgeScrolling", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-            if (field == null)
-            {
-                return "null";
-            }
-
-            object saved = field.GetValue(controller);
-            PropertyInfo valueProperty = field.FieldType.GetProperty(
-                "value", BindingFlags.Instance | BindingFlags.Public);
-            if (saved == null || valueProperty == null)
-            {
-                return "null";
-            }
-
-            try
-            {
-                object value = valueProperty.GetValue(saved, null);
-                return value is bool && (bool)value ? "true" : "false";
-            }
-            catch (Exception)
-            {
-                return "null";
-            }
         }
     }
 }

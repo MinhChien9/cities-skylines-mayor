@@ -584,14 +584,13 @@ public class CityToolsTests
         var handler = Always("{\"ok\":true}");
         var tools = Tools(handler);
 
-        await tools.CityCamera(120.5, 300.25, distance: 250, edgeScroll: false, cancellationToken: CancellationToken.None);
+        await tools.CityCamera(120.5, 300.25, distance: 250, cancellationToken: CancellationToken.None);
 
         var request = Assert.Single(handler.Requests);
         Assert.Equal("/commands/set-camera", request.Path);
         Assert.Contains("\"x\":120.5", request.Body);
         Assert.Contains("\"z\":300.25", request.Body);
         Assert.Contains("\"distance\":250", request.Body);
-        Assert.Contains("\"edgeScroll\":false", request.Body);
         Assert.DoesNotContain("\"y\"", request.Body);
         Assert.DoesNotContain("verticalAngle", request.Body);
     }
@@ -607,33 +606,6 @@ public class CityToolsTests
         var request = Assert.Single(handler.Requests);
         Assert.Equal("/commands/set-camera", request.Path);
         Assert.Equal("{}", request.Body);
-    }
-
-    [Fact]
-    public async Task CityProject_posts_the_point()
-    {
-        var handler = Always("{\"ok\":true}");
-        var tools = Tools(handler);
-
-        await tools.CityProject(512, 768, y: 64, CancellationToken.None);
-
-        var request = Assert.Single(handler.Requests);
-        Assert.Equal("/commands/project-point", request.Path);
-        Assert.Contains("\"x\":512", request.Body);
-        Assert.Contains("\"z\":768", request.Body);
-        Assert.Contains("\"y\":64", request.Body);
-    }
-
-    [Fact]
-    public async Task CityProject_omits_y_when_not_given()
-    {
-        var handler = Always("{\"ok\":true}");
-        var tools = Tools(handler);
-
-        await tools.CityProject(512, 768, cancellationToken: CancellationToken.None);
-
-        var request = Assert.Single(handler.Requests);
-        Assert.DoesNotContain("\"y\"", request.Body);
     }
 
     [Fact]
@@ -661,7 +633,6 @@ public class CityToolsTests
             "/commands/new-game",
             "/commands/save",
             "/commands/set-camera",
-            "/commands/project-point",
             "/commands/build-road",
             "/commands/place-building",
             "/commands/move-building",

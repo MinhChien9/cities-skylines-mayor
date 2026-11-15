@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Let an AI agent play **Cities: Skylines** (the 2015 original) as the city's mayor. An
-[MCP](https://modelcontextprotocol.io) server gives the agent 47 tools to read the city,
+[MCP](https://modelcontextprotocol.io) server gives the agent 52 tools to read the city,
 pull every lever and build. Building goes through the game's own tool code, so the agent
 needs no cursor and no screenshots.
 
@@ -52,7 +52,7 @@ To set up opencode, build from source, or troubleshoot, see
 | | |
 |---|---|
 | [Getting started](docs/getting-started.md) | Install, connect Claude Code or opencode, build from source, troubleshooting |
-| [Tools](docs/tools.md) | All 47 tools, grouped by job, and how building works |
+| [Tools](docs/tools.md) | All 52 tools, grouped by job, and how building works |
 | [AGENTS.md](AGENTS.md) | The operating manual the AI mayor follows |
 | [Game mechanics](docs/game-mechanics.md) | Demand, taxes, coverage, level-up and happiness, from the game's code |
 | [Architecture](docs/architecture.md) | How the pieces fit, and the threading rule |

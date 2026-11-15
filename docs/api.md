@@ -4,8 +4,8 @@ The HTTP API the MCP tools call. You only need it to debug, script, or add a too
 use the [tools](tools.md).
 
 - **Address:** `http://127.0.0.1:32123`, on localhost only, with no authentication.
-- **Threads:** every endpoint runs on the game's simulation thread, except `/commands/set-camera`,
-  `/commands/project-point` and `/commands/close-panel`, which run on the Unity main thread.
+- **Threads:** every endpoint runs on the game's simulation thread, except `/commands/set-camera`
+  and `/commands/close-panel`, which run on the Unity main thread.
 - **Building:** `build-road` calls `NetTool.CreateNode` (a test pass, then the build).
   `place-building` and `move-building` apply `BuildingTool`'s placement rules. Refusals use the
   game's `ToolErrors` names.
@@ -381,8 +381,7 @@ All accept a JSON body. All support `"dryRun": true` where validation is meaning
 | POST | `/commands/save` | `name` |
 | POST | `/commands/load` | `name`, `dryRun?`. Load a save. Also at the main menu. See below. |
 | POST | `/commands/new-game` | `map` or `scenario`, `cityName?`, `leftHandTraffic?`, `dryRun?`. Also at the main menu. See below. |
-| POST | `/commands/set-camera` | `x?`, `y?`, `z?`, `distance?`, `verticalAngle?`, `horizontalAngle?`, `edgeScroll?`, `hideUi?`. See below. |
-| POST | `/commands/project-point` | `x`, `z`, `y?`. See below. |
+| POST | `/commands/set-camera` | `x?`, `y?`, `z?`, `distance?`, `verticalAngle?`, `horizontalAngle?`, `hideUi?`. See below. |
 | POST | `/commands/repair-zones-to-growables` | Repair blocks to their growable zone. |
 | POST | `/commands/repair-zone-clusters` | Repair mottled zones. `preferGrowableZone?` |
 | POST | `/commands/disable-blocked-assets` | Disable the broken "Block Services - …" prefab family. |
@@ -589,21 +588,19 @@ no main gate (`functional: false`), so place the gate building to give it visito
 production. Painting does not cost money — the game's tool charges the Landscaping resource,
 not `ApplyBrush`.
 
-### `/commands/set-camera` and `/commands/project-point` — camera and screen projection
+### `/commands/set-camera` — the camera
 
-Frame the camera on a world point (for a viewer or a screenshot) and convert world points to
-screen pixels. Both run on the **Unity main thread**
-(the camera and the renderer are Unity objects; city state stays on the simulation thread).
+Frame the camera on a world point for a viewer, or read where it is. Runs on the **Unity main
+thread** (the camera is a Unity object; city state stays on the simulation thread).
 
 **Which camera:** `ICities.ICamera` (`IManagers.camera` → `CameraWrapper`) turned out to
 drive the game's *cinematic* camera — framing through it changes nothing on screen
-(verified live 2026-11-11). The camera the cursor sees is **`CameraController`**, the free
+(verified live 2026-11-11). The camera the player sees is **`CameraController`**, the free
 camera, whose state is private fields: `m_targetPosition` / `m_currentPosition`,
-`m_targetAngle` / `m_currentAngle` (`Vector2`, x = vertical°, y = horizontal°),
+`m_targetAngle` / `m_currentAngle` (`Vector2`, x = horizontal° yaw, y = vertical° pitch),
 `m_targetSize` / `m_currentSize` (zoom distance) and the `m_*Velocity` inertia terms.
 `set-camera` writes those fields directly — snap (`instant: true`, default) or glide,
-so the office's aim is deterministic. Edge scrolling toggles live through the game's own
-`CameraController.m_edgeScrolling` `SavedBool` (no restart).
+so the office's aim is deterministic.
 
 `set-camera` body — every field optional:
 
@@ -614,10 +611,9 @@ so the office's aim is deterministic. Edge scrolling toggles live through the ga
 | `distance` | Camera distance to the target (default: keep current zoom; clamped 100–4000). |
 | `verticalAngle` / `horizontalAngle` | Degrees: `verticalAngle` is the pitch (0 = level with the horizon, 90 = top-down, clamped to 0–90), `horizontalAngle` the yaw (−180..180). They map to `CameraController.m_targetAngle` **y** and **x** respectively. Both default to the **current** framing, so re-aiming does not spin or tilt the view. |
 | `instant` | `true` (default) snaps the camera to the target the same frame; `false` lets it glide. |
-| `edgeScroll` | `true`/`false` to toggle edge scrolling — the ergonomics fix: with edge scrolling on, the camera drifts whenever the cursor touches the window edge. |
 | `hideUi` | `true`/`false` to enter/leave the game's free-camera mode (`CameraController.m_freeCamera`, the field the game's hide-UI key toggles). The game then hides the whole UI — including the bridge console — plus notification icons, district names, area borders and road names, and shows them again when cleared. Readback: `camera.uiHidden`. |
 
-With no coordinates, no `edgeScroll` and no `hideUi` the command is a pure camera-state read.
+With no coordinates and no `hideUi` the command is a pure camera-state read.
 
 ```json
 {
@@ -627,34 +623,11 @@ With no coordinates, no `edgeScroll` and no `hideUi` the command is a pure camer
               "target": { "x": 240, "y": 0, "z": -40 },
               "angle": { "vertical": 63.2, "horizontal": 45 },
               "distance": 400,
-              "edgeScrolling": false, "uiHidden": false },
+              "uiHidden": false },
   "screen": { "width": 1920, "height": 1080 },
-  "note": "The camera snapped to the target; the projection is valid immediately."
+  "note": "The camera snapped to the target."
 }
 ```
-
-`project-point` body: `x`, `z` (required), `y` (optional, default 0).
-
-```json
-{
-  "ok": true,
-  "point": { "x": 240, "y": 0, "z": -40 },
-  "unity": { "x": 959.8, "y": 540.2, "z": 388.1, "inFront": true },
-  "screen": { "width": 1920, "height": 1080, "onScreen": true },
-  "window": { "x": 0, "y": 0, "width": 1920, "height": 1040, "known": true },
-  "client": { "x": 959.8, "y": 499.8 },
-  "cursor": { "x": 959.8, "y": 499.8 },
-  "note": "cursor is absolute desktop pixels, origin top-left, ready for a click; re-project after every camera move."
-}
-```
-
-| Field | Meaning |
-|---|---|
-| `unity` | The raw `Camera.WorldToScreenPoint` — origin **bottom-left** of the game window, `z` = distance in front of the camera. |
-| `window` | The game window's client rectangle on the desktop (`known: false` when the OS would not tell). |
-| `client` | The point in window pixels, origin top-left. |
-| `cursor` | **The one to click** — absolute desktop pixels, origin top-left of the primary monitor. |
-| `onScreen` | In front of the camera and inside the game window. |
 
 ### Examples
 
@@ -717,22 +690,13 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/district `
 Invoke-RestMethod http://127.0.0.1:32123/state/districts
 ```
 
-**Aim the cursor at a problem (frame → project → click):**
+**Frame the camera on a problem:**
 
 ```powershell
-# 1. read a problem's world position from the office
 $problem = (Invoke-RestMethod http://127.0.0.1:32123/state/problems).items[0]
-
-# 2. frame the camera on it (and stop edge scrolling from drifting the view)
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/set-camera `
-  -Body ('{"x":' + $problem.position.x + ',"z":' + $problem.position.z + ',"edgeScroll":false}') `
-  -ContentType "application/json"
-
-# 3. project the point to cursor pixels (wait a beat for the camera to settle first)
-Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/project-point `
   -Body ('{"x":' + $problem.position.x + ',"z":' + $problem.position.z + '}') `
   -ContentType "application/json"
-# → cursor: { x: ..., y: ... } — where a click would land
 ```
 
 **Place a building:**

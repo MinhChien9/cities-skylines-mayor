@@ -60,9 +60,7 @@ const string Instructions = """
       holds the clock: city_close_panel closes it, then set the speed again.
     - Grid habits that work: straight streets on 8 m multiples, parallel streets 80 m
       apart (16 m road + two 32 m zone blocks), junctions at least ~40 m apart.
-    - city_camera frames the game camera on a world point (for the viewer, or for a
-      screenshot); city_project converts a world point to desktop pixels if a cursor is
-      ever needed.
+    - city_camera frames the game camera on a world point, for the viewer.
     - city_request GETs any bridge endpoint (docs/api.md has the list) and
       POSTs to the endpoints that have a dedicated tool.
 
