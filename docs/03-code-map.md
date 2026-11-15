@@ -124,15 +124,9 @@ C#, .NET 10, `ModelContextProtocol` 2.4.0. Namespace `Cs1Mayor.Mcp`.
 | `BuildTools.cs` | ~260 | `city_map` (PNG) and the game-validated build tools: road/network, building place/move, zoning, bulldoze. |
 | `MapRenderer.cs` | ~240 | Renders the `/state/map` raster to PNG: palette, height shading, labelled grid, dead-end rings. |
 | `BridgeClient.cs` | 181 | The HTTP client, the error translation, and body truncation so errors stay small in the agent's context. |
-| `ObsClient.cs` | ~390 | The studio's obs-websocket v5 client: Hello/Identify with SHA-256 auth, requests matched by id, events, reconnect on the next request (a request in flight when the connection drops fails instead of being resent). |
-| `StudioTools.cs` | ~330 | The studio tools: `studio_status`, `studio_record`, `studio_marker` (recording chapters), `studio_screenshot` (a frame from the OBS game capture). |
-| `Journal.cs` | ~330 | The decision journal: `journal/<session>.jsonl`, entries stamped with wall time, recording timecode and game date/population/cash; the call-tool filter that journals every mutating tool call (dry runs skipped). |
-| `JournalTools.cs` | ~75 | `studio_note` (the mayor's why) and `studio_journal` (read the story so far). |
-| `CinematicTools.cs` | ~330 | `studio_camera_move` (orbit / flyover / zoom streamed as ~30 Hz glide targets, UI hidden and restored) and `studio_viewpoint` (named framings in `viewpoints.local.json`, `ViewpointStore`). |
+| `ActivityLog.cs` | ~300 | The activity log: `activity/<session>.jsonl`, one line per build or office action with wall time and game date/population/cash; the call-tool filter that writes it after every mutating call (dry runs and reads skipped). A plain file other tools can follow (the video studio tails it). |
+| `ActivityTools.cs` | ~40 | `city_activity`: read the newest log entries back. |
 | `CameraPath.cs` | ~105 | The pure camera-move math: eased interpolation, orbit sweeps, compass headings. |
-| `TimelapseRunner.cs` | ~350 | Background timelapse: polls the game date, every N game days cuts to each viewpoint (UI hidden), saves a PNG through OBS, restores camera and UI, pauses an active recording around it; `frames.jsonl` manifest. |
-| `TimelapseTools.cs` | ~55 | `studio_timelapse` start / stop / status / capture. |
-| `StudioSettings.cs` | ~80 | Finds and reads the git-ignored `studio.local.json` written by `scripts/setup-obs.ps1` (OBS url, password, scene). |
 
 ### The tool surface (the mayor's office)
 
@@ -156,10 +150,7 @@ C#, .NET 10, `ModelContextProtocol` 2.4.0. Namespace `Cs1Mayor.Mcp`.
 | `city_district` (rename / specialize / release / state) | `POST /commands/district` |
 | `city_save` | `POST /commands/save` |
 | `city_request` | GET any endpoint; POST only the office allowlist |
-| `studio_status` · `studio_record` · `studio_marker` · `studio_screenshot` | OBS through obs-websocket (`ObsClient`), not the bridge |
-| `studio_camera_move` · `studio_viewpoint` | `POST /commands/set-camera` (many glide targets per shot; `hideUi`) |
-| `studio_timelapse` | `GET /state/summary` (game date), `POST /commands/set-camera`, OBS `SaveSourceScreenshot` / `PauseRecord` / `ResumeRecord` |
-| `studio_note` · `studio_journal` | The decision journal file (`Journal`); no bridge or OBS call of their own |
+| `city_activity` | The activity log file (`ActivityLog`); no bridge call of its own |
 
 The **build endpoints are deliberately not tools**: roads, zones, buildings,
 bulldozing, stop placement and district painting are spatial work the agent does with
@@ -193,12 +184,7 @@ And the bridge gains one named exception to the thread rule:
 | `BridgeClientTests.cs` | JSON parsing, error translation, unreachable-bridge handling |
 | `CityToolsTests.cs` | Every tool's endpoint mapping, limit clamping, request bodies, error shape |
 | `JsonUtilTests.cs` | The bridge's regex JSON reader, linked straight from `src/Support/` |
-| `ObsClientTests.cs` | `ObsClient` auth, request/response, errors, timeouts, reconnect, events; `StudioSettings` parsing |
-| `StudioToolsTests.cs` | The studio tools against a small model of OBS's recording state |
-| `JournalTests.cs` | Journal lines and context (game, recording, both offline), what gets journalled, result summaries, the note/journal tools |
-| `CinematicToolsTests.cs` | `CameraPath` math (easing, orbit, heading, yaw wrap) and the shot / viewpoint tools against a stub bridge |
-| `TimelapseTests.cs` | Capture cadence by game days, file layout and manifest, camera/UI restore, pause/resume around an active recording |
-| `StubObsServer.cs` | A raw-TCP obs-websocket v5 stub the OBS tests run against (no ASP.NET dependency) |
+| `ActivityLogTests.cs` | Log lines and game context (also with the game closed), what gets logged, result summaries, `city_activity` |
 
 The JSON reader is compiled into the test project from `src/Support/JsonUtil.cs`
 rather than copied, so the tests exercise the exact file the game loads.
@@ -216,7 +202,6 @@ game. That is what [`07-verification.md`](07-verification.md) is for.
 | `install-mod.ps1` | Build + copy, then prints the thread-proof instructions |
 | `start-game.ps1` | Launches Cities: Skylines and waits for the bridge to pass the thread gate |
 | `restart-game.ps1` | Saves the city, rebuilds and installs the mod, relaunches and resumes the save |
-| `setup-obs.ps1` | Enables obs-websocket, creates the "CS1 Mayor" scene and recording settings, writes `studio.local.json` |
 | `smoke-test-mcp.py` | Drives the MCP server over stdio exactly like a real client |
 | `game-ui.ps1` | OS-level mouse/keyboard injection into the game window |
 | `check-api-docs.py` | Fails if an endpoint in the API reference is missing from the route table |
@@ -233,7 +218,7 @@ game. That is what [`07-verification.md`](07-verification.md) is for.
 | Change how an anomaly is detected | the matching `src/State/*Collector.cs` |
 | Change a game mutation | the matching `src/Commands/*Commands.cs` |
 | Change how the agent is told to behave | `mcp-server/Program.cs` (the instructions) and `AGENTS.md` (the manual) |
-| Change how a session remembers things | `mcp-server/SessionStore.cs` (goal, journal, checklist) |
+| Change what gets logged | `mcp-server/ActivityLog.cs` (`JournalledTools`, `ShouldJournal`) |
 | Change how the agent waits or what a delta contains | `mcp-server/WaitEngine.cs` |
 | Change what the agent is forbidden to do | `mcp-server/PolicyGuard.cs` |
 | Add a capability a player has but the agent does not | [`12-command-surface.md`](12-command-surface.md) — pick a tier, then work the matrix row |

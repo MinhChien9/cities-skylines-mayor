@@ -9,21 +9,22 @@ using ModelContextProtocol.Server;
 namespace Cs1Mayor.Mcp;
 
 /// <summary>
-/// The decision journal: one JSON line per decision, note or action, the raw material the
-/// video scripts are written from (Phase 3). One file per MCP server session:
-/// <c>journal/&lt;yyyyMMdd-HHmmss&gt;.jsonl</c> at the repo root (git-ignored).
+/// The activity log: one JSON line per action that changed the city (builds, office
+/// levers, saves). One file per MCP server session:
+/// <c>activity/&lt;yyyyMMdd-HHmmss&gt;.jsonl</c> at the repo root (git-ignored).
 ///
-/// Every entry carries the wall time, the recording timecode (when OBS is recording) and
-/// the game date, population and cash, so an editor can find the moment in the video
-/// and the script can tell the story in numbers. The context reads are best effort with
-/// a short timeout: a closed game or OBS never blocks the mayor, the field is just null.
+/// Every entry carries the wall time and the game date, population and cash at that
+/// moment, the tool, its arguments and a compact result. It is the mayor's audit trail
+/// (<c>city_activity</c> reads it back after a context reset) and a plain file other tools
+/// can follow - the video studio (a separate repo) tails it to stamp each action with the
+/// recording timecode. The game read is best effort with a short timeout: a closed game
+/// never blocks the mayor, the field is just null.
 ///
-/// Entries come from <c>studio_note</c> and, automatically, from <see cref="ToolCallFilter"/>
-/// for every call of a tool that changes the city or the recording.
+/// Entries are written by <see cref="ToolCallFilter"/> after every mutating tool call.
 /// </summary>
-public sealed class Journal
+public sealed class ActivityLog
 {
-    /// <summary>Tools journalled automatically, and the entry kind each produces.</summary>
+    /// <summary>Tools logged automatically, and the entry kind each produces.</summary>
     public static readonly IReadOnlyDictionary<string, string> JournalledTools = new Dictionary<string, string>
     {
         ["city_build_road"] = "build",
@@ -43,9 +44,6 @@ public sealed class Journal
         ["city_district"] = "office",
         ["city_save"] = "office",
         ["city_request"] = "office",      // only its POSTs, see ShouldJournal
-        ["studio_record"] = "studio",
-        ["studio_marker"] = "marker",
-        ["studio_timelapse"] = "studio",
     };
 
     private const int MaxResultChars = 2000;
@@ -53,18 +51,16 @@ public sealed class Journal
         ["ok", "error", "errors", "hint", "cost", "segmentIds", "nodeIds", "buildingId", "position", "snappedTo", "name", "outputPath", "timecode", "count"];
 
     private readonly BridgeClient? _bridge;
-    private readonly ObsClient? _obs;
     private readonly Func<DateTimeOffset> _clock;
     private readonly TimeSpan _contextTimeout;
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private int _sequence;
 
-    public Journal(string directory, BridgeClient? bridge, ObsClient? obs,
+    public ActivityLog(string directory, BridgeClient? bridge,
         Func<DateTimeOffset>? clock = null, TimeSpan? contextTimeout = null)
     {
         Directory = directory;
         _bridge = bridge;
-        _obs = obs;
         _clock = clock ?? (() => DateTimeOffset.Now);
         _contextTimeout = contextTimeout ?? TimeSpan.FromSeconds(2);
         SessionId = _clock().ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
@@ -77,13 +73,13 @@ public sealed class Journal
     public string FilePath => Path.Combine(Directory, SessionId + ".jsonl");
 
     /// <summary>
-    /// The journal folder: <c>$CS1_JOURNAL_DIR</c>, else <c>journal/</c> in the repo root
+    /// The log folder: <c>$CS1_ACTIVITY_DIR</c>, else <c>activity/</c> in the repo root
     /// (the folder holding <c>Cs1Mayor.sln</c>, searched upwards from the current
-    /// directory and the server binary), else <c>journal/</c> in the current directory.
+    /// directory and the server binary), else <c>activity/</c> in the current directory.
     /// </summary>
     public static string DefaultDirectory()
     {
-        string? fromEnv = Environment.GetEnvironmentVariable("CS1_JOURNAL_DIR");
+        string? fromEnv = Environment.GetEnvironmentVariable("CS1_ACTIVITY_DIR");
         if (!string.IsNullOrWhiteSpace(fromEnv))
         {
             return fromEnv;
@@ -94,20 +90,18 @@ public sealed class Journal
             {
                 if (File.Exists(Path.Combine(dir.FullName, "Cs1Mayor.sln")))
                 {
-                    return Path.Combine(dir.FullName, "journal");
+                    return Path.Combine(dir.FullName, "activity");
                 }
             }
         }
-        return Path.Combine(Environment.CurrentDirectory, "journal");
+        return Path.Combine(Environment.CurrentDirectory, "activity");
     }
 
-    /// <summary>Appends one entry (with game and recording context) and returns it.</summary>
+    /// <summary>Appends one entry (with game context) and returns it.</summary>
     public async Task<JsonObject> WriteAsync(string kind, string? text = null, JsonObject? extra = null,
         CancellationToken cancellationToken = default)
     {
-        var game = GameContextAsync(cancellationToken);
-        var recording = RecordingContextAsync(cancellationToken);
-        await Task.WhenAll(game, recording).ConfigureAwait(false);
+        var game = await GameContextAsync(cancellationToken).ConfigureAwait(false);
 
         var entry = new JsonObject
         {
@@ -127,8 +121,7 @@ public sealed class Journal
                 entry[key] = value?.DeepClone();
             }
         }
-        entry["recording"] = recording.Result;
-        entry["game"] = game.Result;
+        entry["game"] = game;
 
         string line = entry.ToJsonString(new JsonSerializerOptions { WriteIndented = false }) + "\n";
         await _writeLock.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -169,7 +162,7 @@ public sealed class Journal
         return entries;
     }
 
-    /// <summary>Journals one tool call: the tool, its arguments and a compact result.</summary>
+    /// <summary>Logs one tool call: the tool, its arguments and a compact result.</summary>
     public Task<JsonObject> WriteToolCallAsync(string tool, IReadOnlyDictionary<string, JsonElement>? arguments,
         CallToolResult result, CancellationToken cancellationToken = default)
     {
@@ -188,11 +181,10 @@ public sealed class Journal
             ["args"] = args,
             ["result"] = Summarise(result),
         };
-        string? text = tool == "studio_marker" ? (string?)args["name"] : null;
-        return WriteAsync(kind, text, extra, cancellationToken);
+        return WriteAsync(kind, null, extra, cancellationToken);
     }
 
-    /// <summary>Whether a call of <paramref name="tool"/> with these arguments is journalled.</summary>
+    /// <summary>Whether a call of <paramref name="tool"/> with these arguments is logged.</summary>
     public static bool ShouldJournal(string tool, IReadOnlyDictionary<string, JsonElement>? arguments)
     {
         if (!JournalledTools.ContainsKey(tool))
@@ -219,8 +211,8 @@ public sealed class Journal
     }
 
     /// <summary>
-    /// The MCP call-tool filter that journals every <see cref="ShouldJournal"/> call after
-    /// it ran. Journal failures are swallowed: the journal must never break a tool.
+    /// The MCP call-tool filter that logs every <see cref="ShouldJournal"/> call after it
+    /// ran. Log failures are swallowed: the log must never break a tool.
     /// </summary>
     public static McpRequestHandler<CallToolRequestParams, CallToolResult> ToolCallFilter(
         McpRequestHandler<CallToolRequestParams, CallToolResult> next)
@@ -233,7 +225,7 @@ public sealed class Journal
                 ? new Dictionary<string, JsonElement>(args)
                 : null;
             if (tool is not null && ShouldJournal(tool, arguments)
-                && context.Services?.GetService<Journal>() is { } journal)
+                && context.Services?.GetService<ActivityLog>() is { } journal)
             {
                 try
                 {
@@ -241,7 +233,7 @@ public sealed class Journal
                 }
                 catch
                 {
-                    // never let the journal fail the mayor's action
+                    // never let the log fail the mayor's action
                 }
             }
             return result;
@@ -310,31 +302,6 @@ public sealed class Journal
                 ["population"] = summary?["population"]?.DeepClone(),
                 ["cash"] = summary?["cash"]?.DeepClone(),
                 ["paused"] = summary?["simulation"]?["paused"]?.DeepClone(),
-            };
-        }
-        catch (Exception)
-        {
-            return null;
-        }
-    }
-
-    private async Task<JsonNode?> RecordingContextAsync(CancellationToken cancellationToken)
-    {
-        if (_obs is null)
-        {
-            return null;
-        }
-        try
-        {
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeout.CancelAfter(_contextTimeout);
-            var status = await _obs.RequestAsync("GetRecordStatus", null, timeout.Token).ConfigureAwait(false);
-            bool active = (bool?)status?["outputActive"] ?? false;
-            return new JsonObject
-            {
-                ["active"] = active,
-                ["paused"] = (bool?)status?["outputPaused"] ?? false,
-                ["timecode"] = active ? (string?)status?["outputTimecode"] : null,
             };
         }
         catch (Exception)

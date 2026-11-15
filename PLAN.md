@@ -7,7 +7,7 @@ before the task's PR is merged.**
 ## Session protocol
 
 1. **Start:** read this file, then `CLAUDE.md` / `AGENTS.md`. Check "Environment state"
-   below against the machine (game running? bridge `/health`? OBS running?).
+   below against the machine (game running? bridge `/health`?).
 2. **Work:** take the next unchecked item of the current phase. One task = one branch =
    one PR (`.github/CONTRIBUTING.md`). Do not start a second task in the same PR.
 3. **End of task:** tick the boxes, record decisions and anything learned in the
@@ -15,23 +15,15 @@ before the task's PR is merged.**
 
 ## Goal
 
-Claude plays Cities: Skylines 1 on its own, the play is recorded, and the recording
-becomes short videos (TikTok/Shorts, 9:16) and longer episodes (YouTube, 16:9) with a
-script and a Vietnamese voice-over.
+An MCP server that lets an AI agent play Cities: Skylines 1 on its own: read every stat,
+pull every lever and build through the game's own tool code, without a cursor. This repo
+is the MCP server and the in-game bridge only.
 
-Deliverable chain:
-
-```
-play (MCP tools) ──▶ capture (OBS + decision journal + timelapse)
-                 ──▶ script (Claude, from the journal) ──▶ voice (TTS) + subtitles
-                 ──▶ edit (ffmpeg) ──▶ human review ──▶ publish
-```
-
-Platform guard-rail: YouTube does not monetize mass-produced, templated AI content
-(the "inauthentic content" policy, clarified July 2026). Every video needs a real
-storyline (the AI mayor's decisions and mistakes), variation between episodes, and a
-human review before publishing. Paradox permits monetized gameplay videos (re-check the
-current policy before monetizing).
+Recording the play and making videos from it (OBS, decision journal, timelapse, scripts,
+subtitles, edit, series) is the separate **cs1-video-making** repo (`../cs1-video-making`),
+which runs its own `cs1-studio` MCP server next to this one and follows this server's
+activity log (`activity/<session>.jsonl`). Phases 2–4 below were built here and moved
+there on 2026-11-15.
 
 ## Phases
 
@@ -47,68 +39,26 @@ current policy before monetizing).
 - [x] Claude Code wiring: `.mcp.json`, `CLAUDE.md` (#14)
 - [x] Live proof: street grid, services, 144 citizens, zero cursor clicks
 
-### Phase 2 — Studio: record the play ✅
+### Phases 2–4 — Studio, post-production, series ✅ (moved)
 
-Design (decided): a separate MCP tool class `StudioTools` in the same server, talking to
-OBS through obs-websocket v5 (a minimal `ClientWebSocket` client, no dependency), plus a
-session journal written by the server.
-
-- [x] **S1 OBS setup script** `scripts/setup-obs.ps1`: enable obs-websocket (port 4455,
-      auth on, generated password written to a git-ignored `studio.local.json`), create
-      scene "CS1 Mayor" with a Game Capture of `Cities.exe`, recording to
-      `D:\cs1-mayor-recordings`, NVENC H.264, hybrid MP4 (chapter markers)
-- [x] **S2 `ObsClient`** — Hello/Identify (SHA-256 auth), request/response, reconnect;
-      unit tests against a stub server
-- [x] **S3 `StudioTools`**: `studio_status`, `studio_record` (start/stop/pause/resume),
-      `studio_marker` (record chapter + journal entry), `studio_screenshot` (game
-      capture frame as an image — a cheap real render when the map is not enough)
-- [x] **S4 Decision journal**: `studio_note(text, kind)` + automatic entries for every
-      build tool call, each with wall time, recording timecode, game date, population,
-      cash → `journal/<session>.jsonl` (already git-ignored)
-- [x] **S5 Cinematic camera**: orbit / fly-over helper (glide via `city_camera`
-      `instant:false`), hide UI for B-roll, fixed timelapse viewpoints
-- [x] **S6 Timelapse capture**: snapshot from fixed viewpoints every N game days
-- [x] Live proof: one recorded session with markers and a journal (2026-11-15: 10 min
-      recording, 6 chapters, 35-entry journal, 23 timelapse frames, save
-      `mayor-live-proof-1`; the mayor found and fixed the town's sewage failure)
-
-### Phase 3 — Post-production ✅
-
-- [x] Script writer: journal + stats → hook (3 s), story beats, punchline; Vietnamese
-      (`post.brief` → Claude writes `episodes/<id>/script.vi.json` by
-      `docs/13-post-production.md` → `post.script` validates; pilot script e001 written)
-- [x] TTS: decide between VieNeu-TTS (local, open source, GPU/CPU) and ElevenLabs (paid);
-      default VieNeu for cost and licensing clarity (**VieNeu v3 Turbo**, `post.voice`;
-      e001 voiced: 9 lines, 35.4 s)
-- [x] Subtitles from the script with word timing (forced alignment), burned-in
-      (`post.subtitles`: faster-whisper word times matched to the script, ASS with a
-      spoken-word highlight; e001 aligned at 99 %, burn-in checked on a 9:16 test clip)
-- [x] `ffmpeg` assembly: cut by markers, speed ramps, timelapse, 9:16 crop + 16:9 master,
-      music bed, loudness normalisation (`post.edit`: voice-driven timeline, `chapter`
-      visuals, generated pad ducked under the voice, −14 LUFS; e001 renders in ~20 s)
-- [x] First pilot: a 60 s Short "AI làm thị trưởng — ngày 1" (40.9 s, 9:16 + 16:9
-      rendered; `episodes/e001-ngay-1/REVIEW.md` has the fact check, QA and the
-      **human review still to do before publishing**)
-
-### Phase 4 — Series ✅
-
-- [x] Episode format and naming, thumbnail generation, upload checklist (AI disclosure)
-      (`docs/14-series.md`; `post.thumbnail` → 1280×720 thumbnail + 9:16 cover; e001 done)
-- [x] Mayor persona and running storyline across episodes (`docs/15-mayor-persona.md`;
-      `episodes/series.json` + `post.series` context/check/publish; threads in scripts;
-      the brief carries the story so far; AGENTS.md start step 5)
-- [x] Map overlays for the story (land value, traffic, pollution) via `/state/map`
-      (`?overlay=landValue|pollution|noise|traffic`; `city_map overlay/saveAs` → stills)
+Built here, then moved to **cs1-video-making** (2026-11-15) with their decisions and
+lessons: OBS recording and markers, the decision journal, cinematic camera and timelapse,
+the `post/` pipeline (brief, script, TTS, subtitles, edit, thumbnails, series), and the
+episodes. What stayed: `city_camera` (including `hideUi`) and `city_map` overlays/`saveAs`.
 
 ### Phase 5 — Scenarios
 
-- [x] First scenario video: **City of Gardens** played from a new game, recorded, cut as a
-      silent Short (`episodes/e002-thanh-pho-vuon`: storyboard, script, SRT/TXT transcript,
-      renders, review sheet). Bridge: `/state/scenario` + `city_scenario` (win/lose progress,
-      next milestone, zone unlocks); locked prefabs and zones are refused. Post: `post.edit
-      --silent` (reading-paced captions, no audio track, SRT transcript)
+- [x] Play a scenario honestly: `/state/scenario` + `city_scenario` (win/lose progress, next
+      milestone, zone unlocks); locked prefabs and zones are refused (`UnlockCheck`).
+      First run: City of Gardens (video e002 in cs1-video-making)
 - [ ] Continue Peach Trees (save `peach-trees-03-end-video1`) toward 50k / happiness 85, or
       pick a scenario this install can win (check its goals against `/prefabs/buildings`)
+
+### Phase 6 — MCP only
+
+- [x] Split the video pipeline into `cs1-video-making`; replace the decision journal with
+      the neutral activity log (`activity/`, `city_activity`); `city_map saveAs` writes to
+      `$CS1_MAP_DIR` (default `maps/`)
 
 ### Backlog (not scheduled)
 
@@ -123,25 +73,12 @@ session journal written by the server.
 | 2026-11-11 | Cursor (CUA) for spatial work | Upstream API building skipped the game's rules |
 | 2026-11-15 | Back to API building, through the game's own tool code | CUA cost a screenshot per step and misread terrain; the real fault was bypassing the tools |
 | 2026-11-15 | `city_map` semantic raster instead of screenshots | Exact coordinates, independent of camera/fog/UI |
-| 2026-11-15 | OBS 33.0.1 portable + ffmpeg 8.1 (BtbN) on `D:\tools` | No winget on this LTSC machine; portable keeps config out of `%APPDATA%` |
-| 2026-11-15 | Studio inside the existing MCP server | One server for the agent; the journal can see build calls |
-| 2026-11-15 | `setup-obs.ps1` writes only the websocket config file; everything else goes over obs-websocket | OBS owns its scene/profile files and rewrites them on exit; the websocket keeps them consistent |
-| 2026-11-15 | Canvas 1920×1080 @ 60 fps, Simple output, quality "Small", Game Capture matched on the executable | Standard YouTube master; the capture survives a title change; the game is scaled to fit |
-| 2026-11-15 | Journal through one MCP call-tool filter, not per tool; dry runs and reads are not journalled, refusals are | One place covers every mutating tool; refusals and mistakes are story material |
+| 2026-11-15 | Activity log (formerly the journal) through one MCP call-tool filter, not per tool; dry runs and reads are not logged, refusals are | One place covers every mutating tool; refusals and mistakes are story material |
 | 2026-11-15 | Hide UI through the game's free-camera mode (`m_freeCamera`), not by hiding panels | The game's own hide-UI path also hides problem icons, names and borders, and the bridge console with them |
-| 2026-11-15 | Camera shots streamed from the MCP server as ~30 Hz glide targets | No new bridge code per move; the game's camera smoothing evens out the steps |
-| 2026-11-15 | Timelapse runs inside the MCP server, keyed on game days, and pauses an active recording around each capture (+0.7 s guard on each side) | Without the guard ~0.35 s of each cut leaked into the video (game capture lag); the guard measured clean |
-| 2026-11-15 | `studio_marker` waits out a short recording pause (up to 6 s) | A timelapse capture pauses the recording ~3 s; OBS refuses chapters while paused (code 702, found live) |
 | 2026-11-15 | Overlay tints scale to the highest value in view but with a floor per layer | Pure relative scaling made a town with land value 4 everywhere look vivid; the floor keeps weak signals faint and the maps truthful |
-| 2026-11-15 | The edit is voice-driven; visuals are fitted to each line | The voice is the story's clock; fitting clips (trim, or slow down) keeps lines tight without hand timing |
-| 2026-11-15 | Default music bed is a synthesised pad; game audio off by default | No licensing question for monetised uploads; the CS1 soundtrack is not ours. A licensed track can be passed with `--music` |
-| 2026-11-15 | Word timing from faster-whisper matched to the script, not a phoneme forced aligner | Whisper (CTranslate2, no torch) gives good word times on clean TTS audio; the script stays the on-screen text; a wav2vec2 aligner would pull torch in for little gain |
-| 2026-11-15 | TTS = VieNeu-TTS v3 Turbo, CPU/ONNX, voice Thiện Minh | Apache-2.0 incl. preset voices (monetised use allowed), offline, free, ~2× real time on CPU, no torch; ElevenLabs only if quality demands it |
-| 2026-11-15 | Claude writes the script in-session from a deterministic brief; code only builds the brief and validates | The writing is the judgement; the brief and validator keep it truthful (beats cite journal `seq`) and inside the 3 s / 60 s budgets |
 | 2026-11-15 | The bridge refuses milestone-locked prefabs and zones (`UnlockCheck`) | The game's tools do not check unlocks (the toolbar hides them); in a scenario a locked building is a cheat and a false win |
 | 2026-11-15 | Scenario goals read through the game's own trigger objects (`UnlockManager.m_scenarioTriggers`, `GetLocalizedProgress`) | Same numbers as the in-game goals tab; no reimplementation of the conditions |
-| 2026-11-15 | Silent cut: captions timed at 4 syllables/s + 0.8 s, no audio track | The user wanted no audio; platforms add music at upload; the validator times `"silent": true` scripts the same way |
-| 2026-11-15 | `ObsClient` never resends a request whose connection dropped after sending; it only retries a send that failed | Same rule as the mayor's: a lost answer does not mean OBS did not act (e.g. `StartRecord`) |
+| 2026-11-15 | Split: this repo is MCP only; recording and the video pipeline moved to `cs1-video-making` with its own `cs1-studio` MCP server. The mayor server keeps a neutral activity log the studio tails | The user wanted the MCP to stand alone. A file is the loosest coupling: the mayor knows nothing about OBS, the studio stamps each logged action with the recording timecode the moment it appears |
 
 Lessons recorded so far:
 
@@ -157,8 +94,6 @@ Lessons recorded so far:
 - `set-camera` without `y` aims at sea level; where the land is higher the game itself
   re-frames the camera (pitch 30 → 38 within 2 s). Saved viewpoints keep the read-back,
   terrain-adjusted `y`, so they hold steady.
-- At speed 3 one 5 s timelapse poll is ~3 game days: that is the finest cadence.
-- This ffmpeg build has no `-pattern_type glob`; use a concat list for image sequences.
 - `Building.Flags.Active` is derived by the game from `m_productionRate` (the player's
   on/off) *and* whether the building can run; writing the flag alone is undone next step.
   A powered, switched-on, problem-free building that stays inactive is broken, not off.
@@ -169,18 +104,10 @@ Lessons recorded so far:
   `WaterNotConnected` (a second drain pipe sat unconnected while 19 factories were
   abandoned for sewage). The bridge now snaps a network end that falls inside a building
   to that building's own compatible node.
-- An unprimed `small` Whisper pass over the final mix is a good intelligibility check
-  (93 % on e001) but mishears Vietnamese tones; it flags words for a human ear, it does
-  not prove a TTS error.
 - Roadside placement: when no zone slot fits (any building deeper than the 4-cell zone
   block: schools, fire stations, cemeteries), `BuildingTool` still accepts the snapped
   spot if `BuildingTool.CheckSpace` passes. The bridge skipped that step and refused every
   5+-deep service with `GridNotFound` (found in free play 2026-11-15, fixed in #35).
-- OBS writes two chapters of its own into every hybrid MP4: "Start" at 0 and a trailing
-  "Dummy"; post-production must skip them. `StopRecord` answers before the output
-  stops, so `studio_record stop` polls until it is inactive.
-- OBS 33.0.1 ships obs-websocket 5.7.6; `CreateRecordChapter` is available (S3 markers).
-  `SetInputMute` takes `inputMuted`, not `inputMute`.
 - A road built over a power line's **pylon** makes the game delete that line (the
   player's tool only shows a red highlight); crossing the wire between pylons is fine.
   Building Central Avenue over a pylon cut the sewage outlet's power and every service in
@@ -328,18 +255,11 @@ Lessons recorded so far:
   refused (`ObjectCollision`); three shorter legs built.
 - A pipe started at a point shared with a road snapped to the road's node and was refused;
   start on the pipe's segment instead (`snappedTo: segment`).
-- The game runs windowed at 1600×900, so the 1080p capture is upscaled; a 1920×1080
-  game window would be sharper. The bridge's debug console overlay shows in the capture
-  (S5 hides UI for B-roll).
 
 ## Environment state (update at the end of every task)
 
 | Item | State |
 |---|---|
 | Game | Epic, `D:\Epic Games\CitiesSkylines`. **Current: scenario City of Gardens** (Peach Trees, 6,665 people, happiness 82, game 2027-08, save `peach-trees-03-end-video1`; 2 of 9 tiles; win 1/4: parks done, organic impossible on this install). Cheat mods are **off** now. Earlier free-play city: map "Cannes". **50k free-play run reached 50,259 citizens** (2026-11-15, game 2056-06, save `mayor-50k-reached`), then 53.4k (game 2064-11, save `mayor-50k-34`). 5 of 9 tiles owned (start, south, far south, east, south-east): west/north/south/far-south districts, office park, east office district; nuclear + 2 coal + 15 turbines; 5 coastal pumping stations north of all discharge, 6 treatment plants on the south shore; incinerators in the NE, south and east; 2 bus lines; a highway exit/entrance at Lake Avenue. Taxes 9%, electricity 100%, healthcare 130%. Standing issues: ~250 dead awaiting pickup, crime, 15% unemployment (over-educated workforce). **Built-in cheat mods Unlimited Money and Unlock All are enabled**; the bridge checks real cash anyway |
-| Bridge | Installed from branch `scenario-first-video` (scenario read, unlock checks), `runsOnSimulationThread: true` |
-| MCP | Debug and Release rebuilt with `city_scenario`. A running server locks `bin/Release/net10.0/Cs1Mayor.Mcp.dll`; renaming the locked DLL aside lets the build replace it, then `/mcp` reconnect picks it up |
-| OBS | 33.0.1 portable at `D:\tools\obs-studio`, configured by `scripts/setup-obs.ps1`: websocket 4455 (password in `studio.local.json`), scene "CS1 Mayor", recordings in `D:\cs1-mayor-recordings` |
-| ffmpeg | 8.1 at `D:\tools\ffmpeg\bin` (NVENC available), not on PATH; no `-pattern_type glob` |
-| Post venv | `D:\tools\venv-post` (Python 3.11, `vieneu` 3.8.4, `faster-whisper` 1.2.1); model cache `HF_HOME=D:\tools\hf-cache` |
-| GPU | RTX 2060 (Turing: NVENC H.264 / HEVC; no AV1 encode) |
+| Bridge | Installed from branch `mcp-only` (scenario read, unlock checks), `runsOnSimulationThread: true` |
+| MCP | Debug and Release rebuilt: city and build tools, `city_scenario`, `city_activity` (no studio tools since the split). A running server locks `bin/Release/net10.0/Cs1Mayor.Mcp.dll`; renaming the locked DLL aside lets the build replace it, then `/mcp` reconnect picks it up |

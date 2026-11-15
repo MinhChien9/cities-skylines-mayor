@@ -62,15 +62,7 @@ EXPECTED_TOOLS = {
     "city_district",
     "city_save",
     "city_request",
-    "studio_status",
-    "studio_record",
-    "studio_marker",
-    "studio_screenshot",
-    "studio_note",
-    "studio_journal",
-    "studio_camera_move",
-    "studio_viewpoint",
-    "studio_timelapse",
+    "city_activity",
 }
 
 
@@ -201,6 +193,10 @@ def main():
         missing = EXPECTED_TOOLS - names
         if missing:
             failures.append(f"missing tools: {sorted(missing)}")
+        foreign = sorted(n for n in names if not n.startswith("city_"))
+        if foreign:
+            # Recording and video tools live in the separate cs1-video-making repo.
+            failures.append(f"non-city tools on the mayor server: {foreign}")
         for tool in tools:
             if not tool.get("description"):
                 failures.append(f"tool {tool.get('name')} has no description")
