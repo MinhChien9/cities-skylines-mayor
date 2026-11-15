@@ -47,6 +47,58 @@ namespace SkylinesAgentBridge.State
             public int OutputMax;
             public string Problems;
             public int Severity;
+            public int ServiceValue = -1;
+            public int CargoRate;
+        }
+
+        /// <summary>
+        /// <c>IndustrialBuildingAI.CalculateServiceValue</c>, the service half of an industrial
+        /// building's level-up (under 30 = level 1, under 60 = level 2, else level 3; the
+        /// building stays at the lower of this and its workers' education level). Cargo
+        /// transport counts in full, police, health, death care and post a fifth, fire a half,
+        /// public transport a third, schools and entertainment an eighth; noise and abandonment
+        /// subtract a seventh, ground pollution a sixth.
+        /// </summary>
+        private static int ServiceValue(ref Building data, out int cargoRate)
+        {
+            ushort[] res;
+            int i;
+            Singleton<ImmaterialResourceManager>.instance.CheckLocalResources(data.m_position, out res, out i);
+            cargoRate = res[i + (int)ImmaterialResourceManager.Resource.CargoTransport];
+            int n = 0;
+            n += Effect(res[i + (int)ImmaterialResourceManager.Resource.PublicTransport]) / 3;
+            n += Effect(res[i + (int)ImmaterialResourceManager.Resource.PoliceDepartment]) / 5;
+            n += Effect(res[i + (int)ImmaterialResourceManager.Resource.HealthCare]) / 5;
+            n += Effect(res[i + (int)ImmaterialResourceManager.Resource.DeathCare]) / 5;
+            n += Effect(res[i + (int)ImmaterialResourceManager.Resource.PostService]) / 5;
+            n += Effect(res[i + (int)ImmaterialResourceManager.Resource.FireDepartment]) / 2;
+            n += Effect(res[i + (int)ImmaterialResourceManager.Resource.Entertainment]) / 8;
+            n += Effect(res[i + (int)ImmaterialResourceManager.Resource.EducationElementary]) / 8;
+            n += Effect(res[i + (int)ImmaterialResourceManager.Resource.EducationHighSchool]) / 8;
+            n += Effect(res[i + (int)ImmaterialResourceManager.Resource.EducationUniversity]) / 8;
+            n += Effect(cargoRate);
+            n += ImmaterialResourceManager.CalculateResourceEffect(res[i + (int)ImmaterialResourceManager.Resource.RadioCoverage], 50, 100, 80, 100) / 5;
+            n += ImmaterialResourceManager.CalculateResourceEffect(res[i + (int)ImmaterialResourceManager.Resource.FirewatchCoverage], 100, 1000, 0, 100) / 5;
+            n += ImmaterialResourceManager.CalculateResourceEffect(res[i + (int)ImmaterialResourceManager.Resource.DisasterCoverage], 50, 100, 80, 100) / 5;
+            n -= Effect(res[i + (int)ImmaterialResourceManager.Resource.NoisePollution]) / 7;
+            n -= Effect(res[i + (int)ImmaterialResourceManager.Resource.Abandonment]) / 7;
+            byte ground;
+            Singleton<NaturalResourceManager>.instance.CheckPollution(data.m_position, out ground);
+            return n - ImmaterialResourceManager.CalculateResourceEffect(ground, 50, 255, 50, 100) / 6;
+        }
+
+        /// <summary>
+        /// The game's "too few services" test (<c>IndustrialBuildingAI</c>): a level 2 factory
+        /// needs a service value of 20, a level 3 factory 40.
+        /// </summary>
+        private static bool TooFewServices(Row row)
+        {
+            return row.ServiceValue >= 0 && ((row.Level == 2 && row.ServiceValue < 20) || (row.Level == 3 && row.ServiceValue < 40));
+        }
+
+        private static int Effect(int rate)
+        {
+            return ImmaterialResourceManager.CalculateResourceEffect(rate, 100, 500, 50, 100);
         }
 
         public static CommandResult Build(int limit)
@@ -57,6 +109,11 @@ namespace SkylinesAgentBridge.State
             int industrial = 0, extractors = 0, commercial = 0, activeIndustrial = 0;
             long inStock = 0, inCap = 0, outStock = 0, outCap = 0, goodsStock = 0, goodsCap = 0;
             int noResources = 0, noPlaceForGoods = 0, noWorkers = 0, noEducated = 0, noGoods = 0, shopNoCustomers = 0;
+            int[] serviceLevels = new int[3];
+            int noCargo = 0;
+            int tooFewPredicted = 0;
+            int tooFewNow = 0;
+            long serviceSum = 0;
 
             for (int i = 1; i < buffer.Length; i++)
             {
@@ -113,6 +170,12 @@ namespace SkylinesAgentBridge.State
                         }
                     }
                     int capacity = factory.CalculateProductionCapacity((ItemClass.Level)buffer[i].m_level, new Randomizer(id), buffer[i].Width, buffer[i].Length);
+                    row.ServiceValue = ServiceValue(ref buffer[i], out row.CargoRate);
+                    serviceSum += row.ServiceValue;
+                    serviceLevels[row.ServiceValue < 30 ? 0 : (row.ServiceValue < 60 ? 1 : 2)]++;
+                    if (row.CargoRate == 0) noCargo++;
+                    if (TooFewServices(row)) tooFewPredicted++;
+                    if (buffer[i].m_serviceProblemTimer > 0) tooFewNow++;
                     row.OutputReason = FactoryOutput(info.m_class.m_subService).ToString();
                     row.OutputAmount = buffer[i].m_customBuffer2;
                     row.OutputMax = Mathf.Max(capacity * 500, 16000);
@@ -177,7 +240,12 @@ namespace SkylinesAgentBridge.State
                 .Append(",\"problems\":{\"NoResources\":").Append(noResources)
                 .Append(",\"NoPlaceforGoods\":").Append(noPlaceForGoods)
                 .Append(",\"NoWorkers\":").Append(noWorkers)
-                .Append(",\"NoEducatedWorkers\":").Append(noEducated).Append("}}");
+                .Append(",\"NoEducatedWorkers\":").Append(noEducated).Append('}')
+                .Append(",\"levelUpServices\":{\"averageServiceValue\":").Append(industrial == 0 ? 0 : (int)(serviceSum / industrial))
+                .Append(",\"factoriesByServiceLevel\":{\"level1\":").Append(serviceLevels[0]).Append(",\"level2\":").Append(serviceLevels[1]).Append(",\"level3\":").Append(serviceLevels[2]).Append('}')
+                .Append(",\"factoriesWithoutCargo\":").Append(noCargo)
+                .Append(",\"tooFewServices\":").Append(tooFewPredicted)
+                .Append(",\"tooFewServicesByGame\":").Append(tooFewNow).Append("}}");
             json.Append(",\"commercial\":{\"shops\":").Append(commercial)
                 .Append(",\"goodsStock\":").Append(goodsStock).Append(",\"goodsCapacity\":").Append(goodsCap)
                 .Append(",\"goodsFillPercent\":").Append(Percent(goodsStock, goodsCap))
@@ -185,7 +253,7 @@ namespace SkylinesAgentBridge.State
                 .Append(",\"NoCustomers\":").Append(shopNoCustomers).Append("}}");
             int producers = industrial + extractors;
             json.Append(",\"industryPerShop\":").Append(JsonUtil.Number(commercial == 0 ? 0f : (float)producers / commercial));
-            json.Append(",\"diagnosis\":[").Append(Diagnosis(producers, commercial, noGoods, noResources, noPlaceForGoods, noWorkers + noEducated)).Append(']');
+            json.Append(",\"diagnosis\":[").Append(Diagnosis(producers, commercial, noGoods, noResources, noPlaceForGoods, noWorkers + noEducated, industrial, noCargo, serviceLevels[0])).Append(']');
 
             json.Append(",\"buildingsWithTrouble\":").Append(rows.Count).Append(",\"buildings\":[");
             for (int r = 0; r < rows.Count && r < limit; r++)
@@ -201,6 +269,10 @@ namespace SkylinesAgentBridge.State
                     .Append(",\"z\":").Append(Mathf.RoundToInt(row.Position.z))
                     .Append(",\"active\":").Append(JsonUtil.Bool(row.Active))
                     .Append(",\"productionRate\":").Append(row.ProductionRate);
+                if (row.ServiceValue >= 0)
+                {
+                    json.Append(",\"serviceValue\":").Append(row.ServiceValue).Append(",\"cargoRate\":").Append(row.CargoRate);
+                }
                 if (row.InputReason != null)
                 {
                     json.Append(",\"input\":{\"material\":\"").Append(row.InputReason).Append("\",\"amount\":").Append(row.InputAmount)
@@ -234,6 +306,7 @@ namespace SkylinesAgentBridge.State
         private static int Severity(Row row, Notification.ProblemStruct problems)
         {
             int s = 0;
+            if (row.Kind == "factory" && TooFewServices(row)) s += 30;
             if (Has(problems, Notification.Problem1.NoGoods) || Has(problems, Notification.Problem1.NoResources)) s += 100;
             if (Has(problems, Notification.Problem1.NoPlaceforGoods)) s += 80;
             if (row.InputMax > 0 && row.InputAmount * 10 < row.InputMax) s += 50 - Percent(row.InputAmount, row.InputMax) * 5;
@@ -241,9 +314,15 @@ namespace SkylinesAgentBridge.State
             return s;
         }
 
-        private static string Diagnosis(int producers, int shops, int noGoods, int noResources, int noPlace, int noWorkers)
+        private static string Diagnosis(int producers, int shops, int noGoods, int noResources, int noPlace, int noWorkers,
+            int factories, int noCargo, int serviceLevel1)
         {
             List<string> lines = new List<string>();
+            if (factories > 0 && serviceLevel1 * 2 > factories && noCargo * 2 > factories)
+            {
+                lines.Add(serviceLevel1 + " of " + factories + " factories score below 30 for services (level 1) and " + noCargo +
+                    " have no cargo coverage. Cargo counts 5x police in the level-up score: a Cargo Train Terminal or Cargo Harbor near the industry, connected to the outside, lifts them (city_map overlay=cargo).");
+            }
             if (shops > 0 && noGoods * 20 > shops)
             {
                 lines.Add(noGoods + " of " + shops + " shops have no goods: industry makes too little or cannot deliver. Industry per shop is " +

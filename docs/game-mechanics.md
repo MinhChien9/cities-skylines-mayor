@@ -221,7 +221,7 @@ CommercialHigh=5, Industrial=6, Office=7, None=15`
 > land value. If a residential block refuses to level up, fix **schools** first, then
 > **land value**.
 
-### Service-coverage score weights **[W]**
+### Service-coverage score weights **[W]**, industrial **[C]**
 
 | Service | Industrial | Office |
 |---|---|---|
@@ -239,6 +239,20 @@ CommercialHigh=5, Industrial=6, Office=7, None=15`
 
 **Cargo transport is worth 5× police and 2× fire.** Give every industrial block a cargo
 route before adding more fire/police.
+
+Industrial, verified from `IndustrialBuildingAI.CalculateServiceValue`: each local rate goes
+through `CalculateResourceEffect(rate, 100, 500, 50, 100)` (50 at rate 100, 100 at 500) and is
+weighted as above. Post counts like police (a fifth). Radio, firewatch and disaster coverage
+add up to 20 each, and ground pollution subtracts up to 16. The total sets the service level:
+**under 30 → level 1, under 60 → level 2, otherwise level 3**. A building reaches the lower of
+this and its workers' education level. A level 2 building is flagged for too few services
+below 20 and a level 3 building below 40 (`m_level` is 0-based in the code). `city_industry.levelUpServices` computes the score for every factory.
+
+**Cargo is not a line.** CS1 has no player-made cargo lines. A Cargo Train Terminal, Cargo
+Harbor or cargo airport runs on its own once a rail, sea or air connection leads to the
+outside. It spreads `CargoTransport` coverage around itself (`city_map overlay=cargo`) and
+takes truck traffic off the roads. Place one with `city_place_building` and connect its tracks
+with `city_build_road prefab="Train Track"`.
 
 ### Pollution per building level **[C]** — `GetPollutionRates`
 

@@ -121,7 +121,7 @@ public sealed class CityTools
         return await Post("/commands/unlock-area", body, cancellationToken).ConfigureAwait(false);
     }
 
-    [System.ComponentModel.Description("GET /state/industry. Is the goods chain flowing? Factories' input stock (raw materials) and output stock (goods) against the game's own capacities, shops' goods stock, the supply problems (NoResources, NoPlaceforGoods, NoGoods, NoWorkers), industryPerShop, a short diagnosis, and the buildings in trouble worst first (id, position, input/output material, amount, max, percent). Read it when shops report NoGoods or factories NoResources, and before rezoning industry to offices.")]
+    [System.ComponentModel.Description("GET /state/industry. Is the goods chain flowing? Factories' input stock (raw materials) and output stock (goods) against the game's own capacities, shops' goods stock, the supply problems (NoResources, NoPlaceforGoods, NoGoods, NoWorkers), industryPerShop, levelUpServices (each factory's service score with the game's formula: under 30 = level 1, under 60 = level 2; cargo coverage counts 5x police; factoriesWithoutCargo), a short diagnosis, and the buildings in trouble worst first (id, position, input/output material, amount, max, percent). Read it when shops report NoGoods or factories NoResources, and before rezoning industry to offices.")]
     [McpServerTool(Name = "city_industry", Title = "Industry & Goods Chain")]
     public async Task<JsonNode?> CityIndustry(
         [System.ComponentModel.Description("Maximum number of troubled buildings to list (default 50).")] int limit = 50,
