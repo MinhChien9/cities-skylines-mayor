@@ -231,6 +231,10 @@ Lessons recorded so far:
   coal plants and turbines (no water needed) carry spare capacity, and a pulse check
   that warns on any utility above 85%. The game cleared about half the abandoned
   buildings by itself within months; bulldozing the rest speeds regrowth.
+- The reported demand includes the tax/policy offset and can go negative. A city taxed
+  at 10% since 7k people stalled at 36.5k with R −1 once its homes had levelled up (9%
+  ceilings); back to 9%. Garbage service is distance-bound: incinerators 2.5 km away
+  left 168 south-tile buildings abandoned until incinerators were built there.
 - In this build the Water Pumping Station (`Water Intake`) is `ShorelineOrGround` and the
   `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
   pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the
