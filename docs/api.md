@@ -381,11 +381,16 @@ control points the tool would make:
   and power lines are exempt. `hint` says what to change.
 - **Collisions are named.** On `ObjectCollision` each leg lists what the game's test pass
   marked as colliding (what the player's tool paints red):
-  `collidesWith: [{kind: "segment"|"building", id, prefab, reason, atNode?}]`. `reason` is
+  `collidesWith: [{kind: "segment"|"building", id, prefab, reason, blocking, atNode?}]`. `reason` is
   `narrowAngle` for a segment at the leg's own start or end node: the game refuses a new
   segment that leaves a node within about 41° of an existing one (`NetTool.CanAddSegment`).
   It is `cannotSplit` for the segment the leg starts or ends on, when the game will not
   split it there, and `overlap` for anything else. The first two get their own `hint`.
+  `blocking` uses the game's own rule: roads, pipes, service buildings, historical,
+  untouchable and burning objects block. Grown buildings and power lines do not block; the
+  build removes them. With no angle or split problem, the hint names the first blocking
+  object. Length alone never blocks, because `CreateNode` places the pylons or nodes of a
+  long line itself: a 420 m power line over open land builds in one leg (#66).
 - **Money.** `cost` is the construction cost in ₡ (from the test pass); the build pass
   charges it, and `moneyBefore` / `moneyAfter` show the treasury. The bridge checks the
   **real** cash (`NotEnoughMoney` when the cost exceeds it) for roads and buildings even

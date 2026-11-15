@@ -9,6 +9,9 @@ patch = fixes). Every PR adds its line under `[Unreleased]` with the issue numbe
 ## [Unreleased]
 
 ### Fixed
+- `build-road` marks each collision `blocking` (the game's own rule; grown buildings and power
+  lines are removed, not blocking), and the hint names the first blocker. A long power line
+  is refused for a road or turbine its pylons would hit, never for its length (#66).
 - `build-road` names what a refused leg collides with (`collidesWith`: segment or building, id,
   prefab, `reason` `narrowAngle` / `cannotSplit` / `overlap`) and gives a matching hint. The
   pipe in #65 snapped to its own node, not a road's. The game refused it for leaving that node
