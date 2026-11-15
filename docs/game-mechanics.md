@@ -1,11 +1,9 @@
-# CS1 Game Mechanics — Knowledge Base
+# Game mechanics
 
-Everything here was verified against the actual game assemblies
-(`D:\Epic Games\CitiesSkylines\Cities_Data\Managed\Assembly-CSharp.dll`, decompiled with
-ILSpy) or against the official wiki. Numbers marked **[C]** come from the code;
-numbers marked **[W]** come from the wiki.
-
-This is the reference the agent should reason from. It is deliberately numeric.
+How the city actually works, in numbers, for the agent to reason from. **[C]** marks numbers
+read from the game's code (`<game>\Cities_Data\Managed\Assembly-CSharp.dll`, decompiled);
+**[W]** marks numbers taken from the official wiki. If you find something new or wrong, open a
+*Game finding* issue rather than editing in a guess.
 
 ---
 
@@ -328,6 +326,23 @@ criminal: crime = min(base<<1, max) << 1
 
 **Health-care need per age phase:** Child 150 · Teen 30 · Young 60 · Adult 100–125 · Senior 200.
 **Death-care need:** Child/Teen 0 · Young 10–20 · Adult 50–80 · Senior 100–160.
+
+**What raises happiness** **[C]**, from `ResidentAI.UpdateHealth` / `UpdateWellbeing`
+and `ResidentialBuildingAI.SimulationStepActive`:
+
+| Lever | Effect |
+|---|---|
+| Entertainment (parks, plazas) near home | Wellbeing up to **+60 local, +40 city-wide**: the largest single term |
+| Police, fire, education, public transport near home | Wellbeing up to +40 local, +20 city-wide each |
+| Health care near home | Health up to +40 local, +20 city-wide |
+| Power, water, sewage, low garbage | Health +12 each (water, sewage, garbage); wellbeing +12 (power) |
+| Mail service, heating, library | Wellbeing up to +15, +5, +5 |
+| Residential tax below `8 − wealth` | Wellbeing +1 per point below; above `11 − wealth` it costs 1 per point |
+| Noise, ground and water pollution, crime | Health penalties of up to 100 · level / 255 (noise, pollution) and up to 15 (crime) |
+| Any problem icon on the home | Building happiness −25%; a major problem −50% |
+
+In the City of Gardens scenario, ten cheap parks inside the housing took scenario happiness
+from 58 to 83 in three game weeks.
 
 **CS1 has no CS2-style "approval rating" panel.** The analogue is average happiness
 (`District.m_finalHappiness`).

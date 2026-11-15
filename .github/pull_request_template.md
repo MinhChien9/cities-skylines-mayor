@@ -28,7 +28,7 @@ CLOSED!_
 For bridge changes, state that you ran:
   - scripts/build-mod.ps1 -NoInstall   (compiles against the real game assemblies)
   - GET /debug/threads                 (runsOnSimulationThread: true)
-  - docs/07-verification.md            (the dry-run / read-back / save checks)
+  - docs/verification.md            (the dry-run / read-back / save checks)
 
 For MCP-only changes, state that you ran:
   - dotnet build ./mcp-server/Cs1Mayor.Mcp.csproj -c Release

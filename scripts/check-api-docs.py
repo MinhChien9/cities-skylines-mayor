@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check that the documented bridge endpoints match the route table in the source.
 
-The API reference (docs/04-api-reference.md) and the route table
+The API reference (docs/api.md) and the route table
 (src/Bridge/ApiRoutes.cs) must agree. It is easy for one to gain an endpoint and the
 other to miss it, and a stale API reference is worse than none.
 
@@ -18,7 +18,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DOCS = os.path.join(ROOT, "docs", "04-api-reference.md")
+DOCS = os.path.join(ROOT, "docs", "api.md")
 ROUTES = os.path.join(ROOT, "src", "Bridge", "ApiRoutes.cs")
 
 # Endpoints that are part of the protocol rather than the documented API.
@@ -76,7 +76,7 @@ def main() -> int:
 
     if failed:
         print("", file=sys.stderr)
-        print("Update docs/04-api-reference.md and src/Bridge/ApiRoutes.cs so they agree.", file=sys.stderr)
+        print("Update docs/api.md and src/Bridge/ApiRoutes.cs so they agree.", file=sys.stderr)
         return 1
 
     print(f"API reference and route table agree ({len(routes)} endpoints).")

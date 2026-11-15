@@ -64,7 +64,7 @@ namespace SkylinesAgentBridge.State
         /// <summary>
         /// Why demand is what it is: the published values are the smoothed demand plus a
         /// tax/policy offset (ZoneManager: m_xDemand = m_actualXDemand + Calculate*Offset),
-        /// and the smoothed demand is driven by the counts below (docs/05-game-mechanics.md).
+        /// and the smoothed demand is driven by the counts below (docs/game-mechanics.md).
         /// </summary>
         private static void AppendDemandInputs(StringBuilder json, ZoneManager zones)
         {

@@ -60,4 +60,4 @@ jobs:
 
       # The mod itself is built locally, against a real installation:
       #   powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-mod.ps1
-      # See docs/02-getting-started.md.
+      # See docs/getting-started.md.

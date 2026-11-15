@@ -60,7 +60,7 @@ const string Instructions = """
     - city_camera frames the game camera on a world point (for the viewer, or for a
       screenshot); city_project converts a world point to desktop pixels if a cursor is
       ever needed.
-    - city_request GETs any bridge endpoint (docs/04-api-reference.md has the list) and
+    - city_request GETs any bridge endpoint (docs/api.md has the list) and
       POSTs to the endpoints that have a dedicated tool.
 
     city_activity reads back what you changed this session (every build and office

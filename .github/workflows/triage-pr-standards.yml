@@ -52,5 +52,5 @@ jobs:
             const needsIssue = !isDocs && !linksIssue;
             await setLabel('needs:issue', needsIssue);
             if (needsIssue) {
-              await commentOnce('issue', 'Work starts from an issue in this repo. Add `Closes #<number>` to the description, or open the issue first (`docs/13-development-process.md`).');
+              await commentOnce('issue', 'Work starts from an issue in this repo. Add `Closes #<number>` to the description, or open the issue first (`docs/development.md`).');
             }

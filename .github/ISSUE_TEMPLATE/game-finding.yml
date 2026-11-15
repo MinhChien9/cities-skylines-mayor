@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Findings used to go straight into PLAN.md's lessons. Now they start here: the issue holds the
-        evidence, and the PR that closes it updates the tool, docs/05-game-mechanics.md or the lessons list.
+        evidence, and the PR that closes it updates the tool, docs/game-mechanics.md or the lessons list.
 
   - type: textarea
     id: observed

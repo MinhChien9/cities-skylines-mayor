@@ -8,7 +8,7 @@ body:
     attributes:
       label: Not requested before
       options:
-        - label: I searched the open and closed issues and docs/12-command-surface.md.
+        - label: I searched the open and closed issues, docs/tools.md and docs/game-api-notes.md.
           required: true
 
   - type: textarea
