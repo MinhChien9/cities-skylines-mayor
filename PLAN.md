@@ -264,8 +264,8 @@ Lessons recorded so far:
 
 | Item | State |
 |---|---|
-| Game | Epic, `D:\Epic Games\CitiesSkylines`, map "Cannes". **50k free-play run** (2026-11-15, game date 2035): population ~12k, a grid from x −718 to 762 and z −745 to 375 (west, north and industrial districts, Central/West/Industry/North/Park/Hill avenues); nuclear + 3 coal plants (electricity budget 60%), 3 drain pipes and 2 pumping stations on the west coast, landfills + 2 incinerators in the utility corner (x 522-762, z -25..55), university, 2 high schools. Taxes 10%. **Built-in cheat mods Unlimited Money and Unlock All are enabled** (see `city_capabilities.cheatMods`); the bridge checks real cash anyway. Saves `mayor-50k-NN` |
-| Bridge | Installed from `main` (#44), `runsOnSimulationThread: true` |
+| Game | Epic, `D:\Epic Games\CitiesSkylines`, map "Cannes". **50k free-play run reached 50,259 citizens** (2026-11-15, game date 2056-06, save `mayor-50k-reached`). 3 of 9 tiles owned (start, south, east + south-east): west/north/south/far-south districts, office park, east office district; nuclear + 2 coal + 15 turbines; 5 coastal pumping stations north of all discharge, 6 treatment plants on the south shore; incinerators in the NE, south and east; 2 bus lines; a highway exit/entrance at Lake Avenue. Taxes 9%, electricity 100%, healthcare 130%. Standing issues: ~250 dead awaiting pickup, crime, 15% unemployment (over-educated workforce). **Built-in cheat mods Unlimited Money and Unlock All are enabled**; the bridge checks real cash anyway |
+| Bridge | Installed from `main` (#54), `runsOnSimulationThread: true` |
 | MCP | Debug build current with `main`. The Release build in `bin/Release` is held by this Claude Code session's running server: rebuild it after the session ends (or `/mcp` reconnect) to get the studio tools in Claude Code |
 | OBS | 33.0.1 portable at `D:\tools\obs-studio`, configured by `scripts/setup-obs.ps1`: websocket 4455 (password in `studio.local.json`), scene "CS1 Mayor", recordings in `D:\cs1-mayor-recordings` |
 | ffmpeg | 8.1 at `D:\tools\ffmpeg\bin` (NVENC available), not on PATH; no `-pattern_type glob` |
