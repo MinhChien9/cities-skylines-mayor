@@ -839,6 +839,8 @@ namespace SkylinesAgentBridge.Commands
             BuildingManager bm = Singleton<BuildingManager>.instance;
             StringBuilder sb = new StringBuilder(",\"collidesWith\":[");
             int count = 0;
+            int blockers = 0;
+            string firstBlocker = null;
             if (segmentBits != null)
             {
                 for (int w = 0; w < segmentBits.Length && count < MaxReported; w++)
@@ -874,10 +876,20 @@ namespace SkylinesAgentBridge.Commands
                             collisionHint = "The game cannot split segment " + id + " at that point: it is too close to one of the segment's nodes, or the new segment meets it at too narrow an angle. " +
                                 "Start on the segment's node instead, further along it, or at a wider angle.";
                         }
+                        bool blocking = atNode != 0 || split || IsBlockingSegment(s);
+                        if (atNode == 0 && !split && blocking)
+                        {
+                            blockers++;
+                            if (firstBlocker == null)
+                            {
+                                firstBlocker = (s.Info != null ? s.Info.name : "segment") + " (segment " + id + ")";
+                            }
+                        }
                         if (count++ > 0) sb.Append(',');
                         sb.Append("{\"kind\":\"segment\",\"id\":").Append(id)
                             .Append(",\"prefab\":\"").Append(JsonUtil.Escape(s.Info != null ? s.Info.name : "")).Append('"')
-                            .Append(",\"reason\":\"").Append(atNode != 0 ? "narrowAngle" : (split ? "cannotSplit" : "overlap")).Append('"');
+                            .Append(",\"reason\":\"").Append(atNode != 0 ? "narrowAngle" : (split ? "cannotSplit" : "overlap")).Append('"')
+                            .Append(",\"blocking\":").Append(JsonUtil.Bool(blocking));
                         if (atNode != 0)
                         {
                             sb.Append(",\"atNode\":").Append(atNode);
@@ -911,16 +923,72 @@ namespace SkylinesAgentBridge.Commands
                         }
                         BuildingInfo bi = bm.m_buildings.m_buffer[id].Info;
                         Vector3 p = bm.m_buildings.m_buffer[id].m_position;
+                        bool blocking = IsBlockingBuilding(bi, ref bm.m_buildings.m_buffer[id]);
+                        if (blocking)
+                        {
+                            blockers++;
+                            if (firstBlocker == null)
+                            {
+                                firstBlocker = (bi != null ? bi.name : "building") + " (building " + id + " at " +
+                                    Mathf.RoundToInt(p.x) + ", " + Mathf.RoundToInt(p.z) + ")";
+                            }
+                        }
                         if (count++ > 0) sb.Append(',');
                         sb.Append("{\"kind\":\"building\",\"id\":").Append(id)
                             .Append(",\"prefab\":\"").Append(JsonUtil.Escape(bi != null ? bi.name : "")).Append('"')
                             .Append(",\"reason\":\"overlap\"")
+                            .Append(",\"blocking\":").Append(JsonUtil.Bool(blocking))
                             .Append(",\"x\":").Append(JsonUtil.Number(p.x))
                             .Append(",\"z\":").Append(JsonUtil.Number(p.z)).Append('}');
                     }
                 }
             }
+            if (collisionHint == null && firstBlocker != null)
+            {
+                collisionHint = "Blocked by " + firstBlocker + (blockers > 1 ? " and " + (blockers - 1) + " more (collidesWith, blocking: true)" : "") +
+                    ": the new segment, or a node or pylon the game places along it, would stand on it. Length is not the problem - the game places pylons and nodes along a long line itself. " +
+                    "Route around it: add a waypoint (build it as two legs) or move the line. Objects with blocking: false (grown buildings, power lines) would be removed by the build instead.";
+            }
             return sb.Append(']').ToString();
+        }
+
+        /// <summary>
+        /// The segment rule of <c>NetTool.CheckCollidingSegments</c>: a public-service network
+        /// that is not auto-removed (roads, pipes, tracks), or an untouchable one, blocks; the
+        /// rest (power lines) is released by the build.
+        /// </summary>
+        private static bool IsBlockingSegment(NetSegment s)
+        {
+            NetInfo info = s.Info;
+            if ((s.m_flags & NetSegment.Flags.Untouchable) != NetSegment.Flags.None)
+            {
+                return true;
+            }
+            return info != null && info.m_class != null &&
+                ItemClass.GetPublicServiceIndex(info.m_class.m_service) != -1 && !info.m_autoRemove;
+        }
+
+        /// <summary>
+        /// The building rule of <c>BuildingTool.CheckCollidingBuildings</c> /
+        /// <c>IsImportantBuilding</c>: service buildings, historical, untouchable and burning
+        /// ones block; grown buildings are demolished by the build.
+        /// </summary>
+        private static bool IsBlockingBuilding(BuildingInfo info, ref Building building)
+        {
+            if (info == null || info.IgnoreBuildingCollision())
+            {
+                return false;
+            }
+            if ((building.m_flags & (Building.Flags.Historical | Building.Flags.Untouchable)) != Building.Flags.None)
+            {
+                return true;
+            }
+            if (building.m_fireIntensity != 0)
+            {
+                return true;
+            }
+            return ItemClass.GetPublicServiceIndex(info.m_class.m_service) != -1 && !info.m_autoRemove &&
+                (building.m_levelUpProgress != byte.MaxValue || (building.m_flags & Building.Flags.Collapsed) == Building.Flags.None);
         }
 
         private static string SnapJson(string name, NetTool.ControlPoint p)
