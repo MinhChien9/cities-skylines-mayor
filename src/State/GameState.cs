@@ -22,6 +22,9 @@ namespace SkylinesAgentBridge.State
 
             StringBuilder json = new StringBuilder();
             json.Append("{\"ok\":true");
+            SimulationMetaData meta = simulation.m_metaData;
+            json.Append(",\"cityName\":\"").Append(JsonUtil.Escape(meta != null ? meta.m_CityName ?? "" : "")).Append("\"");
+            json.Append(",\"scenario\":\"").Append(JsonUtil.Escape(meta != null ? meta.m_ScenarioName ?? "" : "")).Append("\"");
             json.Append(",\"gameTime\":\"").Append(JsonUtil.Escape(simulation.m_currentGameTime.ToString("s"))).Append("\"");
             json.Append(",\"buildIndex\":").Append(simulation.m_currentBuildIndex);
             json.Append(",\"simulation\":{\"paused\":").Append(JsonUtil.Bool(simulation.SimulationPaused));

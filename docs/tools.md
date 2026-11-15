@@ -37,7 +37,8 @@ Each tool's own description (what the agent sees) has the full parameter list.
 | `city_areas` | Map tiles: owned, buyable, price |
 | `city_scenario` | In a scenario: win and lose conditions with live progress, next milestone, zone unlocks |
 | `city_capabilities` | Game version, expansions, milestones, unlocked features and zones, enabled and cheat mods |
-| `city_saves` | Saved games on disk |
+| `city_saves` | Saved games on disk (also at the main menu) |
+| `city_maps` | Maps and scenarios a new game can start from (also at the main menu) |
 
 ## Check for defects
 
@@ -76,6 +77,8 @@ Each tool's own description (what the agent sees) has the full parameter list.
 | `city_transport_line` | Creates a line, adds stops, closes the loop, renames it, sets the vehicle, activates it |
 | `city_district` | Creates, paints (the game's own brush; radius ≥ ~100), erases, renames, specializes or releases a district or special area |
 | `city_save` | Saves to a named slot. Use a new name each time |
+| `city_load_game` | Loads a save by name, from the main menu or over the running city; waits for the load and checks the city name |
+| `city_new_game` | Starts a new game from a map or a scenario (city name, traffic side); waits for the load |
 
 ## Other
 

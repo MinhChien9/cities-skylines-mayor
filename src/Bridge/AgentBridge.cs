@@ -13,6 +13,7 @@ namespace SkylinesAgentBridge
         private ApiServer server;
         private bool levelLoaded;
         private bool started;
+        private int loadCount;
         private IManagers iCitiesManagers;
 
         public static AgentBridge Instance
@@ -31,6 +32,12 @@ namespace SkylinesAgentBridge
         {
             get
             {
+                // A load started from the bridge (or the pause menu) keeps the old level's
+                // flag until OnLevelUnloading; the loading manager knows sooner.
+                if (Loading)
+                {
+                    return false;
+                }
                 if (levelLoaded)
                 {
                     return true;
@@ -49,6 +56,32 @@ namespace SkylinesAgentBridge
                 }
                 return false;
             }
+        }
+
+        /// <summary>True while the game is loading a level (a save, a map or a scenario).</summary>
+        public bool Loading
+        {
+            get
+            {
+                try
+                {
+                    LoadingManager loading = ColossalFramework.Singleton<LoadingManager>.instance;
+                    return loading != null && loading.m_currentlyLoading;
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// How many levels have finished loading since the game started. A caller that starts a
+        /// load waits for this to pass the value it saw when it asked.
+        /// </summary>
+        public int LoadCount
+        {
+            get { return loadCount; }
         }
 
         /// <summary>
@@ -139,6 +172,15 @@ namespace SkylinesAgentBridge
 
             try
             {
+                AgentBridgePump.Ensure();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("[SkylinesAgentBridge] Failed to create the main-thread pump: " + ex);
+            }
+
+            try
+            {
                 server = new ApiServer(this, 32123);
                 server.Start();
                 Debug.Log("[SkylinesAgentBridge] API bridge listening on http://127.0.0.1:" + 32123);
@@ -152,6 +194,7 @@ namespace SkylinesAgentBridge
         public void OnLevelLoaded()
         {
             levelLoaded = true;
+            System.Threading.Interlocked.Increment(ref loadCount);
             Debug.Log("[SkylinesAgentBridge] Level loaded. API bridge is ready.");
         }
 

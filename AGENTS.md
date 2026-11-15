@@ -40,6 +40,10 @@ thresholds are the truth about the city.
 5. city_scenario     → in a scenario: the win/lose conditions and how far along they are
 ```
 
+If `city_health` says `levelLoaded: false`, the game is at the main menu: load a save
+(`city_saves` → `city_load_game`) or start a map or scenario (`city_maps` →
+`city_new_game`) before step 2. Ask the user which one if they did not say.
+
 If `city_threads` reports `runsOnSimulationThread: false`, **stop and tell the user.**
 Every command would be racing the game's simulation and silently corrupting the save.
 
@@ -68,6 +72,7 @@ Every command would be racing the game's simulation and silently corrupting the 
 | Pause / resume / speed the clock | `city_set_simulation_speed` |
 | Change taxes, budgets, policies | `city_set_tax_rate`, `city_set_budget`, `city_set_policy` |
 | Save | `city_save` (new incrementing name) |
+| Load a save, or start a new game from a map or scenario (also from the main menu) | `city_saves` / `city_maps`, then `city_load_game` / `city_new_game` |
 | Create a bus/metro line, add stops, manage it | `city_transport_line` (create → add-stop … → add-stop close=true; needs a depot) |
 | Create, paint, erase, rename, specialize or release a district or special area | `city_district` (create → paint with `x`, `z`, `radius` ≥ ~100) |
 | Show the viewer something | `city_camera` (frames the game camera on a world point) |
