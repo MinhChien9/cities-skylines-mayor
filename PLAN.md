@@ -242,6 +242,16 @@ Lessons recorded so far:
 - A low demand bar is not low demand. Workplace showed 2 while the game's own target was
   96: each spawned building spends actual demand, so the bar sits near 0 while
   buildings appear as fast as demand accrues. Judge by `city_demand.formula.target`.
+- Buildings conduct power. Removing a treatment plant that stood between a power line
+  and the next one cut two pumping stations off; check what a removal disconnects.
+- A Water Pumping Station placed inland (allowed, `ShorelineOrGround`) stays inactive
+  with no problem flag: it does not pump groundwater. Use water towers for that.
+- Long sweeps of dry runs (`place_clean`-style searches) slow the simulation a lot:
+  every command runs on the simulation thread, and the collateral / wouldRemove scans
+  walk tens of thousands of buildings and segments. Game time advanced about one month
+  in an hour of sweeping. Search with `city_map` first, dry-run a handful.
+- New districts out of reach of transmission lines can be powered locally with wind
+  turbines (free-standing): seven turbines brought an unpowered office district back.
 - In this build the Water Pumping Station (`Water Intake`) is `ShorelineOrGround` and the
   `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
   pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the
