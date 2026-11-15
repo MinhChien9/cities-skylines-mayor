@@ -1,17 +1,24 @@
 # PLAN — CS1 Mayor
 
-The project plan. It travels with the repo and is the source of truth for scope and
-progress. **Every session reads it first, works the next unchecked item, and updates it
-before the task's PR is merged.**
+The project plan: the goal, the phase summary, the decision log, the lessons and the
+environment state. **The backlog is not here: it is the GitHub issues**
+(https://github.com/MinhChien9/cities-skylines-mayor/issues), grouped into milestones (one per release). See
+[`docs/13-development-process.md`](docs/13-development-process.md).
 
 ## Session protocol
 
 1. **Start:** read this file, then `CLAUDE.md` / `AGENTS.md`. Check "Environment state"
    below against the machine (game running? bridge `/health`?).
-2. **Work:** take the next unchecked item of the current phase. One task = one branch =
-   one PR (`.github/CONTRIBUTING.md`). Do not start a second task in the same PR.
-3. **End of task:** tick the boxes, record decisions and anything learned in the
-   decision log, update "Environment state", and commit this file in the same PR.
+2. **Pick work from the issues:** `gh issue list --milestone v0.2.0`, then `--label p1`.
+   Say which issue you take. One issue = one branch = one PR with `Closes #n`
+   (`.github/CONTRIBUTING.md`). Do not start a second issue in the same PR.
+3. **New problems become issues, not notes:** a tool bug, a missing lever or something
+   learned about the game → `gh issue create` with the matching form's headings (bug,
+   feature, finding, task). Never fix silently and never add a backlog line here.
+4. **End of task:** the PR closes its issue, adds a `CHANGELOG.md` line under
+   `[Unreleased]`, records a *decision* here if one was made, and updates "Environment
+   state". A closed *finding* adds its lesson to the list below (or to
+   `docs/05-game-mechanics.md`).
 
 ## Goal
 
@@ -51,8 +58,7 @@ episodes. What stayed: `city_camera` (including `hideUi`) and `city_map` overlay
 - [x] Play a scenario honestly: `/state/scenario` + `city_scenario` (win/lose progress, next
       milestone, zone unlocks); locked prefabs and zones are refused (`UnlockCheck`).
       First run: City of Gardens (video e002 in cs1-video-making)
-- [ ] Continue Peach Trees (save `peach-trees-03-end-video1`) toward 50k / happiness 85, or
-      pick a scenario this install can win (check its goals against `/prefabs/buildings`)
+- [x] Next play session moved to the video repo's issues (playing is recorded there)
 
 ### Phase 6 — MCP only
 
@@ -60,11 +66,15 @@ episodes. What stayed: `city_camera` (including `hideUi`) and `city_map` overlay
       the neutral activity log (`activity/`, `city_activity`); `city_map saveAs` writes to
       `$CS1_MAP_DIR` (default `maps/`)
 
-### Backlog (not scheduled)
+### Phase 7 — Public and issue-driven
 
-- District painting as a validated tool (transit lines: done, #47)
-- `/state/progress` (milestones) as story triggers; `/commands/load`
-- Map tiles: done (`city_areas`, `city_unlock_area`, #48)
+- [x] Issue forms, labels, milestones, triage workflows, CODEOWNERS; development process
+      and release docs; CHANGELOG; SECURITY; `scripts/release.ps1`; v0.1.0 released
+- [x] The old backlog and every open roadmap item are issues (#65–#77)
+
+### Backlog
+
+GitHub issues: https://github.com/MinhChien9/cities-skylines-mayor/issues. Next release: milestone **v0.2.0**.
 
 ## Decision log
 

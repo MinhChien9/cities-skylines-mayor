@@ -246,12 +246,27 @@ Money is reported in currency units (₡), the same scale the game HUD shows.
 6. `city_request` GETs any bridge endpoint that has no dedicated tool — the endpoint
    list is `docs/04-api-reference.md`.
 
-## 8. Reference
+## 8. When a tool is wrong — open an issue
+
+If a tool refuses something the game allows, accepts something it should not, reports a
+wrong number or crashes, **open a GitHub issue** instead of working around it silently:
+
+```
+gh issue create -R MinhChien9/cities-skylines-mayor --label bug --label needs-triage   --title "build-road: <what went wrong>" --body-file <file>
+```
+
+Body: *Description* (what happened vs what you expected), *Steps to reproduce* (the tool
+calls with their arguments), *Response* (errors, hint), *Area*. Something new you learned
+about the game itself (a formula, a hidden rule) is a *Game finding* (label `finding`) with
+the evidence. Then keep playing with a workaround if there is one, and say so.
+
+## 9. Reference
 
 | Document | Use it for |
 |---|---|
 | `docs/README.md` | The index — start here |
 | `docs/12-command-surface.md` | The tool surface and what each tier means now |
+| `docs/13-development-process.md` | Issues first: how problems are filed, triaged and fixed |
 | `docs/04-api-reference.md` | The raw HTTP bridge (what each tool relays) |
 | `docs/05-game-mechanics.md` | Demand formulas, tax ceilings, budget curves, coverage, level-up rules |
 | `docs/06-expansions.md` | Every expansion's mechanics, thresholds and costs |

@@ -1,0 +1,32 @@
+name: Game finding
+description: Something learned about how Cities Skylines behaves that a tool or doc should reflect
+title: "[FINDING]: "
+labels: ["finding"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Findings used to go straight into PLAN.md's lessons. Now they start here: the issue holds the
+        evidence, and the PR that closes it updates the tool, docs/05-game-mechanics.md or the lessons list.
+
+  - type: textarea
+    id: observed
+    attributes:
+      label: What the game did
+      description: The behaviour, with the numbers.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Tool responses, the game code you read (class.method), the save or session.
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: What a tool should do differently, or which doc is wrong or missing.

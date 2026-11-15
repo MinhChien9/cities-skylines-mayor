@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/MinhChien9/cities-skylines-mayor/blob/main/docs/README.md
+    about: Architecture, tool reference, game mechanics and verification — read before filing.
+  - name: Video making (recording, journal, post-production)
+    url: https://github.com/MinhChien9/cities-skylines-video
+    about: Problems with OBS, the studio tools or the video pipeline belong to that repo.

@@ -1,0 +1,61 @@
+name: Bug report
+description: A tool, endpoint or the bridge did the wrong thing (keep it short; giant AI-generated summaries get closed)
+labels: ["bug", "needs-triage"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened, and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: The tool calls (name + arguments) or HTTP requests, in order. Coordinates and ids help.
+      placeholder: |
+        1. city_build_road prefab="Water Pipe" startX=-141 startZ=105 endX=0 endZ=105
+        2. → ObjectCollision, start.snappedTo: "node"
+    validations:
+      required: true
+
+  - type: textarea
+    id: response
+    attributes:
+      label: Response
+      description: The relevant part of the response (errors, hint, legs, wouldRemove).
+      render: json
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Bridge (in-game mod, src/)
+        - Simulation-thread dispatch
+        - MCP server (mcp-server/)
+        - Docs / AGENTS.md
+        - Scripts / CI
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: The release (e.g. v0.1.0) or `git rev-parse --short HEAD`.
+
+  - type: textarea
+    id: threads
+    attributes:
+      label: GET /debug/threads
+      description: Paste it when the bug involves the bridge (runsOnSimulationThread must be true).
+      render: json
+
+  - type: input
+    id: environment
+    attributes:
+      label: Game and environment
+      placeholder: e.g. CS1 1.21.1-f9 Epic, Windows 11, Claude Code 2.x

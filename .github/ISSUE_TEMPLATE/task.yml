@@ -1,0 +1,19 @@
+name: Task
+description: Maintenance or project work with a clear done-state (verification runs, cleanups, releases)
+labels: ["task"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+    validations:
+      required: true
+
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      placeholder: |
+        - [ ] ...
+    validations:
+      required: true

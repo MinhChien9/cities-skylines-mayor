@@ -74,7 +74,10 @@ builder.Services
         {
             Name = "cs1-mayor",
             Title = "Cities: Skylines 1 Mayor",
-            Version = "0.1.0",
+            Version = typeof(ActivityLog).Assembly
+                .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+                .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+                .FirstOrDefault()?.InformationalVersion.Split('+')[0] ?? "0.0.0",
         };
         options.ServerInstructions = Instructions;
     })
