@@ -18,10 +18,13 @@ code>`, `-epicapp=…`), which Epic passes through the Paradox launcher. A bare 
 has no DLC. `scripts/restart-game.ps1` and `scripts/start-game.ps1` now start the game
 through Epic, so it gets the login, and skip the Paradox launcher.
 
-What to trust: the **loaded prefabs**. `GET /prefabs/buildings?service=Commercial` must list
-`CommercialEco` buildings before you plan Organic shops, and so on.
-`SteamHelper.IsDLCOwned` returns false for everything on Epic. A per-expansion report is
-[#70](https://github.com/MinhChien9/cities-skylines-mayor/issues/70).
+What to trust: the **loaded prefabs**. `city_capabilities.loadedContent` counts them
+([#70](https://github.com/MinhChien9/cities-skylines-mayor/issues/70)):
+`byServiceAndSubService` (for example `CommercialEco: 39`), one entry per expansion with
+`loaded` and the `evidence` it was judged by (services, sub-services or building AIs only
+that expansion adds), and `missingContent`. With the Epic login all 14 load (3,962 building
+prefabs). A bare `Cities.exe` loads 851, and 13 expansions are missing.
+`SteamHelper.IsDLCOwned` returns false for everything on Epic.
 
 ### The `Expansion` enum **[C]** — verified from `ICities.dll`
 

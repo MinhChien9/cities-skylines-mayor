@@ -86,6 +86,12 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 Read through the supported `ICities` surface. Values below are from
 a verified run on 2026-11-11.
 
+`loadedContent` is what really loaded, judged from the loaded building prefabs. Each
+expansion is checked by the services, sub-services or building AIs (`ai:ParkGateAI`) that
+only it adds. `supportedExpansions` and ownership do not prove the buildings are there: an
+Epic game started without the Epic login has 851 building prefabs and 13 expansions in
+`missingContent`.
+
 ```json
 {
   "ok": true,
@@ -93,6 +99,16 @@ a verified run on 2026-11-11.
   "version": "1.21.1-f9-epic-win",
   "knownExpansions": ["AfterDark", "Snowfall", "..."],
   "supportedExpansions": ["AfterDark", "Snowfall", "..."],
+  "loadedContent": {
+    "buildingPrefabs": 3962,
+    "byServiceAndSubService": { "Commercial": 622, "CommercialEco": 39, "...": 0 },
+    "expansions": [
+      { "expansion": "GreenCities", "name": "Green Cities", "supported": true, "loaded": true,
+        "evidence": { "CommercialEco": 39, "ResidentialLowEco": 90, "ResidentialHighEco": 85, "OfficeHightech": 20 } }
+    ],
+    "missingContent": [],
+    "notes": "..."
+  },
   "milestones": ["Basic City 1", "Basic City 2", "..."],
   "currentMilestone": "Milestone1",
   "unlockedFeatures": ["Zoning", "Economy", "..."],

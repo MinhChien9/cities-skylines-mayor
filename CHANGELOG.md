@@ -23,6 +23,9 @@ patch = fixes). Every PR adds its line under `[Unreleased]` with the issue numbe
   buildings were caused by the launch (#84).
 
 ### Added
+- `city_capabilities.loadedContent`: building prefab counts per service and sub-service, each
+  expansion's `loaded` flag with its evidence, and `missingContent`. Ownership and
+  `SupportsExpansion` do not prove that content loaded (#70).
 - `city_district` creates, paints and erases districts and special areas (`parkType`,
   `parkLevel`, brush `x`, `z`, `radius`), so painting no longer needs a hand-written
   `city_request` body (#68).
