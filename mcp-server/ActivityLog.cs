@@ -16,16 +16,15 @@ namespace Cs1Mayor.Mcp;
 /// Every entry carries the wall time and the game date, population and cash at that
 /// moment, the tool, its arguments and a compact result. It is the mayor's audit trail
 /// (<c>city_activity</c> reads it back after a context reset) and a plain file other tools
-/// can follow - the video studio (a separate repo) tails it to stamp each action with the
-/// recording timecode. The game read is best effort with a short timeout: a closed game
-/// never blocks the mayor, the field is just null.
+/// can follow. The game read is best effort with a short timeout: a closed game never
+/// blocks the mayor, the field is just null.
 ///
 /// Entries are written by <see cref="ToolCallFilter"/> after every mutating tool call.
 /// </summary>
 public sealed class ActivityLog
 {
     /// <summary>Tools logged automatically, and the entry kind each produces.</summary>
-    public static readonly IReadOnlyDictionary<string, string> JournalledTools = new Dictionary<string, string>
+    public static readonly IReadOnlyDictionary<string, string> LoggedTools = new Dictionary<string, string>
     {
         ["city_build_road"] = "build",
         ["city_place_building"] = "build",
@@ -46,7 +45,7 @@ public sealed class ActivityLog
         ["city_save"] = "office",
         ["city_load_game"] = "office",
         ["city_new_game"] = "office",
-        ["city_request"] = "office",      // only its POSTs, see ShouldJournal
+        ["city_request"] = "office",      // only its POSTs, see ShouldLog
     };
 
     private const int MaxResultChars = 2000;
@@ -169,7 +168,7 @@ public sealed class ActivityLog
     public Task<JsonObject> WriteToolCallAsync(string tool, IReadOnlyDictionary<string, JsonElement>? arguments,
         CallToolResult result, CancellationToken cancellationToken = default)
     {
-        string kind = JournalledTools.TryGetValue(tool, out var k) ? k : "tool";
+        string kind = LoggedTools.TryGetValue(tool, out var k) ? k : "tool";
         var args = new JsonObject();
         if (arguments is not null)
         {
@@ -188,9 +187,9 @@ public sealed class ActivityLog
     }
 
     /// <summary>Whether a call of <paramref name="tool"/> with these arguments is logged.</summary>
-    public static bool ShouldJournal(string tool, IReadOnlyDictionary<string, JsonElement>? arguments)
+    public static bool ShouldLog(string tool, IReadOnlyDictionary<string, JsonElement>? arguments)
     {
-        if (!JournalledTools.ContainsKey(tool))
+        if (!LoggedTools.ContainsKey(tool))
         {
             return false;
         }
@@ -214,7 +213,7 @@ public sealed class ActivityLog
     }
 
     /// <summary>
-    /// The MCP call-tool filter that logs every <see cref="ShouldJournal"/> call after it
+    /// The MCP call-tool filter that logs every <see cref="ShouldLog"/> call after it
     /// ran. Log failures are swallowed: the log must never break a tool.
     /// </summary>
     public static McpRequestHandler<CallToolRequestParams, CallToolResult> ToolCallFilter(
@@ -227,12 +226,12 @@ public sealed class ActivityLog
             IReadOnlyDictionary<string, JsonElement>? arguments = context.Params?.Arguments is { } args
                 ? new Dictionary<string, JsonElement>(args)
                 : null;
-            if (tool is not null && ShouldJournal(tool, arguments)
-                && context.Services?.GetService<ActivityLog>() is { } journal)
+            if (tool is not null && ShouldLog(tool, arguments)
+                && context.Services?.GetService<ActivityLog>() is { } activityLog)
             {
                 try
                 {
-                    await journal.WriteToolCallAsync(tool, arguments, result, cancellationToken).ConfigureAwait(false);
+                    await activityLog.WriteToolCallAsync(tool, arguments, result, cancellationToken).ConfigureAwait(false);
                 }
                 catch
                 {

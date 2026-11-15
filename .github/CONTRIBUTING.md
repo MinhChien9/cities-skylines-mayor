@@ -7,8 +7,7 @@ loading) and docs are all welcome. For a large feature, open an issue to discuss
 
 Every change starts as a [GitHub issue](https://github.com/MinhChien9/cities-skylines-mayor/issues/new/choose)
 (bug, feature, game finding or task), and the PR that resolves it says `Closes #<number>`.
-Docs-only PRs may skip the issue. Problems with recording or the video pipeline belong to
-[cities-skylines-video](https://github.com/MinhChien9/cities-skylines-video).
+Docs-only PRs may skip the issue.
 
 The full workflow (triage, labels, milestones, definition of done) is in
 [docs/development.md](../docs/development.md). Releases are in

@@ -23,18 +23,12 @@ environment state. **The backlog is not here: it is the GitHub issues**
 ## Goal
 
 An MCP server that lets an AI agent play Cities: Skylines 1 on its own: read every stat,
-pull every lever and build through the game's own tool code, without a cursor. This repo
-is the MCP server and the in-game bridge only.
-
-Recording the play and making videos from it (OBS, decision journal, timelapse, scripts,
-subtitles, edit, series) is the separate **cs1-video-making** repo (`../cs1-video-making`),
-which runs its own `cs1-studio` MCP server next to this one and follows this server's
-activity log (`activity/<session>.jsonl`). Phases 2–4 below were built here and moved
-there on 2026-11-15.
+pull every lever and build through the game's own tool code. This repo is the MCP server
+and the in-game bridge mod only.
 
 ## Phases
 
-### Phase 1 — Play without a cursor ✅
+### Phase 1 — Play through the game's own tools ✅
 
 - [x] Bridge mod with simulation-thread dispatch, 30+ reads, office levers (#1–#11)
 - [x] Build through the game's own tool code: roads/networks (`NetTool.CreateNode`,
@@ -44,29 +38,20 @@ there on 2026-11-15.
 - [x] `scripts/restart-game.ps1` (#12)
 - [x] Camera yaw/pitch fix + `instant` glide flag (#13)
 - [x] Claude Code wiring: `.mcp.json`, `CLAUDE.md` (#14)
-- [x] Live proof: street grid, services, 144 citizens, zero cursor clicks
+- [x] Live proof: street grid, services, 144 citizens
 
-### Phases 2–4 — Studio, post-production, series ✅ (moved)
-
-Built here, then moved to **cs1-video-making** (2026-11-15) with their decisions and
-lessons: OBS recording and markers, the decision journal, cinematic camera and timelapse,
-the `post/` pipeline (brief, script, TTS, subtitles, edit, thumbnails, series), and the
-episodes. What stayed: `city_camera` (including `hideUi`) and `city_map` overlays/`saveAs`.
-
-### Phase 5 — Scenarios
+### Phase 2 — Scenarios ✅
 
 - [x] Play a scenario honestly: `/state/scenario` + `city_scenario` (win/lose progress, next
       milestone, zone unlocks); locked prefabs and zones are refused (`UnlockCheck`).
-      First run: City of Gardens (video e002 in cs1-video-making)
-- [x] Next play session moved to the video repo's issues (playing is recorded there)
+      First run: City of Gardens
 
-### Phase 6 — MCP only
+### Phase 3 — Activity log ✅
 
-- [x] Split the video pipeline into `cs1-video-making`; replace the decision journal with
-      the neutral activity log (`activity/`, `city_activity`); `city_map saveAs` writes to
-      `$CS1_MAP_DIR` (default `maps/`)
+- [x] Every mutating call is logged to `activity/<session>.jsonl` and read back with
+      `city_activity`; `city_map saveAs` writes to `$CS1_MAP_DIR` (default `maps/`)
 
-### Phase 7 — Public and issue-driven
+### Phase 4 — Public and issue-driven ✅
 
 - [x] Issue forms, labels, milestones, triage workflows, CODEOWNERS; development process
       and release docs; CHANGELOG; SECURITY; `scripts/release.ps1`; v0.1.0 released
@@ -80,15 +65,14 @@ GitHub issues: https://github.com/MinhChien9/cities-skylines-mayor/issues. Next 
 
 | Date | Decision | Why |
 |---|---|---|
-| 2026-11-11 | Cursor (CUA) for spatial work | Upstream API building skipped the game's rules |
-| 2026-11-15 | Back to API building, through the game's own tool code | CUA cost a screenshot per step and misread terrain; the real fault was bypassing the tools |
+| 2026-11-15 | Build through the game's own tool code (`NetTool.CreateNode`, `BuildingTool` rules), never by writing game data directly | Direct writes skipped every rule the player's tools enforce and left overlapping, disconnected roads; the tool code gives the player's validation and error names for free |
 | 2026-11-15 | `city_map` semantic raster instead of screenshots | Exact coordinates, independent of camera/fog/UI |
-| 2026-11-15 | Activity log (formerly the journal) through one MCP call-tool filter, not per tool; dry runs and reads are not logged, refusals are | One place covers every mutating tool; refusals and mistakes are story material |
+| 2026-11-15 | Activity log through one MCP call-tool filter, not per tool; dry runs and reads are not logged, refusals are | One place covers every mutating tool; refusals and mistakes are worth recalling after a context reset |
 | 2026-11-15 | Hide UI through the game's free-camera mode (`m_freeCamera`), not by hiding panels | The game's own hide-UI path also hides problem icons, names and borders, and the bridge console with them |
 | 2026-11-15 | Overlay tints scale to the highest value in view but with a floor per layer | Pure relative scaling made a town with land value 4 everywhere look vivid; the floor keeps weak signals faint and the maps truthful |
 | 2026-11-15 | The bridge refuses milestone-locked prefabs and zones (`UnlockCheck`) | The game's tools do not check unlocks (the toolbar hides them); in a scenario a locked building is a cheat and a false win |
 | 2026-11-15 | Scenario goals read through the game's own trigger objects (`UnlockManager.m_scenarioTriggers`, `GetLocalizedProgress`) | Same numbers as the in-game goals tab; no reimplementation of the conditions |
-| 2026-11-15 | Split: this repo is MCP only; recording and the video pipeline moved to `cs1-video-making` with its own `cs1-studio` MCP server. The mayor server keeps a neutral activity log the studio tails | The user wanted the MCP to stand alone. A file is the loosest coupling: the mayor knows nothing about OBS, the studio stamps each logged action with the recording timecode the moment it appears |
+| 2026-11-15 | This repo is the MCP server and the bridge mod only; the activity log is a plain JSONL file | The MCP stands alone. A file is the loosest coupling: other programs can follow it without the server knowing about them |
 | 2026-11-15 | Scripts start the game through the Epic URI and hand the Epic login from the Paradox launcher to `Cities.exe` themselves | A bare `Cities.exe` loads no DLC; this skips the Play click too (#84) |
 | 2026-11-15 | Load / new-game run on the Unity main thread with no level loaded, through a `DontDestroyOnLoad` pump | The game's own Load and New Game panels run there; there is no simulation to protect at the main menu (#69) |
 | 2026-11-15 | Cargo is reported as coverage and the industrial level-up score, not as a line type | CS1 has no player-made cargo lines; cargo stations act through `CargoTransport` coverage (#74) |
@@ -281,6 +265,6 @@ Lessons recorded so far:
 
 | Item | State |
 |---|---|
-| Game | Epic, `D:\Epic Games\CitiesSkylines`. **Current: scenario City of Gardens, LOST** (`scenarioOutcome: lost` since the blackout; 8,347 people at game 2028-08; earlier: Peach Trees, 6,665 people, happiness 82, game 2027-08, save `peach-trees-03-end-video1`; 2 of 9 tiles; win 1/4: parks done; organic shops are possible now that the game starts with the Epic login, #84; save `restart-20261115-213128`). Cheat mods are **off** now. Earlier free-play city: map "Cannes". **50k free-play run reached 50,259 citizens** (2026-11-15, game 2056-06, save `mayor-50k-reached`), then 53.4k (game 2064-11, save `mayor-50k-34`). 5 of 9 tiles owned (start, south, far south, east, south-east): west/north/south/far-south districts, office park, east office district; nuclear + 2 coal + 15 turbines; 5 coastal pumping stations north of all discharge, 6 treatment plants on the south shore; incinerators in the NE, south and east; 2 bus lines; a highway exit/entrance at Lake Avenue. Taxes 9%, electricity 100%, healthcare 130%. Standing issues: ~250 dead awaiting pickup, crime, 15% unemployment (over-educated workforce). **Built-in cheat mods Unlimited Money and Unlock All are enabled**; the bridge checks real cash anyway |
-| Bridge | Installed from the #98 branch (`forcedPaused`, `openPanels`, `scenarioOutcome` in the summary and threads; `/commands/close-panel`) on top of `main` after #99 (`build-road` same-level auto-split) and #95 (collision/variant reports, `/commands/load` + `/commands/new-game`, `/state/maps`, `/state/resources`, `/state/industry`, coverage and resource overlays), `runsOnSimulationThread: true`. The game is started through Epic (`scripts/restart-game.ps1`), so all 14 expansions load (`city_capabilities.loadedContent`) |
-| MCP | Release rebuilt with #98 (`city_close_panel`) after #99 (`city_build_road autoSplit`), after #96 (new tools: `city_maps`, `city_load_game`, `city_new_game`, `city_resources`, `city_industry`; `city_district` create/paint/erase). A running server locks `bin/Release/net10.0/Cs1Mayor.Mcp.dll`; renaming the locked DLL aside lets the build replace it, then `/mcp` reconnect picks it up |
+| Game | Epic, `D:\Epic Games\CitiesSkylines`, version 1.21.1-f9, started through Epic (`scripts/restart-game.ps1`) so all 14 expansions load. Loaded: scenario City of Gardens (city Peach Trees), **lost** (`scenarioOutcome: lost`), 8,498 people at game 2028-08, paused. Cheat mods off (`city_capabilities.cheatMods` is empty). Free-play saves from the 50k run: `mayor-50k-reached`, `mayor-50k-34` (map Cannes, 53.4k people) |
+| Bridge | Installed from `main` as of #101 (pop-up panels and `close-panel`, same-level `build-road` auto-split); `runsOnSimulationThread: true` |
+| MCP | Release build from `main` as of #101 (`city_close_panel`). A running server locks `bin/Release/net10.0/Cs1Mayor.Mcp.dll`; renaming the locked DLL aside lets the build replace it, then `/mcp` reconnect picks it up |

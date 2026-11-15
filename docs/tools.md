@@ -96,4 +96,4 @@ Each tool's own description (what the agent sees) has the full parameter list.
 Every mutating call (not dry runs or reads; refusals are included) is appended to
 `activity/<session>.jsonl`. Each line has the time, the tool, its arguments, a short result,
 and the game date, population and cash. `city_activity` reads it back, and other programs
-can follow the file. The video project does.
+can follow the file.

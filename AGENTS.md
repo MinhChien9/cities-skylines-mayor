@@ -17,12 +17,8 @@ or screenshots to play.
 - **Office — everything else.** The clock, taxes, budgets, policies, saves, transit line
   and district management, the camera.
 
-> **History, so you trust the right things.** The first build endpoints wrote straight
-> to the game's storage layer and skipped every rule, which produced overlapping,
-> disconnected roads. Spatial work then moved to a computer-use cursor, which worked but
-> cost a screenshot per step and still guessed positions from pixels (a screenshot even
-> made dry land look like sea). The build endpoints now go through the game's own tool
-> code, so trust their errors: change the plan, do not retry the same coordinates.
+> **Trust the build errors.** The build tools run the game's own tool code, so a refusal
+> is the game's verdict: change the plan, do not retry the same coordinates.
 
 The `docs/` folder is your reference library — read it before making non-obvious
 decisions. The `docs/game-mechanics.md` formulas and `docs/expansions.md`
@@ -52,10 +48,6 @@ again.
 
 If `city_threads` reports `runsOnSimulationThread: false`, **stop and tell the user.**
 Every command would be racing the game's simulation and silently corrupting the save.
-
-> Recording the play for videos (OBS, the decision journal, B-roll, post-production) is a
-> separate project, **cs1-video-making**, with its own `cs1-studio` MCP server. This server
-> stays the game's office and hands; it only logs what it changed (`city_activity`).
 
 ## 2. The tools by job
 
