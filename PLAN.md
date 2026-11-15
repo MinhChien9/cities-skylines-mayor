@@ -266,8 +266,11 @@ Lessons recorded so far:
 - A straight Basic Road over a ridge became a tunnel (`Basic Road Slope`) where the grade was
   too steep; nothing can be zoned along the tunnel. A 420 m power line in one span was
   refused (`ObjectCollision`); three shorter legs built.
-- A pipe started at a point shared with a road snapped to the road's node and was refused;
-  start on the pipe's segment instead (`snappedTo: segment`).
+- A new segment may not leave a node within about 41° of a segment already there
+  (`NetTool.CanAddSegment`, dot product above 0.75): `ObjectCollision`, as in the player's tool.
+  A pipe from a junction at (-141, 105) aimed along an existing pipe looked like "snapped to a
+  road node" (#65). It had snapped to the pipe's own node. Builds now name the colliding
+  objects (`collidesWith`, `reason: narrowAngle`).
 
 ## Environment state (update at the end of every task)
 

@@ -9,6 +9,10 @@ patch = fixes). Every PR adds its line under `[Unreleased]` with the issue numbe
 ## [Unreleased]
 
 ### Fixed
+- `build-road` names what a refused leg collides with (`collidesWith`: segment or building, id,
+  prefab, `reason` `narrowAngle` / `cannotSplit` / `overlap`) and gives a matching hint. The
+  pipe in #65 snapped to its own node, not a road's. The game refused it for leaving that node
+  within ~41° of an existing pipe (#65).
 - `restart-game.ps1` and `start-game.ps1` start the game through the Epic Games Launcher, so it
   gets the Epic login and loads the owned DLC. The Paradox launcher is skipped, so nobody
   has to click Play. `-Launch Direct` keeps the old bare start. `start-game.ps1 -Resume`
