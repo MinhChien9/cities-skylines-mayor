@@ -204,6 +204,19 @@ Lessons recorded so far:
   `FetchResource(LandPrice, CalculateTilePrice)` first. The bridge does the same
   (`city_unlock_area`). With Unlock All on, 9 tiles are allowed; the first extra tile
   (south, flat, with the highway) cost ₡3,700.
+- **Never put a drain pipe up-current of a pumping station.** Drains at z −59/−150 and
+  intakes at z −206…−339 on the west coast gave 10% water pollution; the sick count
+  tripled (566 → 1797) and happiness fell 84 → 75. Water Treatment Plants (₡15k, +160k
+  sewage capacity each, mostly clean outflow) replaced the two nearest drains; pollution
+  fell to 3% within minutes.
+- An emptied cemetery/landfill stays "emptying" and accepts nothing until
+  `city_empty_building empty:false` (problem flag `EmptyingFinished`). Dead piled up again
+  until it was switched back.
+- Incinerators beside housing give `Pollution` problems in a ring around them;
+  `city_move_building` moved two of them out to an industrial edge in one call each.
+- Highway ramps through `city_build_road prefab HighwayRamp` work: a curved off-ramp
+  from the southbound carriageway (Grove, west side, right-hand traffic) carried traffic
+  at once. A tight control point collides with the highway itself; move it outwards.
 - In this build the Water Pumping Station (`Water Intake`) is `ShorelineOrGround` and the
   `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
   pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the
