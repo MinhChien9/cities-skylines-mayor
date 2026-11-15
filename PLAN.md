@@ -271,6 +271,11 @@ Lessons recorded so far:
   it fixed high-school overflow but added graduates to an already graduate-heavy
   unemployment. The city settled near 52k: residential demand stays 0 while ~6,000
   graduates wait for office jobs.
+- **A dedicated office tile broke the 52k plateau.** Tile (2,0) bought for ₡10.5k, a
+  grid zoned mostly Office with an industrial strip for goods and its own coal plant:
+  unemployment 21 % → 12 %, the residential target turned positive and the city grew
+  to 53.4k. Mistake on the way: the new columns were not dry-run and cut through about
+  20 grown offices on the boulevard they crossed; dry-run and route through gaps.
 - In this build the Water Pumping Station (`Water Intake`) is `ShorelineOrGround` and the
   `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
   pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the
@@ -283,7 +288,7 @@ Lessons recorded so far:
 
 | Item | State |
 |---|---|
-| Game | Epic, `D:\Epic Games\CitiesSkylines`, map "Cannes". **50k free-play run reached 50,259 citizens** (2026-11-15, game date 2056-06, save `mayor-50k-reached`). 3 of 9 tiles owned (start, south, east + south-east): west/north/south/far-south districts, office park, east office district; nuclear + 2 coal + 15 turbines; 5 coastal pumping stations north of all discharge, 6 treatment plants on the south shore; incinerators in the NE, south and east; 2 bus lines; a highway exit/entrance at Lake Avenue. Taxes 9%, electricity 100%, healthcare 130%. Standing issues: ~250 dead awaiting pickup, crime, 15% unemployment (over-educated workforce). **Built-in cheat mods Unlimited Money and Unlock All are enabled**; the bridge checks real cash anyway |
+| Game | Epic, `D:\Epic Games\CitiesSkylines`, map "Cannes". **50k free-play run reached 50,259 citizens** (2026-11-15, game 2056-06, save `mayor-50k-reached`), then 53.4k (game 2064-11, save `mayor-50k-34`). 5 of 9 tiles owned (start, south, far south, east, south-east): west/north/south/far-south districts, office park, east office district; nuclear + 2 coal + 15 turbines; 5 coastal pumping stations north of all discharge, 6 treatment plants on the south shore; incinerators in the NE, south and east; 2 bus lines; a highway exit/entrance at Lake Avenue. Taxes 9%, electricity 100%, healthcare 130%. Standing issues: ~250 dead awaiting pickup, crime, 15% unemployment (over-educated workforce). **Built-in cheat mods Unlimited Money and Unlock All are enabled**; the bridge checks real cash anyway |
 | Bridge | Installed from `main` (#54), `runsOnSimulationThread: true` |
 | MCP | Debug build current with `main`. The Release build in `bin/Release` is held by this Claude Code session's running server: rebuild it after the session ends (or `/mcp` reconnect) to get the studio tools in Claude Code |
 | OBS | 33.0.1 portable at `D:\tools\obs-studio`, configured by `scripts/setup-obs.ps1`: websocket 4455 (password in `studio.local.json`), scene "CS1 Mayor", recordings in `D:\cs1-mayor-recordings` |
