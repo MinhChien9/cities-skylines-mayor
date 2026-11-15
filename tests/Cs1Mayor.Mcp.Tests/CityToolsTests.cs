@@ -619,6 +619,8 @@ public class CityToolsTests
             "/commands/unlock-area",
             "/commands/transport-line",
             "/commands/district",
+            "/commands/load",
+            "/commands/new-game",
             "/commands/save",
             "/commands/set-camera",
             "/commands/project-point",

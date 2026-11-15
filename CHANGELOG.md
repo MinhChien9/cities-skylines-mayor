@@ -23,6 +23,11 @@ patch = fixes). Every PR adds its line under `[Unreleased]` with the issue numbe
   buildings were caused by the launch (#84).
 
 ### Added
+- Leave the main menu without the cursor: `city_load_game` loads a save and `city_new_game`
+  starts a map or a scenario (`POST /commands/load`, `/commands/new-game`, `GET /state/maps`).
+  They work before any city is loaded, wait for the load and check the city name.
+  `/health` gains `loading` and `loadCount`, and `/state/summary` gains `cityName` and
+  `scenario` (#69).
 - `city_capabilities.loadedContent`: building prefab counts per service and sub-service, each
   expansion's `loaded` flag with its evidence, and `missingContent`. Ownership and
   `SupportsExpansion` do not prove that content loaded (#70).

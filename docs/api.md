@@ -27,7 +27,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/health` | Bridge liveness. Works before a city is loaded. |
+| GET | `/health` | Bridge liveness. Works before a city is loaded: `levelLoaded`, `loading` (a level is loading), `loadCount` (levels loaded since the game started). |
 | GET | `/debug/threads` | **Thread proof.** See below. |
 | GET | `/state/capabilities` | What the running game supports. See below. |
 | GET | `/state/summary` | Compact city overview. |
@@ -50,7 +50,8 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 | GET | `/state/building-anomalies` | Building placement defects. `?limit=`. |
 | GET | `/state/zone-anomalies` | Zone defects. `?limit=`, `?minMinorityCells=`, `?minUnzonedCells=`, `?includeUnzonedHoles=`. |
 | GET | `/state/external-connections` | Highway / rail / sea connections. `?limit=`. |
-| GET | `/state/saves` | Saved games on disk. |
+| GET | `/state/saves` | Saved games on disk. Also at the main menu. |
+| GET | `/state/maps` | The maps and scenarios a new game can start from: `maps` and `scenarios`, each `{name, displayName, environment, asset}`. Also at the main menu. |
 | GET | `/state/map` | Semantic top-down raster of an area: land/water/road/zone/building classes, terrain heights, locked tiles, road dead ends. `?x=&z=` centre, `?size=` metres (default 1024), `?cell=` metres (default 8), `?overlay=` `landValue`\|`pollution`\|`noise`\|`traffic` (optional data layer). See below. |
 | GET | `/prefabs/buildings` | Available building prefabs. `?service=`. Each has `unlocked` (its unlock milestone has passed: the player's toolbar offers it), `unlockMilestone` and `constructionCost` (raw units, ÷100 = ₡). `place-building` and `build-road` refuse locked prefabs, and the zone commands refuse locked zone types (`city_capabilities.unlockedZones`). |
 | GET | `/prefabs/roads` | Available road prefabs. |
@@ -62,6 +63,8 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 ```json
 {
   "ok": true,
+  "cityName": "Peach Trees",
+  "scenario": "City of Gardens",
   "gameTime": "2027-03-19T13:28:50",
   "buildIndex": 4628,
   "simulation": { "paused": true, "selectedSpeed": 1, "finalSpeed": 0 },
@@ -364,6 +367,8 @@ All accept a JSON body. All support `"dryRun": true` where validation is meaning
 | POST | `/commands/transport-line` | `action` (`create`\|`add-stop`\|`remove-stop`\|`activate`\|`rename`\|`set-vehicle`), plus action fields. See below. |
 | POST | `/commands/district` | `action` (`create`\|`rename`\|`paint`\|`erase`\|`specialize`\|`release`\|`state`), `layer?` (`district`\|`park`), plus action fields. See below. |
 | POST | `/commands/save` | `name` |
+| POST | `/commands/load` | `name`, `dryRun?`. Load a save. Also at the main menu. See below. |
+| POST | `/commands/new-game` | `map` or `scenario`, `cityName?`, `leftHandTraffic?`, `dryRun?`. Also at the main menu. See below. |
 | POST | `/commands/set-camera` | `x?`, `y?`, `z?`, `distance?`, `verticalAngle?`, `horizontalAngle?`, `edgeScroll?`, `hideUi?`. See below. |
 | POST | `/commands/project-point` | `x`, `z`, `y?`. See below. |
 | POST | `/commands/repair-zones-to-growables` | Repair blocks to their growable zone. |
@@ -489,6 +494,29 @@ One command, six actions — the same things the in-game transport line editor d
 Every mutating action returns the live game readback for the line (`lineData`), so act →
 re-read → compare happens in one call. Stop positions do **not** snap to roads: pass the
 road node positions you built (the same coordinates `/state/networks` reports).
+
+### `/commands/load` and `/commands/new-game` — leave the main menu without the cursor
+
+Both repeat what the game's own panel does on a click (`LoadPanel.LoadRoutine`,
+`NewGamePanel` / `NewScenarioGamePanel.StartNewGameRoutine`): build a `SimulationMetaData`
+and call `LoadingManager.LoadLevel`. They run on the Unity main thread, like the panels, at the
+main menu or over a running city (save that one first). A per-frame pump that the mod creates
+at startup serves the main-thread queue before any city exists.
+
+- `load {name}`: the newest save with that name (`/state/saves`).
+- `new-game {map | scenario}`: matched by `name` or `displayName` from `/state/maps` (a
+  scenario also by its `asset`). `cityName` defaults to the map's or scenario's name;
+  `leftHandTraffic` defaults to false.
+- The reply comes at once with `loading: true` and `loadCountBefore`. The level is loaded when
+  `/health` reports `levelLoaded: true` and a `loadCount` above `loadCountBefore`. Then
+  `/state/summary.cityName` should match the reply's `cityName`. `city_load_game` and
+  `city_new_game` do this wait themselves.
+- Refused while a level is loading or the game is saving.
+
+```json
+{ "ok": true, "dryRun": false, "action": "new-game", "scenario": "City of Gardens",
+  "cityName": "Bridge Test", "leftHandTraffic": false, "loadCountBefore": 0, "loading": true }
+```
 
 ### `/commands/district` — the district and area editor
 
@@ -725,7 +753,7 @@ Read the budget or policy state straight back to confirm the game accepted it �
 |---|---|
 | 200 | Success. Body is the command's JSON result. |
 | 404 | Unknown path. |
-| 409 | No city is loaded. |
+| 409 | No city is loaded (everything except `/health`, `/debug/threads`, `/state/saves`, `/state/maps`, `/commands/load` and `/commands/new-game`). |
 | 500 | The command failed. Body contains `{"ok":false,"error":"..."}`. |
 
 ---

@@ -177,8 +177,11 @@ namespace SkylinesAgentBridge
             MapGet("/state/districts", "Read districts and special areas (names, types, extents)",
                 delegate { return OnGameThread(delegate { return DistrictCommands.BuildDistrictsJson(); }); });
 
-            MapGet("/state/saves", "List save files",
-                delegate { return OnGameThread(delegate { return SaveCommands.ListSaves(); }); });
+            MapGet("/state/saves", "List save files (also at the main menu)",
+                delegate { return OnMainThreadAnyTime(delegate { return SaveCommands.ListSaves(); }); });
+
+            MapGet("/state/maps", "List the maps and scenarios a new game can start from (also at the main menu)",
+                delegate { return OnMainThreadAnyTime(delegate { return GameLoadCommands.ListMapsAndScenarios(); }); });
 
             // ---- prefab catalogue ------------------------------------------------
             MapGet("/prefabs/roads", "List road prefabs",
@@ -314,6 +317,20 @@ namespace SkylinesAgentBridge
                 {
                     string body = request.Body;
                     return OnGameThread(delegate { return TransportCommands.TransportLineCommand(body); });
+                });
+
+            MapPost("/commands/load", "Load a save by name (also at the main menu; main thread)",
+                delegate(HttpRequest request)
+                {
+                    string body = request.Body;
+                    return OnMainThreadAnyTime(delegate { return GameLoadCommands.Load(body); });
+                });
+
+            MapPost("/commands/new-game", "Start a new game from a map or a scenario (also at the main menu; main thread)",
+                delegate(HttpRequest request)
+                {
+                    string body = request.Body;
+                    return OnMainThreadAnyTime(delegate { return GameLoadCommands.NewGame(body); });
                 });
 
             MapPost("/commands/district", "Create, rename, paint, specialize or release a district or special area",
@@ -460,10 +477,22 @@ namespace SkylinesAgentBridge
             return HttpResponse.Json(result.Ok ? 200 : 500, result.Json);
         }
 
+        /// <summary>
+        /// Runs a load / new-game command on the Unity main thread whether or not a city is
+        /// loaded: at the main menu there is no simulation to protect, and the game's own
+        /// Load and New Game panels run there. Never route city-state work through this.
+        /// </summary>
+        private HttpResponse OnMainThreadAnyTime(Func<CommandResult> action)
+        {
+            CommandResult result = bridge.MainThreadQueue.RunSync(action, CommandTimeoutMs);
+            return HttpResponse.Json(result.Ok ? 200 : 500, result.Json);
+        }
+
         private HttpResponse Health()
         {
             return HttpResponse.Json(200, "{\"ok\":true,\"mod\":\"CS1 Mayor Bridge\",\"levelLoaded\":" +
-                JsonUtil.Bool(bridge.LevelLoaded) + ",\"port\":" + port + "}");
+                JsonUtil.Bool(bridge.LevelLoaded) + ",\"loading\":" + JsonUtil.Bool(bridge.Loading) +
+                ",\"loadCount\":" + bridge.LoadCount + ",\"port\":" + port + "}");
         }
 
         /// <summary>

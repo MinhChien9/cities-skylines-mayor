@@ -43,6 +43,8 @@ public sealed class ActivityLog
         ["city_transport_line"] = "office",
         ["city_district"] = "office",
         ["city_save"] = "office",
+        ["city_load_game"] = "office",
+        ["city_new_game"] = "office",
         ["city_request"] = "office",      // only its POSTs, see ShouldJournal
     };
 

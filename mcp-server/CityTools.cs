@@ -266,6 +266,113 @@ public sealed class CityTools
     public Task<JsonNode?> CitySaves(CancellationToken cancellationToken)
         => Get("/state/saves", cancellationToken);
 
+    [System.ComponentModel.Description("GET /state/maps. The maps and scenarios a new game can start from (name, displayName, environment, asset). Works at the main menu. Feed a name to city_new_game.")]
+    [McpServerTool(Name = "city_maps", Title = "Maps & Scenarios")]
+    public Task<JsonNode?> CityMaps(CancellationToken cancellationToken)
+        => Get("/state/maps", cancellationToken);
+
+    [System.ComponentModel.Description("POST /commands/load. Load a save by name (from city_saves), the way the game's Load panel does - from the main menu or replacing the city that is running (save that one first with city_save). Waits until the level has loaded (up to waitSeconds) and returns the summary, so you can verify that cityName and population match the save. Works before any city is loaded.")]
+    [McpServerTool(Name = "city_load_game", Title = "Load Save")]
+    public async Task<JsonNode?> CityLoadGame(
+        [System.ComponentModel.Description("The save's name as city_saves lists it.")] string name,
+        [System.ComponentModel.Description("Seconds to wait for the level to load (default 240; 0 = return at once).")] int waitSeconds = 240,
+        [System.ComponentModel.Description("Only check that the save exists.")] bool dryRun = false,
+        CancellationToken cancellationToken = default)
+    {
+        var body = new Dictionary<string, object?> { ["name"] = name, ["dryRun"] = dryRun };
+        JsonNode? start = await Post("/commands/load", body, cancellationToken).ConfigureAwait(false);
+        return await WaitForLoad(start, dryRun ? 0 : waitSeconds, start?["cityName"]?.GetValue<string>(), cancellationToken).ConfigureAwait(false);
+    }
+
+    [System.ComponentModel.Description("POST /commands/new-game. Start a new game from a map or a scenario (names from city_maps), the way the game's New Game / New Scenario panels do - from the main menu or replacing the running city (save it first). Give exactly one of map or scenario. Waits until the level has loaded and returns the summary; for a scenario, read city_scenario next.")]
+    [McpServerTool(Name = "city_new_game", Title = "New Game")]
+    public async Task<JsonNode?> CityNewGame(
+        [System.ComponentModel.Description("Map name or display name (city_maps.maps).")] string? map = null,
+        [System.ComponentModel.Description("Scenario name or display name (city_maps.scenarios), e.g. 'City of Gardens'.")] string? scenario = null,
+        [System.ComponentModel.Description("The new city's name (default: the map's or scenario's name).")] string? cityName = null,
+        [System.ComponentModel.Description("Left-hand traffic (default false: right-hand).")] bool leftHandTraffic = false,
+        [System.ComponentModel.Description("Seconds to wait for the level to load (default 240; 0 = return at once).")] int waitSeconds = 240,
+        [System.ComponentModel.Description("Only check that the map or scenario exists.")] bool dryRun = false,
+        CancellationToken cancellationToken = default)
+    {
+        var body = new Dictionary<string, object?> { ["leftHandTraffic"] = leftHandTraffic, ["dryRun"] = dryRun };
+        if (!string.IsNullOrWhiteSpace(map))
+        {
+            body["map"] = map;
+        }
+        if (!string.IsNullOrWhiteSpace(scenario))
+        {
+            body["scenario"] = scenario;
+        }
+        if (!string.IsNullOrWhiteSpace(cityName))
+        {
+            body["cityName"] = cityName;
+        }
+        JsonNode? start = await Post("/commands/new-game", body, cancellationToken).ConfigureAwait(false);
+        return await WaitForLoad(start, dryRun ? 0 : waitSeconds, start?["cityName"]?.GetValue<string>(), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>How often a load is polled. Tests shorten it.</summary>
+    public TimeSpan LoadPollInterval { get; set; } = TimeSpan.FromSeconds(3);
+
+    /// <summary>
+    /// Waits for /health to report a level loaded after the one the start reply counted
+    /// (loadCount above loadCountBefore), then reads the summary and checks the city name.
+    /// </summary>
+    private async Task<JsonNode?> WaitForLoad(JsonNode? start, int waitSeconds, string? expectedCity, CancellationToken cancellationToken)
+    {
+        if (start is not JsonObject startObject || startObject["ok"]?.GetValue<bool>() != true ||
+            startObject["loading"]?.GetValue<bool>() != true || waitSeconds <= 0)
+        {
+            return start;
+        }
+        int before = startObject["loadCountBefore"]?.GetValue<int>() ?? 0;
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        bool loaded = false;
+        while (watch.Elapsed < TimeSpan.FromSeconds(waitSeconds))
+        {
+            await Task.Delay(LoadPollInterval, cancellationToken).ConfigureAwait(false);
+            JsonNode? health;
+            try
+            {
+                health = await _bridge.GetAsync("/health", cancellationToken).ConfigureAwait(false);
+            }
+            catch (BridgeException)
+            {
+                continue; // the game can stall the listener for a moment while it loads
+            }
+            if (health?["levelLoaded"]?.GetValue<bool>() == true && (health["loadCount"]?.GetValue<int>() ?? 0) > before)
+            {
+                loaded = true;
+                break;
+            }
+        }
+
+        var result = new JsonObject
+        {
+            ["ok"] = loaded,
+            ["start"] = startObject.DeepClone(),
+            ["loaded"] = loaded,
+            ["waitedSeconds"] = (int)watch.Elapsed.TotalSeconds,
+        };
+        if (!loaded)
+        {
+            result["hint"] = "Still loading after " + waitSeconds + " s. Check city_health (loading, loadCount) again before acting.";
+            return result;
+        }
+        JsonNode? summary = await Get("/state/summary", cancellationToken).ConfigureAwait(false);
+        result["summary"] = summary?.DeepClone();
+        string? actual = summary?["cityName"]?.GetValue<string>();
+        bool matches = expectedCity is null || string.Equals(actual, expectedCity, StringComparison.Ordinal);
+        result["cityMatches"] = matches;
+        if (!matches)
+        {
+            result["ok"] = false;
+            result["hint"] = $"Loaded, but the city is '{actual}', not '{expectedCity}'.";
+        }
+        return result;
+    }
+
     [System.ComponentModel.Description("GET /prefabs/transport. Transport line prefabs (bus, tram, metro, ...) with their class, economics, unlock milestone and the compatible vehicle assets. Useful for naming the vehicle when managing a line with city_transport_line.")]
     [McpServerTool(Name = "city_transport_prefabs", Title = "Transport Prefabs")]
     public async Task<JsonNode?> CityTransportPrefabs(
@@ -548,7 +655,7 @@ public sealed class CityTools
 
     // ------------------------------------------------------------- passthrough
 
-    [System.ComponentModel.Description("Raw passthrough for anything with no dedicated tool. GET reaches any endpoint (endpoint list: docs/api.md). POST is limited to endpoints that also have a dedicated tool: /commands/set-simulation-speed, set-tax-rate, set-budget, set-policy, set-building-active, empty-building, unlock-area, transport-line, district, save, set-camera, project-point, build-road, place-building, move-building, zone-segment, set-zone, bulldoze. The legacy repair/batch endpoints are not reachable.")]
+    [System.ComponentModel.Description("Raw passthrough for anything with no dedicated tool. GET reaches any endpoint (endpoint list: docs/api.md). POST is limited to endpoints that also have a dedicated tool: /commands/set-simulation-speed, set-tax-rate, set-budget, set-policy, set-building-active, empty-building, unlock-area, transport-line, district, load, new-game, save, set-camera, project-point, build-road, place-building, move-building, zone-segment, set-zone, bulldoze. The legacy repair/batch endpoints are not reachable.")]
     [McpServerTool(Name = "city_request", Title = "Raw Bridge Request")]
     public async Task<JsonNode?> CityRequest(
         [System.ComponentModel.Description("HTTP method: 'GET' or 'POST'.")] string method,
@@ -610,6 +717,8 @@ public sealed class CityTools
         "/commands/unlock-area",
         "/commands/transport-line",
         "/commands/district",
+        "/commands/load",
+        "/commands/new-game",
         "/commands/save",
         "/commands/set-camera",
         "/commands/project-point",
