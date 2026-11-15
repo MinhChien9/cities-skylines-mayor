@@ -9,7 +9,7 @@ environment state. **The backlog is not here: it is the GitHub issues**
 
 1. **Start:** read this file, then `CLAUDE.md` / `AGENTS.md`. Check "Environment state"
    below against the machine (game running? bridge `/health`?).
-2. **Pick work from the issues:** `gh issue list --milestone v0.2.0`, then `--label p1`.
+2. **Pick work from the issues:** `gh issue list --milestone v0.3.0`, then `--label p1`.
    Say which issue you take. One issue = one branch = one PR with `Closes #n`
    (`.github/CONTRIBUTING.md`). Do not start a second issue in the same PR.
 3. **New problems become issues, not notes:** a tool bug, a missing lever or something
@@ -59,7 +59,7 @@ and the in-game bridge mod only.
 
 ### Backlog
 
-GitHub issues: https://github.com/MinhChien9/cities-skylines-mayor/issues. Next release: milestone **v0.2.0**.
+GitHub issues: https://github.com/MinhChien9/cities-skylines-mayor/issues. Next release: milestone **v0.3.0** (v0.2.0 released 2026-11-16).
 
 ## Decision log
 
