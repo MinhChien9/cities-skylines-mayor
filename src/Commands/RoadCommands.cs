@@ -58,13 +58,18 @@ namespace SkylinesAgentBridge.Commands
             // A straight road that runs over an existing node must stop at it, exactly as a
             // player clicks on that node: NetTool reports ObjectCollision for a road drawn
             // across a dead end. Split the request into legs at every such node.
+            // Only on the same level, though: an elevated road (or a tunnel) passes over (or
+            // under) a ground road, and splitting it there would pull it down into an
+            // at-grade junction (#99: an overpass across a highway failed SlopeTooSteep).
             List<Vector3> waypoints = new List<Vector3>();
+            List<ushort> passedOver = new List<ushort>();
             waypoints.Add(start);
             if (!curved && autoSplit)
             {
-                waypoints.AddRange(NodesAlong(info, start, end, snapRadius));
+                waypoints.AddRange(NodesAlong(info, start, end, snapRadius, elevation, passedOver));
             }
             waypoints.Add(end);
+            string passedOverJson = passedOver.Count == 0 ? "" : ",\"crossesWithoutJunction\":" + IdsJson(passedOver);
 
             bool needMoney = GameValidation.NeedMoney();
             int legs = waypoints.Count - 1;
@@ -108,7 +113,7 @@ namespace SkylinesAgentBridge.Commands
                         out node, out segment, out cost, out productionRate);
                     if ((errors & ToolBase.ToolErrors.ObjectCollision) != ToolBase.ToolErrors.None)
                     {
-                        collisions = CollisionsJson(leg, collidingSegments, collidingBuildings, ref collisionHint);
+                        collisions = CollisionsJson(leg, collidingSegments, collidingBuildings, passedOver, ref collisionHint);
                     }
                     variants = PlannedVariantsJson(info, curved, ref variantMeters);
                 }
@@ -176,6 +181,7 @@ namespace SkylinesAgentBridge.Commands
                     ",\"hint\":\"" + JsonUtil.Escape(hint) + "\"" +
                     PowerLinesCrossedJson(info, waypoints, curved, control) +
                     VariantWarningJson(info, variantMeters) +
+                    passedOverJson +
                     ",\"legs\":[" + legJson + "]}");
             }
 
@@ -228,6 +234,7 @@ namespace SkylinesAgentBridge.Commands
                 ",\"moneyAfter\":" + MoneyNow() +
                 builtVariants +
                 VariantWarningJson(info, builtVariantMeters) +
+                passedOverJson +
                 collateral.RemovedJson(splitByDesign) +
                 ",\"legs\":[" + legJson + "]}");
         }
@@ -269,9 +276,11 @@ namespace SkylinesAgentBridge.Commands
         /// <summary>
         /// Waypoints a straight road must stop at, ordered from start to end: existing
         /// compatible nodes on the line (within half the snap radius of it), and the points
-        /// where the line crosses existing compatible segments. Never at either end.
+        /// where the line crosses existing compatible segments. Never at either end, and
+        /// never at a node or crossing on another level than the new road (an overpass or
+        /// underpass): those segment ids go to <paramref name="passedOver"/>.
         /// </summary>
-        private static List<Vector3> NodesAlong(NetInfo info, Vector3 start, Vector3 end, float snapRadius)
+        private static List<Vector3> NodesAlong(NetInfo info, Vector3 start, Vector3 end, float snapRadius, float elevation, List<ushort> passedOver)
         {
             List<KeyValuePair<float, Vector3>> hits = new List<KeyValuePair<float, Vector3>>();
             Vector2 a = new Vector2(start.x, start.z);
@@ -297,7 +306,7 @@ namespace SkylinesAgentBridge.Commands
                     continue;
                 }
                 float across = Mathf.Abs(p.x * dir.y - p.y * dir.x);
-                if (across <= lateral)
+                if (across <= lateral && SameLevel(info, nodes[i].m_position, elevation))
                 {
                     hits.Add(new KeyValuePair<float, Vector3>(along, nodes[i].m_position));
                 }
@@ -336,7 +345,14 @@ namespace SkylinesAgentBridge.Commands
                         if (along > snapRadius && along < len - snapRadius)
                         {
                             Vector3 hit = Vector3.Lerp(prev, cur, u);
-                            hits.Add(new KeyValuePair<float, Vector3>(along, hit));
+                            if (SameLevel(info, hit, elevation))
+                            {
+                                hits.Add(new KeyValuePair<float, Vector3>(along, hit));
+                            }
+                            else
+                            {
+                                passedOver.Add((ushort)i);
+                            }
                         }
                         break;
                     }
@@ -361,6 +377,23 @@ namespace SkylinesAgentBridge.Commands
                 result.Add(hits[i].Value);
             }
             return result;
+        }
+
+        /// <summary>
+        /// Height difference (m) below which an existing node or crossing counts as on the
+        /// new road's level. 4 m is where the bridge treats a road as raised (the elevated or
+        /// bridge variant), and leaves room for a ground road's curve over uneven terrain.
+        /// </summary>
+        private const float SameLevelTolerance = 4f;
+
+        /// <summary>
+        /// Whether an existing point of a network lies on the level the new road would have
+        /// there: the terrain plus the requested elevation, as the road tool samples it.
+        /// </summary>
+        private static bool SameLevel(NetInfo info, Vector3 existing, float elevation)
+        {
+            float planned = NetSegment.SampleTerrainHeight(info, existing, false, elevation);
+            return Mathf.Abs(existing.y - planned) < SameLevelTolerance;
         }
 
         private static Collateral TakeCollateral(List<Vector3> waypoints, bool curved, Vector3 control)
@@ -841,8 +874,9 @@ namespace SkylinesAgentBridge.Commands
         /// segment the leg starts or ends on (which the game would split) is <c>cannotSplit</c>;
         /// anything else is <c>overlap</c>.
         /// </summary>
-        private static string CollisionsJson(Leg leg, ulong[] segmentBits, ulong[] buildingBits, ref string collisionHint)
+        private static string CollisionsJson(Leg leg, ulong[] segmentBits, ulong[] buildingBits, List<ushort> passedOver, ref string collisionHint)
         {
+            ushort passedOverHit = 0;
             const int MaxReported = 20;
             NetManager net = Singleton<NetManager>.instance;
             BuildingManager bm = Singleton<BuildingManager>.instance;
@@ -888,6 +922,10 @@ namespace SkylinesAgentBridge.Commands
                         bool blocking = atNode != 0 || split || IsBlockingSegment(s);
                         if (atNode == 0 && !split && blocking)
                         {
+                            if (passedOverHit == 0 && passedOver.Contains((ushort)id))
+                            {
+                                passedOverHit = (ushort)id;
+                            }
                             blockers++;
                             if (firstBlocker == null)
                             {
@@ -952,6 +990,14 @@ namespace SkylinesAgentBridge.Commands
                     }
                 }
             }
+            if (collisionHint == null && passedOverHit != 0)
+            {
+                // The road passes over (or under) this segment by design, so what hits it is
+                // a node the game places along the leg - a pillar - or the deck itself.
+                collisionHint = "The road crosses segment " + passedOverHit + " on another level, but a node the game places along it (a pillar) stands on it, or the deck is too close to it. " +
+                    "The game puts nodes at the leg ends and divides a long leg evenly; this leg's nodes are at " + PlannedNodesText() + ". " +
+                    "Move or shorten the leg so its ends and nodes fall between or beyond the carriageways (or build it as two legs), or raise the elevation.";
+            }
             if (collisionHint == null && firstBlocker != null)
             {
                 collisionHint = "Blocked by " + firstBlocker + (blockers > 1 ? " and " + (blockers - 1) + " more (collidesWith, blocking: true)" : "") +
@@ -959,6 +1005,19 @@ namespace SkylinesAgentBridge.Commands
                     "Route around it: add a waypoint (build it as two legs) or move the line. Objects with blocking: false (grown buildings, power lines) would be removed by the build instead.";
             }
             return sb.Append(']').ToString();
+        }
+
+        /// <summary>The node positions the last test pass planned, as "(x, z), (x, z)".</summary>
+        private static string PlannedNodesText()
+        {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < NodeBuffer.m_size; i++)
+            {
+                Vector3 p = NodeBuffer.m_buffer[i].m_position;
+                if (i > 0) sb.Append(", ");
+                sb.Append('(').Append(Mathf.RoundToInt(p.x)).Append(", ").Append(Mathf.RoundToInt(p.z)).Append(')');
+            }
+            return sb.ToString();
         }
 
         /// <summary>
