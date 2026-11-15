@@ -385,6 +385,17 @@ public class CityToolsTests
     }
 
     [Fact]
+    public async Task CityIndustry_passes_a_clamped_limit()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityIndustry(5000, CancellationToken.None);
+
+        Assert.Equal("/state/industry?limit=1000", Assert.Single(handler.Requests).Path);
+    }
+
+    [Fact]
     public async Task CityDistrict_rename_posts_the_name_and_layer()
     {
         var handler = Always("{\"ok\":true}");

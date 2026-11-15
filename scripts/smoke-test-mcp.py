@@ -47,6 +47,7 @@ EXPECTED_TOOLS = {
     "city_saves",
     "city_maps",
     "city_resources",
+    "city_industry",
     "city_load_game",
     "city_new_game",
     "city_capabilities",
