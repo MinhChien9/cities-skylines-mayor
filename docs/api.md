@@ -379,6 +379,13 @@ control points the tool would make:
   complaint, so the bridge refuses a surface network (road, path, track) with 4 m or more
   under water unless `elevation >= 4` (the bridge variant) or `allowWater: true`. Pipes
   and power lines are exempt. `hint` says what to change.
+- **Collisions are named.** On `ObjectCollision` each leg lists what the game's test pass
+  marked as colliding (what the player's tool paints red):
+  `collidesWith: [{kind: "segment"|"building", id, prefab, reason, atNode?}]`. `reason` is
+  `narrowAngle` for a segment at the leg's own start or end node: the game refuses a new
+  segment that leaves a node within about 41° of an existing one (`NetTool.CanAddSegment`).
+  It is `cannotSplit` for the segment the leg starts or ends on, when the game will not
+  split it there, and `overlap` for anything else. The first two get their own `hint`.
 - **Money.** `cost` is the construction cost in ₡ (from the test pass); the build pass
   charges it, and `moneyBefore` / `moneyAfter` show the treasury. The bridge checks the
   **real** cash (`NotEnoughMoney` when the cost exceeds it) for roads and buildings even

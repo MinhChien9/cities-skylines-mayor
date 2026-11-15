@@ -72,6 +72,7 @@ namespace SkylinesAgentBridge.Commands
             int totalCost = 0;
             float totalUnderwater = 0f;
             StringBuilder legJson = new StringBuilder();
+            string collisionHint = null;
 
             // Phase 1: test every leg (no side effects), like NetTool.CreateNodeImpl does.
             for (int i = 0; i < legs; i++)
@@ -85,10 +86,37 @@ namespace SkylinesAgentBridge.Commands
                 ushort segment;
                 int cost;
                 int productionRate;
-                ToolBase.ToolErrors errors = NetTool.CreateNode(
-                    info, leg.Start, leg.Middle, leg.End, NodeBuffer, 1000,
-                    true, false, true, needMoney, false, false, 0,
-                    out node, out segment, out cost, out productionRate);
+                ToolBase.ToolErrors errors;
+                string collisions = "";
+                // Open our own collision scope around the test pass: CreateNode marks every
+                // segment and building it collides with in the ToolController's buffers,
+                // which is what the player's tool paints red. Read them, then clear them.
+                ToolController properties = Singleton<ToolManager>.instance.m_properties;
+                ulong[] collidingSegments = null;
+                ulong[] collidingBuildings = null;
+                if (properties != null)
+                {
+                    properties.BeginColliding(out collidingSegments, out collidingBuildings);
+                }
+                try
+                {
+                    errors = NetTool.CreateNode(
+                        info, leg.Start, leg.Middle, leg.End, NodeBuffer, 1000,
+                        true, false, true, needMoney, false, false, 0,
+                        out node, out segment, out cost, out productionRate);
+                    if ((errors & ToolBase.ToolErrors.ObjectCollision) != ToolBase.ToolErrors.None)
+                    {
+                        collisions = CollisionsJson(leg, collidingSegments, collidingBuildings, ref collisionHint);
+                    }
+                }
+                finally
+                {
+                    if (properties != null)
+                    {
+                        properties.ResetColliding();
+                        properties.EndColliding();
+                    }
+                }
 
                 // The game happily builds a ground-level road on the sea bed (it is then
                 // simply submerged), so NetTool reports no error for it. An agent never wants
@@ -103,6 +131,7 @@ namespace SkylinesAgentBridge.Commands
                 legJson.Append("{\"leg\":").Append(i)
                     .Append(",\"errors\":").Append(GameValidation.ErrorsJson(errors))
                     .Append(",\"underwaterMeters\":").Append(Mathf.RoundToInt(underwater))
+                    .Append(collisions)
                     .Append(',').Append(SnapJson("start", leg.Start))
                     .Append(',').Append(SnapJson("end", leg.End)).Append('}');
             }
@@ -119,6 +148,10 @@ namespace SkylinesAgentBridge.Commands
             {
                 string errorsJson = GameValidation.ErrorsJson(allErrors);
                 string hint = GameValidation.Hint(allErrors);
+                if (collisionHint != null)
+                {
+                    hint = collisionHint;
+                }
                 if (wet)
                 {
                     errorsJson = errorsJson.Length > 2
@@ -788,6 +821,106 @@ namespace SkylinesAgentBridge.Commands
                 return Vector3.zero;
             }
             return d.normalized;
+        }
+
+        /// <summary>
+        /// The objects the game's test pass marked as colliding, as a <c>collidesWith</c>
+        /// field. A segment attached to the leg's own start or end node collides because the
+        /// new segment leaves that node too close to it: <c>NetTool.CanAddSegment</c> refuses
+        /// a direction within about 41 degrees (dot product above 0.75) of an existing segment
+        /// at the node. That one gets <c>reason: "narrowAngle"</c> and its own hint. The
+        /// segment the leg starts or ends on (which the game would split) is <c>cannotSplit</c>;
+        /// anything else is <c>overlap</c>.
+        /// </summary>
+        private static string CollisionsJson(Leg leg, ulong[] segmentBits, ulong[] buildingBits, ref string collisionHint)
+        {
+            const int MaxReported = 20;
+            NetManager net = Singleton<NetManager>.instance;
+            BuildingManager bm = Singleton<BuildingManager>.instance;
+            StringBuilder sb = new StringBuilder(",\"collidesWith\":[");
+            int count = 0;
+            if (segmentBits != null)
+            {
+                for (int w = 0; w < segmentBits.Length && count < MaxReported; w++)
+                {
+                    ulong bits = segmentBits[w];
+                    for (int b = 0; bits != 0 && b < 64 && count < MaxReported; b++)
+                    {
+                        if ((bits & (1UL << b)) == 0)
+                        {
+                            continue;
+                        }
+                        bits &= ~(1UL << b);
+                        int id = (w << 6) | b;
+                        if (id == 0 || id >= net.m_segments.m_buffer.Length)
+                        {
+                            continue;
+                        }
+                        NetSegment s = net.m_segments.m_buffer[id];
+                        ushort atNode = 0;
+                        if (leg.Start.m_node != 0 && (s.m_startNode == leg.Start.m_node || s.m_endNode == leg.Start.m_node))
+                        {
+                            atNode = leg.Start.m_node;
+                        }
+                        else if (leg.End.m_node != 0 && (s.m_startNode == leg.End.m_node || s.m_endNode == leg.End.m_node))
+                        {
+                            atNode = leg.End.m_node;
+                        }
+                        // The segment the leg starts or ends on is split there; the game refuses
+                        // a split too close to one of its nodes or at a too narrow angle.
+                        bool split = id == leg.Start.m_segment || id == leg.End.m_segment;
+                        if (split && collisionHint == null)
+                        {
+                            collisionHint = "The game cannot split segment " + id + " at that point: it is too close to one of the segment's nodes, or the new segment meets it at too narrow an angle. " +
+                                "Start on the segment's node instead, further along it, or at a wider angle.";
+                        }
+                        if (count++ > 0) sb.Append(',');
+                        sb.Append("{\"kind\":\"segment\",\"id\":").Append(id)
+                            .Append(",\"prefab\":\"").Append(JsonUtil.Escape(s.Info != null ? s.Info.name : "")).Append('"')
+                            .Append(",\"reason\":\"").Append(atNode != 0 ? "narrowAngle" : (split ? "cannotSplit" : "overlap")).Append('"');
+                        if (atNode != 0)
+                        {
+                            sb.Append(",\"atNode\":").Append(atNode);
+                            if (collisionHint == null)
+                            {
+                                collisionHint = "The new segment leaves node " + atNode + " within about 41 degrees of segment " + id +
+                                    ", which already runs from that node in nearly the same direction (the game needs a wider angle between segments at a node). " +
+                                    "Aim the other end in a different direction, extend from the far end of segment " + id + ", or start somewhere else.";
+                            }
+                        }
+                        sb.Append('}');
+                    }
+                }
+            }
+            if (buildingBits != null)
+            {
+                for (int w = 0; w < buildingBits.Length && count < MaxReported; w++)
+                {
+                    ulong bits = buildingBits[w];
+                    for (int b = 0; bits != 0 && b < 64 && count < MaxReported; b++)
+                    {
+                        if ((bits & (1UL << b)) == 0)
+                        {
+                            continue;
+                        }
+                        bits &= ~(1UL << b);
+                        int id = (w << 6) | b;
+                        if (id == 0 || id >= bm.m_buildings.m_buffer.Length)
+                        {
+                            continue;
+                        }
+                        BuildingInfo bi = bm.m_buildings.m_buffer[id].Info;
+                        Vector3 p = bm.m_buildings.m_buffer[id].m_position;
+                        if (count++ > 0) sb.Append(',');
+                        sb.Append("{\"kind\":\"building\",\"id\":").Append(id)
+                            .Append(",\"prefab\":\"").Append(JsonUtil.Escape(bi != null ? bi.name : "")).Append('"')
+                            .Append(",\"reason\":\"overlap\"")
+                            .Append(",\"x\":").Append(JsonUtil.Number(p.x))
+                            .Append(",\"z\":").Append(JsonUtil.Number(p.z)).Append('}');
+                    }
+                }
+            }
+            return sb.Append(']').ToString();
         }
 
         private static string SnapJson(string name, NetTool.ControlPoint p)
