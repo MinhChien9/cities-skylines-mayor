@@ -426,6 +426,14 @@ control points the tool would make:
   `wouldRemove: { buildings: [{id, prefab, x, z}] }`, with one `warning`; a build lists every incompatible segment and building that disappeared nearby
   in `removed: { segments: [{id, prefab}], buildings: [{id, prefab, x, z}] }`, plus a
   `warning`. Compatible roads split into junctions by design are not listed.
+- **Tunnels and bridges are reported.** Where the ground is more than 8 m above the line the
+  game builds the network's tunnel (with a `Slope` portal at each end). Where the line is
+  above the ground (or `elevation` asks for it), it builds the elevated or bridge variant
+  (`RoadAI.GetInfo`). Nothing can be zoned along those. A dry run lists the stretches per
+  leg in `variants: [{kind, prefab, meters, from, to}]` (`kind`: `tunnel`, `tunnelPortal`,
+  `bridge`, `elevated`); a build lists the segments it made that way
+  (`variants: [{segmentId, kind, prefab, meters}]`). Both add `variantMeters` and a
+  `variantWarning` (#67).
 - **A refusal is HTTP 200 with `"ok": false`** — the command ran; the game said no.
 
 ```json
