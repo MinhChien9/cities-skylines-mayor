@@ -73,6 +73,7 @@ Each tool's own description (what the agent sees) has the full parameter list.
 | Tool | Does |
 |---|---|
 | `city_set_simulation_speed` | Pause or resume, speed 1–3 |
+| `city_close_panel` | Closes the game's pop-ups the way Escape does: the milestone "Congratulations" panel (it holds the clock), scenario messages (won, lost, rewards), the bail-out offer (declines it), the pause menu. `city_summary.openPanels` lists them |
 | `city_set_tax_rate` · `city_set_budget` · `city_set_policy` | Tax per zone · budget per service · a policy, city-wide or per district |
 | `city_set_building_active` · `city_empty_building` | Turn a building on or off · empty a full cemetery or landfill |
 | `city_unlock_area` | Buys a map tile and pays the land price |

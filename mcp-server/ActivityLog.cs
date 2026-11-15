@@ -40,6 +40,7 @@ public sealed class ActivityLog
         ["city_empty_building"] = "office",
         ["city_unlock_area"] = "office",
         ["city_set_simulation_speed"] = "office",
+        ["city_close_panel"] = "office",
         ["city_transport_line"] = "office",
         ["city_district"] = "office",
         ["city_save"] = "office",

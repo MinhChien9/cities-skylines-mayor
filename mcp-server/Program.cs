@@ -55,6 +55,9 @@ const string Instructions = """
 
     - city_threads is the go/no-go gate: if runsOnSimulationThread is false, tell the
       user and stop.
+    - If city_summary says scenarioOutcome "lost", stop and tell the user. If
+      simulation.forcedPaused is true, a game panel (milestone reached, pause menu)
+      holds the clock: city_close_panel closes it, then set the speed again.
     - Grid habits that work: straight streets on 8 m multiples, parallel streets 80 m
       apart (16 m road + two 32 m zone blocks), junctions at least ~40 m apart.
     - city_camera frames the game camera on a world point (for the viewer, or for a

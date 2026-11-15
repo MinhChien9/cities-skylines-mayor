@@ -29,7 +29,16 @@ namespace SkylinesAgentBridge.State
             json.Append(",\"buildIndex\":").Append(simulation.m_currentBuildIndex);
             json.Append(",\"simulation\":{\"paused\":").Append(JsonUtil.Bool(simulation.SimulationPaused));
             json.Append(",\"selectedSpeed\":").Append(simulation.SelectedSimulationSpeed);
-            json.Append(",\"finalSpeed\":").Append(simulation.FinalSimulationSpeed).Append("}");
+            json.Append(",\"finalSpeed\":").Append(simulation.FinalSimulationSpeed);
+            json.Append(",\"forcedPaused\":").Append(JsonUtil.Bool(simulation.ForcedSimulationPaused)).Append("}");
+            string outcome = ScenarioOutcome(meta);
+            json.Append(",\"scenarioOutcome\":").Append(outcome.Length == 0 ? "null" : "\"" + outcome + "\"");
+            json.Append(",\"openPanels\":").Append(PanelState.SnapshotJson);
+            string hint = InterruptionHint(simulation.ForcedSimulationPaused, outcome);
+            if (hint.Length > 0)
+            {
+                json.Append(",\"hint\":\"").Append(JsonUtil.Escape(hint)).Append("\"");
+            }
             json.Append(",\"network\":{\"nodes\":").Append(net.m_nodeCount);
             json.Append(",\"segments\":").Append(net.m_segmentCount);
             json.Append(",\"lanes\":").Append(net.m_laneCount).Append("}");
@@ -44,6 +53,47 @@ namespace SkylinesAgentBridge.State
             json.Append(",\"workplace\":").Append(zones.m_workplaceDemand).Append("}");
             json.Append("}");
             return CommandResult.FromJson(json.ToString());
+        }
+
+        /// <summary>"won" or "lost" once a scenario's WinEffect / LoseEffect fired, else "".</summary>
+        public static string ScenarioOutcome(SimulationMetaData meta)
+        {
+            if (meta == null || string.IsNullOrEmpty(meta.m_ScenarioAsset))
+            {
+                return "";
+            }
+            if (meta.m_scenarioWon)
+            {
+                return "won";
+            }
+            return meta.m_scenarioFailed ? "lost" : "";
+        }
+
+        /// <summary>
+        /// What stops play right now: a game panel holding the clock (milestone reached, the
+        /// pause menu, a bail-out offer) or a finished scenario. Empty when nothing does.
+        /// </summary>
+        public static string InterruptionHint(bool forcedPaused, string scenarioOutcome)
+        {
+            List<string> parts = new List<string>();
+            if (scenarioOutcome == "lost")
+            {
+                parts.Add("The scenario is LOST (a lose condition fired; city_scenario shows which). Stop and tell the user before playing on.");
+            }
+            else if (scenarioOutcome == "won")
+            {
+                parts.Add("The scenario is WON. Tell the user; play can continue as free play.");
+            }
+            string holder = PanelState.ClockHolder;
+            if (holder.Length > 0)
+            {
+                parts.Add("The game's " + holder + " is open and holds the clock (forcedPaused); read it in openPanels, then city_close_panel closes it and city_set_simulation_speed resumes.");
+            }
+            else if (forcedPaused)
+            {
+                parts.Add("The game force-paused the clock (forcedPaused); city_set_simulation_speed with paused=false resumes it.");
+            }
+            return string.Join(" ", parts.ToArray());
         }
 
         public static CommandResult BuildDemandJson()

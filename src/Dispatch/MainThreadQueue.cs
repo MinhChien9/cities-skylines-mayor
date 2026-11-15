@@ -27,6 +27,8 @@ namespace SkylinesAgentBridge.Threading
     ///   * world→screen projection       (UnityEngine.Camera.WorldToScreenPoint)
     ///   * render-only queries           (Screen dimensions, the window rect)
     ///   * UI-only toggles that live on the camera (the edge-scrolling SavedBool)
+    ///   * the game's own pop-up panels: reading and closing them (State.PanelState);
+    ///     their Hide queues its clock change through SimulationManager.AddAction
     ///
     /// WHAT MAY NEVER RUN HERE
     /// -----------------------
