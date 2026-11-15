@@ -262,6 +262,15 @@ Lessons recorded so far:
   intakes there raised city water pollution 6 % → 11 %, and a death wave followed (2,063
   sick). Water towers (groundwater, clean residential area) dilute; removing two of them
   pushed pollution to 16 %. Eight towers in the north brought it back to 6 %.
+- **Power islands break on budget cuts.** The east districts ran on their own wind
+  turbines only; cutting the electricity budget to 80% left the city 21% spare but the
+  island short, and 56 buildings were abandoned within one pulse. A coal plant inside the
+  island fixed it. Before trimming a utility budget, check every isolated grid, not the
+  citywide surplus.
+- Raising the education budget raises *every* school's capacity, the university's too:
+  it fixed high-school overflow but added graduates to an already graduate-heavy
+  unemployment. The city settled near 52k: residential demand stays 0 while ~6,000
+  graduates wait for office jobs.
 - In this build the Water Pumping Station (`Water Intake`) is `ShorelineOrGround` and the
   `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
   pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the
