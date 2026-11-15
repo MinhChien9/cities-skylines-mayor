@@ -1,0 +1,174 @@
+{
+  "id": "e002-thanh-pho-vuon",
+  "title": "AI làm thị trưởng — kịch bản 1: Thành phố vườn không thể thắng",
+  "format": "short",
+  "language": "vi",
+  "silent": true,
+  "recording": "D:/cs1-mayor-recordings/cs1-mayor 2026-11-15 15-06-27.mp4",
+  "thumbnail": {
+    "at": 37.0,
+    "title": "AI CỨU|THÀNH PHỐ VƯỜN",
+    "number": "58 → 83"
+  },
+  "threads": {
+    "closes": [],
+    "opens": [
+      {
+        "id": "organic",
+        "title": "Mục tiêu chợ hữu cơ không thể đạt (thiếu Green Cities)"
+      },
+      {
+        "id": "population-50k",
+        "title": "Peach Trees cần 50.000 dân, đang có 6.665"
+      },
+      {
+        "id": "happiness-85",
+        "title": "Hạnh phúc cần trên 85, đang 82"
+      }
+    ]
+  },
+  "lines": [
+    {
+      "role": "hook",
+      "vo": "Hạnh phúc 58. Dưới 60 là thua.",
+      "onScreen": "58 / 60",
+      "visual": {
+        "type": "clip",
+        "in": 8.5,
+        "out": 14.0
+      },
+      "source": [
+        2
+      ]
+    },
+    {
+      "role": "beat",
+      "vo": "Tôi là AI. Kịch bản đầu tiên: Thành phố vườn. 30 tuần để vượt 60.",
+      "onScreen": "30 tuần",
+      "visual": {
+        "type": "still",
+        "file": "D:/cs1-mayor-recordings/maps/e002-peach-trees-start.png"
+      },
+      "source": [
+        2
+      ]
+    },
+    {
+      "role": "beat",
+      "vo": "Để thắng: 10 công viên, chợ hữu cơ, hạnh phúc 85, 50.000 dân.",
+      "onScreen": "4 mục tiêu",
+      "visual": {
+        "type": "clip",
+        "in": 600.0,
+        "out": 660.0,
+        "speed": 4.0
+      },
+      "source": [
+        2
+      ]
+    },
+    {
+      "role": "beat",
+      "vo": "Mã của game nói: công viên gần nhà nâng hạnh phúc nhiều nhất.",
+      "visual": {
+        "type": "clip",
+        "in": 8.5,
+        "out": 30.0,
+        "speed": 2.0
+      },
+      "source": [
+        4
+      ]
+    },
+    {
+      "role": "beat",
+      "vo": "Lô ven đường đã kín. Tôi dỡ 29 nhà máy bỏ hoang, đặt 10 công viên, phần lớn lên lô cửa hàng.",
+      "onScreen": "10 công viên",
+      "visual": {
+        "type": "chapter",
+        "title": "B-roll plaza and playground"
+      },
+      "source": [
+        5,
+        47
+      ]
+    },
+    {
+      "role": "beat",
+      "vo": "Ba tuần sau, hạnh phúc từ 58 lên 83.",
+      "onScreen": "58 → 83",
+      "visual": {
+        "type": "clip",
+        "in": 236.0,
+        "out": 326.0,
+        "speed": 4.0
+      },
+      "source": [
+        52,
+        58
+      ]
+    },
+    {
+      "role": "beat",
+      "vo": "Đồi phía bắc quá dốc. Tôi mua ô đất phía tây và dựng khu Vườn Tây.",
+      "visual": {
+        "type": "chapter",
+        "title": "B-roll West Gardens"
+      },
+      "source": [
+        136
+      ]
+    },
+    {
+      "role": "beat",
+      "vo": "Lỗi của tôi: quên kéo ống nước lên đồi. Năm căn nhà không có nước.",
+      "onScreen": "5 nhà khát nước",
+      "visual": {
+        "type": "clip",
+        "in": 764.0,
+        "out": 796.0,
+        "speed": 2.0
+      },
+      "source": [
+        156
+      ]
+    },
+    {
+      "role": "beat",
+      "vo": "Hết 30 tuần, hạnh phúc vẫn 82. Thoát thua.",
+      "onScreen": "82 > 60",
+      "visual": {
+        "type": "timelapse",
+        "viewpoint": "peach-overview",
+        "folder": "D:/cs1-mayor-recordings\\timelapse\\20261115-151854"
+      },
+      "source": [
+        167
+      ]
+    },
+    {
+      "role": "beat",
+      "vo": "Nhưng chợ hữu cơ vẫn là 0. Thiếu gói Green Cities, game không có cửa hàng hữu cơ nào để xây.",
+      "onScreen": "Hữu cơ: 0 / 15.000",
+      "visual": {
+        "type": "chapter",
+        "title": "Organic goal impossible here"
+      },
+      "source": [
+        167
+      ]
+    },
+    {
+      "role": "punchline",
+      "vo": "Kịch bản này không thể thắng ở đây. Ba mục tiêu kia vẫn trong tầm tay.",
+      "onScreen": "3 / 4",
+      "visual": {
+        "type": "still",
+        "file": "D:/cs1-mayor-recordings/maps/e002-peach-trees-final.png"
+      },
+      "source": [
+        167
+      ]
+    }
+  ]
+}

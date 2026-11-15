@@ -411,7 +411,10 @@ namespace SkylinesAgentBridge.State
                 json.Append(",\"subService\":\"").Append(JsonUtil.Escape(info.m_class.m_subService.ToString())).Append("\"");
                 json.Append(",\"level\":\"").Append(JsonUtil.Escape(info.m_class.m_level.ToString())).Append("\"");
                 json.Append(",\"width\":").Append(info.GetWidth());
-                json.Append(",\"length\":").Append(info.GetLength()).Append("}");
+                json.Append(",\"length\":").Append(info.GetLength());
+                json.Append(",\"unlocked\":").Append(JsonUtil.Bool(UnlockCheck.IsUnlocked(info)));
+                json.Append(",\"unlockMilestone\":\"").Append(JsonUtil.Escape(UnlockCheck.MilestoneName(info))).Append("\"");
+                json.Append(",\"constructionCost\":").Append(info.m_buildingAI == null ? 0 : info.m_buildingAI.GetConstructionCost()).Append("}");
                 first = false;
             }
 

@@ -31,6 +31,10 @@ namespace SkylinesAgentBridge.Commands
             {
                 return CommandResult.Fail("Building prefab is blocked and must not be used: " + prefabName + " (" + AssetPolicy.BlockReason(prefabName) + ")");
             }
+            if (!UnlockCheck.IsUnlocked(info))
+            {
+                return CommandResult.Fail(UnlockCheck.LockedMessage(info, prefabName));
+            }
 
             // Resolve exactly where the building tool would put it, and what it would say.
             BuildingPlacement.Result placement = BuildingPlacement.Resolve(info, target, angleDegrees, 0);

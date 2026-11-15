@@ -100,6 +100,16 @@ session journal written by the server.
 - [x] Map overlays for the story (land value, traffic, pollution) via `/state/map`
       (`?overlay=landValue|pollution|noise|traffic`; `city_map overlay/saveAs` → stills)
 
+### Phase 5 — Scenarios
+
+- [x] First scenario video: **City of Gardens** played from a new game, recorded, cut as a
+      silent Short (`episodes/e002-thanh-pho-vuon`: storyboard, script, SRT/TXT transcript,
+      renders, review sheet). Bridge: `/state/scenario` + `city_scenario` (win/lose progress,
+      next milestone, zone unlocks); locked prefabs and zones are refused. Post: `post.edit
+      --silent` (reading-paced captions, no audio track, SRT transcript)
+- [ ] Continue Peach Trees (save `peach-trees-03-end-video1`) toward 50k / happiness 85, or
+      pick a scenario this install can win (check its goals against `/prefabs/buildings`)
+
 ### Backlog (not scheduled)
 
 - District painting as a validated tool (transit lines: done, #47)
@@ -128,6 +138,9 @@ session journal written by the server.
 | 2026-11-15 | Word timing from faster-whisper matched to the script, not a phoneme forced aligner | Whisper (CTranslate2, no torch) gives good word times on clean TTS audio; the script stays the on-screen text; a wav2vec2 aligner would pull torch in for little gain |
 | 2026-11-15 | TTS = VieNeu-TTS v3 Turbo, CPU/ONNX, voice Thiện Minh | Apache-2.0 incl. preset voices (monetised use allowed), offline, free, ~2× real time on CPU, no torch; ElevenLabs only if quality demands it |
 | 2026-11-15 | Claude writes the script in-session from a deterministic brief; code only builds the brief and validates | The writing is the judgement; the brief and validator keep it truthful (beats cite journal `seq`) and inside the 3 s / 60 s budgets |
+| 2026-11-15 | The bridge refuses milestone-locked prefabs and zones (`UnlockCheck`) | The game's tools do not check unlocks (the toolbar hides them); in a scenario a locked building is a cheat and a false win |
+| 2026-11-15 | Scenario goals read through the game's own trigger objects (`UnlockManager.m_scenarioTriggers`, `GetLocalizedProgress`) | Same numbers as the in-game goals tab; no reimplementation of the conditions |
+| 2026-11-15 | Silent cut: captions timed at 4 syllables/s + 0.8 s, no audio track | The user wanted no audio; platforms add music at upload; the validator times `"silent": true` scripts the same way |
 | 2026-11-15 | `ObsClient` never resends a request whose connection dropped after sending; it only retries a send that failed | Same rule as the mayor's: a lost answer does not mean OBS did not act (e.g. `StartRecord`) |
 
 Lessons recorded so far:
@@ -296,6 +309,25 @@ Lessons recorded so far:
   `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
   pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the
   game does.
+- **Scenarios (City of Gardens, 2026-11-15).** Happiness is `(health + wellbeing) / 2` per
+  citizen (`ResidentAI`); the largest wellbeing term is entertainment near home (parks: up to
+  +60 local, +40 citywide), then transport, police, fire, education (+60 each). Ten
+  different cheap parks on shop lots took scenario happiness from 58 to 83 in three game weeks.
+  The scenario's "10 parks" trigger paid ₡10,000 through a Story Message.
+- Scenario zone unlocks are custom: Peach Trees had only low density and industry until
+  Milestone 6 (7,500 people) — read `city_scenario.zoneMilestones` before planning density.
+- **This Epic install loads no expansion buildings** (no `CommercialEco`, Leisure, Tourist,
+  disaster or taxi prefabs), so City of Gardens' organic goal cannot be met. An Organic
+  district then keeps demolishing ordinary shops (the game marks them for replacement) with
+  nothing to replace them: commercial fell 213 → 152. `SteamHelper.IsDLCOwned` is false for
+  everything on Epic and proves nothing; count the prefabs instead.
+- Shops spawn only at "good places" (`ZoneBlock.IsGoodPlace`: within ~40 m of a building that
+  conducts power) while any good place exists elsewhere.
+- A straight Basic Road over a ridge became a tunnel (`Basic Road Slope`) where the grade was
+  too steep; nothing can be zoned along the tunnel. A 420 m power line in one span was
+  refused (`ObjectCollision`); three shorter legs built.
+- A pipe started at a point shared with a road snapped to the road's node and was refused;
+  start on the pipe's segment instead (`snappedTo: segment`).
 - The game runs windowed at 1600×900, so the 1080p capture is upscaled; a 1920×1080
   game window would be sharper. The bridge's debug console overlay shows in the capture
   (S5 hides UI for B-roll).
@@ -304,9 +336,9 @@ Lessons recorded so far:
 
 | Item | State |
 |---|---|
-| Game | Epic, `D:\Epic Games\CitiesSkylines`, map "Cannes". **50k free-play run reached 50,259 citizens** (2026-11-15, game 2056-06, save `mayor-50k-reached`), then 53.4k (game 2064-11, save `mayor-50k-34`). 5 of 9 tiles owned (start, south, far south, east, south-east): west/north/south/far-south districts, office park, east office district; nuclear + 2 coal + 15 turbines; 5 coastal pumping stations north of all discharge, 6 treatment plants on the south shore; incinerators in the NE, south and east; 2 bus lines; a highway exit/entrance at Lake Avenue. Taxes 9%, electricity 100%, healthcare 130%. Standing issues: ~250 dead awaiting pickup, crime, 15% unemployment (over-educated workforce). **Built-in cheat mods Unlimited Money and Unlock All are enabled**; the bridge checks real cash anyway |
-| Bridge | Installed from `main` (#54), `runsOnSimulationThread: true` |
-| MCP | Debug build current with `main`. The Release build in `bin/Release` is held by this Claude Code session's running server: rebuild it after the session ends (or `/mcp` reconnect) to get the studio tools in Claude Code |
+| Game | Epic, `D:\Epic Games\CitiesSkylines`. **Current: scenario City of Gardens** (Peach Trees, 6,665 people, happiness 82, game 2027-08, save `peach-trees-03-end-video1`; 2 of 9 tiles; win 1/4: parks done, organic impossible on this install). Cheat mods are **off** now. Earlier free-play city: map "Cannes". **50k free-play run reached 50,259 citizens** (2026-11-15, game 2056-06, save `mayor-50k-reached`), then 53.4k (game 2064-11, save `mayor-50k-34`). 5 of 9 tiles owned (start, south, far south, east, south-east): west/north/south/far-south districts, office park, east office district; nuclear + 2 coal + 15 turbines; 5 coastal pumping stations north of all discharge, 6 treatment plants on the south shore; incinerators in the NE, south and east; 2 bus lines; a highway exit/entrance at Lake Avenue. Taxes 9%, electricity 100%, healthcare 130%. Standing issues: ~250 dead awaiting pickup, crime, 15% unemployment (over-educated workforce). **Built-in cheat mods Unlimited Money and Unlock All are enabled**; the bridge checks real cash anyway |
+| Bridge | Installed from branch `scenario-first-video` (scenario read, unlock checks), `runsOnSimulationThread: true` |
+| MCP | Debug and Release rebuilt with `city_scenario`. A running server locks `bin/Release/net10.0/Cs1Mayor.Mcp.dll`; renaming the locked DLL aside lets the build replace it, then `/mcp` reconnect picks it up |
 | OBS | 33.0.1 portable at `D:\tools\obs-studio`, configured by `scripts/setup-obs.ps1`: websocket 4455 (password in `studio.local.json`), scene "CS1 Mayor", recordings in `D:\cs1-mayor-recordings` |
 | ffmpeg | 8.1 at `D:\tools\ffmpeg\bin` (NVENC available), not on PATH; no `-pattern_type glob` |
 | Post venv | `D:\tools\venv-post` (Python 3.11, `vieneu` 3.8.4, `faster-whisper` 1.2.1); model cache `HF_HOME=D:\tools\hf-cache` |

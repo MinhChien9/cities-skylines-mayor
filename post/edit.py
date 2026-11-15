@@ -1,6 +1,13 @@
 """The edit: script + voice + word timing -> a 16:9 master and a 9:16 Short.
 
     python -m post.edit episodes/e001-ngay-1/script.vi.json [--music bed.mp3] [--game-audio 0.1]
+    python -m post.edit episodes/e002-.../script.vi.json --silent      # no voice-over, no audio
+
+Silent mode (--silent) needs no voice and no word timing: each line lasts its reading
+time (READ_RATE syllables/s plus a pause, at least MIN_SILENT_LINE s), the words of a
+line are spread over it by character weight for the highlight, and the renders carry no
+audio track (the platform's own music is added at upload). It also writes the transcript
+as SRT and plain text next to the renders.
 
 The voice drives the timeline: each line lasts its voice-over plus a breath, and its
 visual is fitted to that length (a clip is trimmed or retimed - the speed ramp - a
@@ -22,8 +29,8 @@ import json
 import os
 import subprocess
 
-from .common import probe, tool
-from .script import validate
+from .common import probe, syllables, tool
+from .script import MIN_SILENT_LINE, READ_PAUSE, READ_RATE, validate
 from .subtitles import to_ass
 
 FPS = 30
@@ -58,6 +65,41 @@ def plan_timeline(script, voice, words):
                          "onScreen": line.get("onScreen"), "visual": line["visual"]})
         t += length
     return timeline
+
+
+def silent_timing(script):
+    """Stand-ins for the voice manifest and word timing when there is no voice-over:
+    reading time per line, words spread over it by character weight."""
+    voice, words = {"lines": []}, {"lines": []}
+    for line in script["lines"]:
+        text = line.get("vo", "")
+        seconds = max(MIN_SILENT_LINE, syllables(text) / READ_RATE + READ_PAUSE) - LEAD_IN - BREATH
+        tokens = text.split()
+        weights = [len(token) + 1 for token in tokens]
+        total, t, placed = float(sum(weights)) or 1.0, 0.0, []
+        speaking = seconds - 0.3
+        for token, weight in zip(tokens, weights):
+            length = speaking * weight / total
+            placed.append({"text": token, "start": round(t, 3), "end": round(t + length, 3)})
+            t += length
+        voice["lines"].append({"file": None, "seconds": round(seconds, 3)})
+        words["lines"].append({"words": placed})
+    return voice, words
+
+
+def _srt_time(seconds):
+    ms = int(round(seconds * 1000))
+    return f"{ms // 3600000:02d}:{ms // 60000 % 60:02d}:{ms // 1000 % 60:02d},{ms % 1000:03d}"
+
+
+def transcript_srt(script, timeline):
+    """The script's lines as SRT on the final timeline (one cue per line)."""
+    cues = []
+    for n, (line, item) in enumerate(zip(script["lines"], timeline), 1):
+        start = item["start"] + LEAD_IN
+        end = item["start"] + item["length"] - 0.05
+        cues.append(f"{n}\n{_srt_time(start)} --> {_srt_time(end)}\n{line.get('vo', '').strip()}\n")
+    return "\n".join(cues)
 
 
 def clip_window(visual, length):
@@ -151,14 +193,17 @@ def cards_for(timeline):
             for item in timeline if item.get("onScreen")]
 
 
-def render(script_path, music=None, game_audio=0.0):
+def render(script_path, music=None, game_audio=0.0, silent=False):
     episode = os.path.dirname(os.path.abspath(script_path))
     build = os.path.join(episode, "build")
     load = lambda p: json.load(open(p, encoding="utf-8"))
     script = load(script_path)
     brief = load(os.path.join(episode, "brief.json"))
-    voice = load(os.path.join(build, "voice", "manifest.json"))
-    words = load(os.path.join(build, "subtitles", "words.json"))
+    if silent:
+        voice, words = silent_timing(script)
+    else:
+        voice = load(os.path.join(build, "voice", "manifest.json"))
+        words = load(os.path.join(build, "subtitles", "words.json"))
     errors, _, _ = validate(script, brief)
     if errors:
         raise SystemExit("the script does not validate: " + "; ".join(errors))
@@ -175,7 +220,12 @@ def render(script_path, music=None, game_audio=0.0):
         f.writelines(f"file '{s.replace(chr(92), '/')}'\n" for s in segments)
     picture = os.path.join(work, "picture.mp4")
     run(["-f", "concat", "-safe", "0", "-i", listing, "-c", "copy", picture])
-    audio = render_audio(timeline, work, total, music, recording, game_audio)
+    audio = None if silent else render_audio(timeline, work, total, music, recording, game_audio)
+    if silent:
+        srt = transcript_srt(script, timeline)
+        for path in (os.path.join(build, "render", f"{script['id']}.vi.srt"),):
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(srt)
 
     placed = [{"start": item["start"], "words": item["words"]} for item in timeline]
     outputs = {}
@@ -192,10 +242,10 @@ def render(script_path, music=None, game_audio=0.0):
             frame = f"crop={cw}:{ch}:{(MASTER[0] - cw) // 2}:0,scale={w}:{h}:flags=lanczos,"
         ass_arg = ass.replace("\\", "/").replace(":", "\\:")
         out = os.path.join(build, "render", f"{script['id']}-{name}.mp4")
-        run(["-i", picture, "-i", audio, "-map", "0:v", "-map", "1:a",
-             "-vf", f"{frame}ass='{ass_arg}'", "-c:v", "h264_nvenc", "-preset", "p5", "-cq", "20",
-             "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
-             "-t", f"{total:.3f}", out])
+        inputs = ["-i", picture] + ([] if silent else ["-i", audio, "-map", "0:v", "-map", "1:a"])
+        sound = ["-an"] if silent else ["-c:a", "aac", "-b:a", "192k"]
+        run(inputs + ["-vf", f"{frame}ass='{ass_arg}'", "-c:v", "h264_nvenc", "-preset", "p5", "-cq", "20",
+                      "-pix_fmt", "yuv420p"] + sound + ["-movflags", "+faststart", "-t", f"{total:.3f}", out])
         outputs[name] = out
     return outputs, total
 
@@ -205,8 +255,10 @@ def main(argv=None):
     parser.add_argument("script")
     parser.add_argument("--music", help="music bed file (looped, ducked); default: a generated pad")
     parser.add_argument("--game-audio", type=float, default=0.0, help="game sound level (0 = off)")
+    parser.add_argument("--silent", action="store_true",
+                        help="no voice-over: lines timed by reading speed, no audio track, SRT transcript written")
     args = parser.parse_args(argv)
-    outputs, total = render(args.script, args.music, args.game_audio)
+    outputs, total = render(args.script, args.music, args.game_audio, args.silent)
     for name, path in outputs.items():
         duration, _ = probe(path)
         print(f"{name}: {path} ({duration:.1f} s)")

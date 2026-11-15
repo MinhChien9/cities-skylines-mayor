@@ -37,6 +37,9 @@ SHORT_MAX_SECONDS = 60.0
 FORMATS = {"short", "episode"}
 VISUALS = {"clip", "chapter", "timelapse", "still"}
 LINE_PAD = 0.6           # lead-in + breath the edit adds around each voiced line
+READ_RATE = 4.0          # silent scripts ("silent": true): syllables per second a viewer reads
+READ_PAUSE = 0.8         # silent scripts: extra hold after each caption
+MIN_SILENT_LINE = 2.0    # silent scripts: shortest line on screen
 
 
 def vo_seconds(text):
@@ -53,9 +56,12 @@ def visual_seconds(visual, brief=None):
     return 0.0  # a still lasts as long as its voice-over
 
 
-def line_seconds(line, brief=None):
+def line_seconds(line, brief=None, silent=False):
     """The edit is voice-driven: a line lasts its voice-over plus a pad, and the visual
-    is trimmed or retimed to fit (post.edit), so the visual does not lengthen it."""
+    is trimmed or retimed to fit (post.edit), so the visual does not lengthen it. A silent
+    script's line lasts its reading time instead."""
+    if silent:
+        return max(MIN_SILENT_LINE, syllables(line.get("vo", "")) / READ_RATE + READ_PAUSE)
     return vo_seconds(line.get("vo", "")) + LINE_PAD
 
 
@@ -127,7 +133,7 @@ def validate(script, brief=None):
             if unknown:
                 errors.append(f"{where}: source {unknown} not in the brief")
 
-        seconds = line_seconds(line, brief)
+        seconds = line_seconds(line, brief, silent=bool(script.get("silent")))
         timings.append({"line": i + 1, "role": line.get("role"), "syllables": syllables(line.get("vo", "")),
                         "voSeconds": round(vo_seconds(line.get("vo", "")), 2), "seconds": round(seconds, 2)})
         if line.get("role") == "hook" and vo_seconds(line.get("vo", "")) > HOOK_MAX_SECONDS:

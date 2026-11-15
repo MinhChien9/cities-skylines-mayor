@@ -88,6 +88,11 @@ public sealed class CityTools
     public Task<JsonNode?> CityDemand(CancellationToken cancellationToken)
         => Get("/state/demand", cancellationToken);
 
+    [System.ComponentModel.Description("GET /state/scenario. In a scenario: every win and lose trigger with each condition's live progress (description, progress text, current/min/max, passed), as the in-game Scenario goals tab shows them. isScenario false in free play.")]
+    [McpServerTool(Name = "city_scenario", Title = "Scenario Goals")]
+    public Task<JsonNode?> CityScenario(CancellationToken cancellationToken)
+        => Get("/state/scenario", cancellationToken);
+
     [System.ComponentModel.Description("GET /state/areas. The map tiles (5 x 5 grid of 1920 m): which the city owns, which it can buy now (canUnlock: touches an owned tile and milestones allow another), the price and the world bounds of each. areaCount / maxAreaCount say how many are owned / allowed.")]
     [McpServerTool(Name = "city_areas", Title = "Map Tiles")]
     public Task<JsonNode?> CityAreas(CancellationToken cancellationToken)
