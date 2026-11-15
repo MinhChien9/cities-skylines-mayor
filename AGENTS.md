@@ -44,6 +44,12 @@ If `city_health` says `levelLoaded: false`, the game is at the main menu: load a
 (`city_saves` → `city_load_game`) or start a map or scenario (`city_maps` →
 `city_new_game`) before step 2. Ask the user which one if they did not say.
 
+If `city_summary` (inside `city_overview`) reports `scenarioOutcome: "lost"`, **stop and
+tell the user**: the scenario is over and the game only showed a message. If
+`simulation.forcedPaused` is true, a game panel holds the clock (a milestone reached, the
+pause menu): read it in `openPanels`, close it with `city_close_panel`, then set the speed
+again.
+
 If `city_threads` reports `runsOnSimulationThread: false`, **stop and tell the user.**
 Every command would be racing the game's simulation and silently corrupting the save.
 
@@ -71,6 +77,7 @@ Every command would be racing the game's simulation and silently corrupting the 
 | See / buy map tiles | `city_areas`, `city_unlock_area` (pays the land price; the tile must touch an owned one) |
 | Empty a full cemetery or landfill | `city_empty_building` (needs crematories / incinerators to take the contents) |
 | Pause / resume / speed the clock | `city_set_simulation_speed` |
+| Close a game pop-up (milestone reached, scenario message, pause menu) that holds the clock | `city_close_panel` (`city_summary.openPanels` lists them) |
 | Change taxes, budgets, policies | `city_set_tax_rate`, `city_set_budget`, `city_set_policy` |
 | Save | `city_save` (new incrementing name) |
 | Load a save, or start a new game from a map or scenario (also from the main menu) | `city_saves` / `city_maps`, then `city_load_game` / `city_new_game` |

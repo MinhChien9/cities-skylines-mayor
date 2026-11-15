@@ -213,6 +213,7 @@ namespace SkylinesAgentBridge
         {
             dispatcher.Pump();
             mainThreadQueue.Pump();
+            State.PanelState.Tick();
             AgentBridgeNotifier.Update(realTimeDelta);
         }
     }

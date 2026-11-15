@@ -35,7 +35,7 @@ public sealed class CityTools
     public Task<JsonNode?> CityHealth(CancellationToken cancellationToken)
         => Get("/health", cancellationToken);
 
-    [System.ComponentModel.Description("GET /debug/threads. Thread diagnostics. probeThreadId must equal simulationThreadId and must NOT equal mainThreadId; runsOnSimulationThread must be true. pendingJobs should return to 0 after each command.")]
+    [System.ComponentModel.Description("GET /debug/threads. Thread diagnostics. probeThreadId must equal simulationThreadId and must NOT equal mainThreadId; runsOnSimulationThread must be true. pendingJobs should return to 0 after each command. forcedPaused true means a game panel holds the clock (openPanels names it; city_close_panel closes it); scenarioOutcome lost/won means the scenario is over.")]
     [McpServerTool(Name = "city_threads", Title = "Thread Diagnostics")]
     public Task<JsonNode?> CityThreads(CancellationToken cancellationToken)
         => Get("/debug/threads", cancellationToken);
@@ -71,7 +71,7 @@ public sealed class CityTools
     public Task<JsonNode?> CityCapabilities(CancellationToken cancellationToken)
         => Get("/state/capabilities", cancellationToken);
 
-    [System.ComponentModel.Description("GET /state/summary. Compact city overview: date, pause/speed, population, cash, happiness, RCI demand, network counts.")]
+    [System.ComponentModel.Description("GET /state/summary. Compact city overview: date, pause/speed, population, cash, happiness, RCI demand, network counts. simulation.forcedPaused: the game itself holds the clock (a milestone 'Congratulations' panel, the pause menu, a bail-out offer). openPanels: the game's pop-up panels on screen (milestone, scenario messages incl. won/lost, park level, bail-out, pause menu, any other modal). scenarioOutcome: 'lost' or 'won' once a scenario ended (null otherwise): on 'lost' stop and tell the user. hint says what to do when any of these stop play.")]
     [McpServerTool(Name = "city_summary", Title = "City Summary")]
     public Task<JsonNode?> CitySummary(CancellationToken cancellationToken)
         => Get("/state/summary", cancellationToken);
@@ -409,6 +409,16 @@ public sealed class CityTools
             ["paused"] = paused,
         }, cancellationToken).ConfigureAwait(false);
 
+    [System.ComponentModel.Description("POST /commands/close-panel. Closes the game's pop-up panels the way Escape does: the milestone 'Congratulations' panel (it force-pauses the game until closed), scenario messages (won, lost, rewards, fines; each buffered message is read back in 'closed' before it is dismissed), the park-level panel, the bail-out offer (closing it DECLINES the bail-out) and the pause menu. Read openPanels in city_summary first. The milestone panel sets the speed to 1 as it closes, so call city_set_simulation_speed afterwards.")]
+    [McpServerTool(Name = "city_close_panel", Title = "Close Game Panel")]
+    public async Task<JsonNode?> CityClosePanel(
+        [System.ComponentModel.Description("Panel to close: UnlockingPanel (milestone), StoryMessagePanel (scenario messages), ParkAreaUnlockingPanel, BailoutPanel or PauseMenu. Omit to close every open one.")] string? panel = null,
+        CancellationToken cancellationToken = default)
+        => await Post("/commands/close-panel", new Dictionary<string, object?>
+        {
+            ["panel"] = panel ?? "",
+        }, cancellationToken).ConfigureAwait(false);
+
     [System.ComponentModel.Description("POST /commands/set-tax-rate. Set a tax rate for one zone service (0-20 percent). Rate changes move demand by up to 5 points per percent above the zone ceiling.")]
     [McpServerTool(Name = "city_set_tax_rate", Title = "Set Tax Rate")]
     public async Task<JsonNode?> CitySetTaxRate(
@@ -667,7 +677,7 @@ public sealed class CityTools
 
     // ------------------------------------------------------------- passthrough
 
-    [System.ComponentModel.Description("Raw passthrough for anything with no dedicated tool. GET reaches any endpoint (endpoint list: docs/api.md). POST is limited to endpoints that also have a dedicated tool: /commands/set-simulation-speed, set-tax-rate, set-budget, set-policy, set-building-active, empty-building, unlock-area, transport-line, district, load, new-game, save, set-camera, project-point, build-road, place-building, move-building, zone-segment, set-zone, bulldoze. The legacy repair/batch endpoints are not reachable.")]
+    [System.ComponentModel.Description("Raw passthrough for anything with no dedicated tool. GET reaches any endpoint (endpoint list: docs/api.md). POST is limited to endpoints that also have a dedicated tool: /commands/set-simulation-speed, close-panel, set-tax-rate, set-budget, set-policy, set-building-active, empty-building, unlock-area, transport-line, district, load, new-game, save, set-camera, project-point, build-road, place-building, move-building, zone-segment, set-zone, bulldoze. The legacy repair/batch endpoints are not reachable.")]
     [McpServerTool(Name = "city_request", Title = "Raw Bridge Request")]
     public async Task<JsonNode?> CityRequest(
         [System.ComponentModel.Description("HTTP method: 'GET' or 'POST'.")] string method,
@@ -721,6 +731,7 @@ public sealed class CityTools
     private static readonly string[] OfficeEndpoints =
     [
         "/commands/set-simulation-speed",
+        "/commands/close-panel",
         "/commands/set-tax-rate",
         "/commands/set-budget",
         "/commands/set-policy",

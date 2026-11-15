@@ -260,6 +260,31 @@ public class CityToolsTests
     }
 
     [Fact]
+    public async Task CityClosePanel_posts_the_panel_name()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityClosePanel("UnlockingPanel", CancellationToken.None);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("/commands/close-panel", request.Path);
+        Assert.Contains("\"panel\":\"UnlockingPanel\"", request.Body);
+    }
+
+    [Fact]
+    public async Task CityClosePanel_without_a_name_closes_every_open_panel()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityClosePanel(cancellationToken: CancellationToken.None);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Contains("\"panel\":\"\"", request.Body);
+    }
+
+    [Fact]
     public async Task CitySave_posts_the_name()
     {
         var handler = Always("{\"ok\":true}");
@@ -623,6 +648,7 @@ public class CityToolsTests
         Assert.Equal(new[]
         {
             "/commands/set-simulation-speed",
+            "/commands/close-panel",
             "/commands/set-tax-rate",
             "/commands/set-budget",
             "/commands/set-policy",

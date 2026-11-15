@@ -14,6 +14,11 @@ patch = fixes). Every PR adds its line under `[Unreleased]` with the issue numbe
   mean (`docs/verification.md` §6) (#76).
 
 ### Fixed
+- A milestone's "Congratulations" panel force-paused the game and no tool could see or close
+  it; a lost scenario went unnoticed for weeks. `city_summary` and `city_threads` now report
+  `simulation.forcedPaused`, `openPanels` (milestone, scenario won/lost and other messages,
+  park level, bail-out, pause menu) and `scenarioOutcome` (`lost`/`won`), with a `hint`, and
+  the new `city_close_panel` closes those panels the way Escape does (#98).
 - `build-road` splits a straight road only at nodes and crossings on its own level: an elevated
   road passes over a highway (and a ground road under an elevated one) instead of being pulled
   into an at-grade junction, and the response lists them in `crossesWithoutJunction`.

@@ -58,6 +58,7 @@ EXPECTED_TOOLS = {
     "city_empty_building",
     "city_unlock_area",
     "city_set_simulation_speed",
+    "city_close_panel",
     "city_set_tax_rate",
     "city_budgets",
     "city_set_budget",

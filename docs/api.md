@@ -4,8 +4,8 @@ The HTTP API the MCP tools call. You only need it to debug, script, or add a too
 use the [tools](tools.md).
 
 - **Address:** `http://127.0.0.1:32123`, on localhost only, with no authentication.
-- **Threads:** every endpoint runs on the game's simulation thread, except `/commands/set-camera`
-  and `/commands/project-point`, which run on the Unity main thread.
+- **Threads:** every endpoint runs on the game's simulation thread, except `/commands/set-camera`,
+  `/commands/project-point` and `/commands/close-panel`, which run on the Unity main thread.
 - **Building:** `build-road` calls `NetTool.CreateNode` (a test pass, then the build).
   `place-building` and `move-building` apply `BuildingTool`'s placement rules. Refusals use the
   game's `ToolErrors` names.
@@ -69,7 +69,9 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
   "scenario": "City of Gardens",
   "gameTime": "2027-03-19T13:28:50",
   "buildIndex": 4628,
-  "simulation": { "paused": true, "selectedSpeed": 1, "finalSpeed": 0 },
+  "simulation": { "paused": true, "selectedSpeed": 1, "finalSpeed": 0, "forcedPaused": false },
+  "scenarioOutcome": null,
+  "openPanels": [],
   "network": { "nodes": 1415, "segments": 1412, "lanes": 4521 },
   "population": 0,
   "cash": 65002,
@@ -84,6 +86,10 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 | `population` | **Residents.** The same number the game's own population label shows. |
 | `cash` | City treasury in currency units (₡), the same scale the game HUD shows. Negative means a deficit. |
 | `happiness` | Average citizen happiness, 0–100. |
+| `simulation.forcedPaused` | The game itself holds the clock (`SimulationManager.ForcedSimulationPaused`): the milestone "Congratulations" panel, the pause menu, the park-level panel or a bail-out offer is open. `finalSpeed` is 0 while `paused` can still read false. |
+| `scenarioOutcome` | `"lost"` or `"won"` once a scenario's lose or win trigger fired (`SimulationMetaData.m_scenarioFailed` / `m_scenarioWon`); `null` otherwise and in free play. The game only shows a message for it and keeps running. |
+| `openPanels` | The game's pop-up panels on screen, read on the main thread every 15 frames: `name`, `kind` (`milestone`, `scenarioLost`, `scenarioWon`, `reward`, `fine`, `message`, `parkLevel`, `bailout`, `pauseMenu`, `other` for an unknown modal), `title`, `text` (scenario messages), `modal`, `holdsClock`, `closable`. Close them with `/commands/close-panel`. |
+| `hint` | Present when something stops play: a lost or won scenario, or a panel holding the clock. |
 | `citizenObjects` | Citizen objects the simulation has allocated. **Not** population — this includes the dummy travellers the outside-connection AI spawns for the map-edge airports, harbours and rail heads, so it reads in the thousands on a map with no citizens at all. Use `population`. |
 
 ### `/state/capabilities` — what the running game supports
@@ -331,6 +337,9 @@ carries the grid extents, so it is the place to confirm a paint.
   "gameTime": "2026-03-14T09:41:00",
   "buildIndex": 104233,
   "levelLoaded": true,
+  "forcedPaused": false,
+  "scenarioOutcome": null,
+  "openPanels": [],
   "notes": "probeThreadId must equal simulationThreadId and must NOT equal mainThreadId"
 }
 ```
@@ -362,7 +371,8 @@ All accept a JSON body. All support `"dryRun": true` where validation is meaning
 | POST | `/commands/empty-building` | `id`, `empty?` (default true) — the info panel's "Empty building" for a cemetery or landfill (`BuildingAI.SetEmptying`; refused unless `CanBeEmptied`). Response: `emptyingBefore/After`. |
 | POST | `/commands/set-building-active` | `id`, `active` — the player's on/off button (`SetProductionRate` 100/0; the game derives `Active` from it). Response: `productionRateBefore/After`, flags. `/state/facilities` reports `productionRate`. |
 | POST | `/commands/bulldoze` | `entityType` (`building`\|`netSegment`\|`netNode`), `id`, `keepNodes?`, `dryRun?` |
-| POST | `/commands/set-simulation-speed` | `speed` (1–3), `paused` |
+| POST | `/commands/set-simulation-speed` | `speed` (1–3), `paused`. Clears `ForcedSimulationPaused`; the reply carries `openPanels` and a `hint` when a panel that holds the clock is still open. |
+| POST | `/commands/close-panel` | `panel?` (`UnlockingPanel`\|`StoryMessagePanel`\|`ParkAreaUnlockingPanel`\|`BailoutPanel`\|`PauseMenu`; omitted = every open one). Closes it the way Escape does (`GameKeyShortcuts.Escape`): the milestone panel's `OnClosed`, `StoryMessagePanel.OnCloseButton` for each buffered scenario message (each is returned in `closed` first), `BailoutPanel.OnReject` (declines), `UIView.library.Hide("PauseMenu")`. Main thread. The milestone panel sets the speed to 1 as it closes. |
 | POST | `/commands/set-tax-rate` | `service` (`Residential`\|`Commercial`\|`Industrial`\|`Office`), `rate` (0–20) |
 | POST | `/commands/set-budget` | `service`, `budget?` (day, 0–300), `nightBudget?`, `subService?`, `dryRun?` |
 | POST | `/commands/set-policy` | `policy`, `set?` (default true), `district?` (0 = city-wide), `dryRun?` |

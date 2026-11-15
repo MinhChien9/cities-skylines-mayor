@@ -374,7 +374,14 @@ namespace SkylinesAgentBridge
                     return OnMainThread(delegate { return CameraCommands.SetCamera(body); });
                 });
 
-            MapPost("/commands/project-point", "Project a world position to screen and cursor pixels (main thread)",
+            MapPost("/commands/close-panel", "Close a game pop-up panel (milestone reached, scenario message, pause menu...) the way Escape does (main thread)",
+                delegate(HttpRequest request)
+                {
+                    string body = request.Body;
+                    return OnMainThread(delegate { return PanelState.Close(body); });
+                });
+
+            MapPost("/commands/project-point","Project a world position to screen and cursor pixels (main thread)",
                 delegate(HttpRequest request)
                 {
                     string body = request.Body;
@@ -520,6 +527,8 @@ namespace SkylinesAgentBridge
             int probeThreadId = 0;
             string gameTime = "";
             int buildIndex = 0;
+            bool forcedPaused = false;
+            string scenarioOutcome = "";
 
             CommandResult probe = dispatcher.RunSync(delegate
             {
@@ -531,6 +540,8 @@ namespace SkylinesAgentBridge
                     {
                         gameTime = simulation.m_currentGameTime.ToString("s");
                         buildIndex = (int)simulation.m_currentBuildIndex;
+                        forcedPaused = simulation.ForcedSimulationPaused;
+                        scenarioOutcome = GameState.ScenarioOutcome(simulation.m_metaData);
                     }
                 }
                 catch (Exception)
@@ -556,6 +567,11 @@ namespace SkylinesAgentBridge
             sb.Append(",\"gameTime\":\"").Append(JsonUtil.Escape(gameTime)).Append("\"");
             sb.Append(",\"buildIndex\":").Append(buildIndex);
             sb.Append(",\"levelLoaded\":").Append(JsonUtil.Bool(bridge.LevelLoaded));
+            // The clock can be held by the game itself (a milestone or pause panel): the
+            // dispatcher still runs then, but game time does not advance.
+            sb.Append(",\"forcedPaused\":").Append(JsonUtil.Bool(forcedPaused));
+            sb.Append(",\"scenarioOutcome\":").Append(scenarioOutcome.Length == 0 ? "null" : "\"" + scenarioOutcome + "\"");
+            sb.Append(",\"openPanels\":").Append(bridge.LevelLoaded ? PanelState.SnapshotJson : "[]");
             sb.Append(",\"notes\":\"probeThreadId must equal simulationThreadId and must NOT equal mainThreadId\"");
             sb.Append("}");
             return sb.ToString();
