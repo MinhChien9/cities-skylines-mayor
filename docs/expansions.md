@@ -11,6 +11,13 @@ Organic, Leisure or Tourist shops, no disaster buildings
 ([#71](https://github.com/MinhChien9/cities-skylines-mayor/issues/71)). An Organic district then
 demolished ordinary shops with nothing to replace them.
 
+The cause was the launch, not the install
+([#84](https://github.com/MinhChien9/cities-skylines-mayor/issues/84)). On Epic the game loads
+owned DLC only when it is started with Epic's login arguments (`-AUTH_PASSWORD=<exchange
+code>`, `-epicapp=…`), which Epic passes through the Paradox launcher. A bare `Cities.exe`
+has no DLC. `scripts/restart-game.ps1` and `scripts/start-game.ps1` now start the game
+through Epic, so it gets the login, and skip the Paradox launcher.
+
 What to trust: the **loaded prefabs**. `GET /prefabs/buildings?service=Commercial` must list
 `CommercialEco` buildings before you plan Organic shops, and so on.
 `SteamHelper.IsDLCOwned` returns false for everything on Epic. A per-expansion report is

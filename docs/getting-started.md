@@ -133,7 +133,7 @@ Helper scripts:
 
 | Script | What it does |
 |---|---|
-| `scripts/start-game.ps1` | Starts the game and waits until the bridge passes the thread check |
+| `scripts/start-game.ps1` | Starts the game and waits until the bridge passes the thread check (`-Resume` loads the newest save) |
 | `scripts/restart-game.ps1` | Saves, rebuilds and installs the mod, relaunches, and resumes the save. Use it after any change under `src/`: the game only loads mods at startup |
 | `scripts/smoke-test-mcp.py` | Drives the server over stdio like a client. Works with the game closed |
 
@@ -141,6 +141,7 @@ Helper scripts:
 
 | Symptom | Fix |
 |---|---|
+| The game has no DLC after a script started it | The game loads DLC only with the Epic login. Both scripts start it through the Epic Games Launcher (`-Launch Epic`, the default), wait for the Paradox launcher to receive the login, close the launcher and start `Cities.exe` with it. Epic must be installed and signed in. `-Launch Direct` starts a bare `Cities.exe`, without DLC |
 | `/health` refuses the connection | The game is not running, or the mod is not installed or not enabled |
 | Everything except `/health` returns HTTP 409 | No city is loaded yet |
 | `runsOnSimulationThread` is `false` | A broken bridge build. Reinstall the release DLL and [open an issue](https://github.com/MinhChien9/cities-skylines-mayor/issues/new/choose) |

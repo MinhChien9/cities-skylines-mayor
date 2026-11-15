@@ -8,6 +8,13 @@ patch = fixes). Every PR adds its line under `[Unreleased]` with the issue numbe
 
 ## [Unreleased]
 
+### Fixed
+- `restart-game.ps1` and `start-game.ps1` start the game through the Epic Games Launcher, so it
+  gets the Epic login and loads the owned DLC. The Paradox launcher is skipped, so nobody
+  has to click Play. `-Launch Direct` keeps the old bare start. `start-game.ps1 -Resume`
+  now resumes the save as documented. This also explains #71: the missing expansion
+  buildings were caused by the launch (#84).
+
 ### Added
 - The in-game API console has a close button (`X`) that hides it completely and is
   remembered across restarts; **Options → Skylines Agent Bridge → Show the API console**
