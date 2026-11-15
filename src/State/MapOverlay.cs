@@ -15,11 +15,37 @@ namespace SkylinesAgentBridge.State
     /// <c>ImmaterialResourceManager.CheckLocalResource</c>, ground pollution from
     /// <c>NaturalResourceManager.CheckPollution</c> (0-255), traffic from each road
     /// segment's <c>m_trafficDensity</c> (0-100 %, scaled to 0-255) painted along the road.
+    /// Service coverage (police, fire, health, education, ...) is the local rate of the
+    /// matching <c>ImmaterialResourceManager</c> resource, the number <c>ResidentAI</c> feeds to
+    /// <c>CalculateResourceEffect</c> for wellbeing (full effect at 500), halved to fit a byte.
     /// Runs inside the map read, on the simulation thread.
     /// </summary>
     internal static class MapOverlay
     {
-        public static readonly string[] Names = { "landValue", "pollution", "noise", "traffic" };
+        public static readonly string[] Names =
+        {
+            "landValue", "pollution", "noise", "traffic",
+            "police", "fire", "health", "education", "highSchool", "university",
+            "entertainment", "transport", "deathCare",
+        };
+
+        /// <summary>The coverage overlays and the resource each reads.</summary>
+        private static bool TryCoverage(string name, out ImmaterialResourceManager.Resource resource)
+        {
+            switch (name)
+            {
+                case "police": resource = ImmaterialResourceManager.Resource.PoliceDepartment; return true;
+                case "fire": resource = ImmaterialResourceManager.Resource.FireDepartment; return true;
+                case "health": resource = ImmaterialResourceManager.Resource.HealthCare; return true;
+                case "education": resource = ImmaterialResourceManager.Resource.EducationElementary; return true;
+                case "highSchool": resource = ImmaterialResourceManager.Resource.EducationHighSchool; return true;
+                case "university": resource = ImmaterialResourceManager.Resource.EducationUniversity; return true;
+                case "entertainment": resource = ImmaterialResourceManager.Resource.Entertainment; return true;
+                case "transport": resource = ImmaterialResourceManager.Resource.PublicTransport; return true;
+                case "deathCare": resource = ImmaterialResourceManager.Resource.DeathCare; return true;
+                default: resource = ImmaterialResourceManager.Resource.None; return false;
+            }
+        }
 
         public static bool IsKnown(string name)
         {
@@ -35,10 +61,28 @@ namespace SkylinesAgentBridge.State
             values = new byte[n * n];
             int max = 0;
             string unit;
+            ImmaterialResourceManager.Resource coverage;
             if (name == "traffic")
             {
                 unit = "traffic density, 255 = 100 %";
                 max = PaintTraffic(values, n, west, north, cell);
+            }
+            else if (TryCoverage(name, out coverage))
+            {
+                unit = "coverage rate / 2 (ResidentAI wellbeing: full effect at rate 500 = 250 here; the middle effect at the age group's requirement, roughly 25-50 here)";
+                ImmaterialResourceManager immaterial = Singleton<ImmaterialResourceManager>.instance;
+                for (int r = 0; r < n; r++)
+                {
+                    float z = north - (r + 0.5f) * cell;
+                    for (int c = 0; c < n; c++)
+                    {
+                        Vector3 p = new Vector3(west + (c + 0.5f) * cell, 0f, z);
+                        int v;
+                        immaterial.CheckLocalResource(coverage, p, out v);
+                        if (v > max) max = v;
+                        values[r * n + c] = (byte)Mathf.Clamp((v + 1) / 2, 0, 255);
+                    }
+                }
             }
             else
             {

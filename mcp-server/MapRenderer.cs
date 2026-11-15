@@ -41,7 +41,9 @@ public static class MapRenderer
     /// Colours one cell for a data overlay (value 0 = no data). Traffic paints road cells
     /// green → yellow → red by density; the others tint the base map by the value relative
     /// to the highest value in view (with a floor, so weak signals stay faint): land value
-    /// green, pollution brown, noise purple.
+    /// green, pollution brown, noise purple, and service coverage in the info view's own
+    /// colour family (police blue, fire orange, health red, education teal, entertainment
+    /// pink, transport yellow, death care grey).
     /// </summary>
     public static (byte R, byte G, byte B) Tint(string? overlay, byte value, int max, (byte R, byte G, byte B) baseColor)
     {
@@ -61,13 +63,29 @@ public static class MapRenderer
             "landValue" => (30, 210, 110),
             "pollution" => (120, 70, 20),
             "noise" => (160, 60, 200),
+            "police" => (40, 90, 230),
+            "fire" => (240, 120, 20),
+            "health" => (220, 30, 60),
+            "education" or "highSchool" or "university" => (20, 170, 170),
+            "entertainment" => (230, 60, 170),
+            "transport" => (230, 200, 20),
+            "deathCare" => (110, 110, 110),
             _ => (230, 40, 30),
         };
         // Scale to the highest value in view, but never below a floor: a town whose land
         // value is 4 everywhere must not look as vivid as one at 60.
+        // Coverage is fixed to the game's own scale (byte 250 = rate 500 = full wellbeing
+        // effect), so "barely covered" never looks like "fully covered".
+        if (IsCoverage(overlay))
+        {
+            return Mix(baseColor, hue, 0.85 * Math.Min(1.0, value / 250.0));
+        }
         double scaleMax = Math.Max(max, overlay switch { "landValue" => 60, "pollution" => 60, "noise" => 80, _ => 1 });
         return Mix(baseColor, hue, 0.8 * Math.Min(1.0, value / scaleMax));
     }
+
+    private static bool IsCoverage(string? overlay) => overlay is "police" or "fire" or "health" or "education"
+        or "highSchool" or "university" or "entertainment" or "transport" or "deathCare";
 
     private static (byte R, byte G, byte B) Mix((byte R, byte G, byte B) a, (byte R, byte G, byte B) b, double t)
         => ((byte)(a.R + (b.R - a.R) * t), (byte)(a.G + (b.G - a.G) * t), (byte)(a.B + (b.B - a.B) * t));
