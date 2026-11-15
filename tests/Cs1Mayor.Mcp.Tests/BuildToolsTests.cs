@@ -204,8 +204,7 @@ public class BuildToolsTests
         map["overlayValues"] = Convert.ToBase64String(values);
         var handler = StubHandler.Json(map.ToJsonString());
         string folder = Path.Combine(Path.GetTempPath(), $"cs1-maps-{Guid.NewGuid():N}");
-        var tools = new BuildTools(new BridgeClient("http://127.0.0.1:32123", 5, new HttpClient(handler)),
-            new StudioSettings { RecordDirectory = folder });
+        var tools = new BuildTools(new BridgeClient("http://127.0.0.1:32123", 5, new HttpClient(handler)), folder);
         try
         {
             CallToolResult result = await tools.CityMap(0, 0, 128, 8, overlay: "traffic", saveAs: "jam", cancellationToken: CancellationToken.None);
@@ -215,7 +214,7 @@ public class BuildToolsTests
             Assert.Null(summary["overlayValues"]);
             Assert.Equal("traffic", summary["overlay"]!["name"]!.GetValue<string>());
             string saved = summary["savedTo"]!.GetValue<string>();
-            Assert.Equal(Path.Combine(folder, "maps", "jam.png"), saved);
+            Assert.Equal(Path.Combine(folder, "jam.png"), saved);
             var (width, _, rgb) = DecodePng(File.ReadAllBytes(saved));
             int scale = width / n;
             int px = ((8 * scale + scale / 2) * width + 4 * scale + 1) * 3;   // inside the jammed road row, off the z = 0 gridline

@@ -9,14 +9,11 @@ obj/
 # Its content is tracked under src/ and docs/ in this repo.
 upstream-skyline-agent-skill/
 
-# Local agent state
+# Local agent state: the activity log and saved map PNGs
 *.log
 __pycache__/
-journal/
-
-# Episode folders: the script is authored and committed; everything generated is not
-episodes/*/brief.json
-episodes/*/build/
+activity/
+maps/
 .DS_Store
 Thumbs.db
 
@@ -24,6 +21,3 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Local studio secrets (OBS websocket password), written by scripts/setup-obs.ps1
-studio.local.json
-viewpoints.local.json

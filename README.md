@@ -11,11 +11,17 @@ tool code**, without a cursor or screenshots.
   `BuildingTool` placement rules for buildings — test pass first. Snapping, junctions,
   collision, slope, locked tiles and money are checked exactly as for the player; a
   refusal comes back as the game's own error names plus a hint.
-- **Office:** the clock, taxes, budgets, policies, saves, line and district management.
+- **Office:** the clock, taxes, budgets, policies, saves, line and district management,
+  scenario goals.
+
+This repo is the MCP server and the in-game bridge, nothing else. Recording the play and
+turning it into videos (OBS, decision journal, timelapse, scripts, subtitles, edit) is the
+separate **cs1-video-making** repo; it follows this server's activity log
+(`activity/<session>.jsonl`, one line per build or office action).
 
 ```
 Claude Code / opencode ──MCP stdio──▶ Cs1Mayor.Mcp (.NET 10) ──HTTP──▶ SkylinesAgentBridge.dll (in-game)
-   plays the city                       41 tools, PNG map renderer        NetTool / BuildingTool rules,
+   plays the city                       47 tools, PNG map renderer        NetTool / BuildingTool rules,
                                                                           simulation-thread dispatch
                                                        Cities: Skylines 1.21.1-f9 · Unity 5.6.7f1
 ```
@@ -29,7 +35,7 @@ Claude Code / opencode ──MCP stdio──▶ Cs1Mayor.Mcp (.NET 10) ──HTT
 | In-game bridge mod | ✅ **Verified running in a live city** |
 | Threading fix | ✅ **Verified** — `probeThreadId == simulationThreadId`, `runsOnMainThread: false` |
 | MCP server | ✅ **Verified end-to-end** against the live game |
-| Tool surface | ✅ **41 tools** — all stats, the semantic map, game-validated building (roads, networks, zones, buildings, bulldoze), the clock, policies, taxes, budgets, saves |
+| Tool surface | ✅ **47 tools** — all stats, the semantic map, game-validated building (roads, networks, zones, buildings, bulldoze), the clock, policies, taxes, budgets, saves |
 | Validated building | ✅ **Verified live** — a street grid with T-junctions and crossings, zoning, water/power/sewage, and the first 115 citizens, with no cursor |
 | Knowledge base | ✅ `docs/05-game-mechanics.md`, `docs/06-expansions.md` |
 | Automated tests | ✅ 53 xunit tests over the MCP server and the bridge's JSON reader |
@@ -84,7 +90,7 @@ Full walkthrough, including the game path and the thread gate:
 
 ## The tools
 
-**41 tools.** All reads are one call each; `city_overview` bundles the pulse
+**47 tools.** All reads are one call each; `city_overview` bundles the pulse
 (summary, demand, economy, problems, chirps) so the agent never opens an in-game info
 panel; `city_map` is the spatial read. The build tools run the game's own tool code and
 always test before they build. `city_request` reaches any GET and the POST endpoints that
@@ -105,6 +111,8 @@ have a dedicated tool; the legacy unvalidated `repair-*` / `batch` endpoints are
 | `city_build_road` · `city_place_building` · `city_move_building` | `/commands/build-road` · `/place-building` · `/move-building` (game-validated) |
 | `city_zone_segment` · `city_zone_area` · `city_bulldoze` | `/commands/zone-segment` · `/set-zone` · `/bulldoze` |
 | `city_request` | GET any endpoint; POST endpoints that have a dedicated tool |
+| `city_scenario` · `city_areas` · `city_unlock_area` | `/state/scenario` · `/state/areas` · `/commands/unlock-area` |
+| `city_activity` | the activity log (this session's builds and office actions) |
 
 Full list with parameters in `mcp-server/CityTools.cs` and `mcp-server/BuildTools.cs`; the plan to cover the whole game
 in [`docs/12-command-surface.md`](docs/12-command-surface.md).
@@ -163,7 +171,7 @@ cs1-mayor/
 │  ├─ Commands/               every mutation the agent can perform
 │  ├─ State/                  every read of city state, plus the anomaly detectors
 │  └─ Support/                JSON reader and the command result envelope
-├─ mcp-server/                the MCP server (C#, .NET 10) — 41 tools over stdio, PNG map renderer
+├─ mcp-server/                the MCP server (C#, .NET 10) — 47 tools over stdio, PNG map renderer
 ├─ tests/                     xunit tests for the MCP server and the bridge's JSON reader
 ├─ scripts/                   build, install, launch, smoke test, doc check
 ├─ docs/                      start at docs/README.md

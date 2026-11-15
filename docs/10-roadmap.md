@@ -25,8 +25,8 @@ skipped every rule. The build endpoints now run the game's own tool code:
 
 ### Next
 
-- [ ] **Studio** — record the agent playing: OBS control (obs-websocket), a decision
-      journal, cinematic camera moves, timelapse capture (see the project's video goal)
+- [x] **Studio** — moved to its own repo, **cs1-video-making** (OBS, decision journal,
+      camera moves, timelapse, post-production). This server keeps an activity log for it.
 - [ ] Transit line drawing and district painting as validated tools
 - [ ] `/state/map` overlays: land value, pollution, coverage, traffic
 

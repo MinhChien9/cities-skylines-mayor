@@ -37,17 +37,15 @@ thresholds are the truth about the city.
 2. city_threads      → runsOnSimulationThread must be true
 3. city_overview     → the pulse in one call: summary, demand, economy, problems, chirps
 4. city_map          → where things are (start with x=0, z=0, size=2048, cell=16)
-5. the story         → `python -m post.series context`: pick an open thread as this
-                       session's goal and say it with studio_note kind=plan
+5. city_scenario     → in a scenario: the win/lose conditions and how far along they are
 ```
 
 If `city_threads` reports `runsOnSimulationThread: false`, **stop and tell the user.**
 Every command would be racing the game's simulation and silently corrupting the save.
 
-**You are also the narrator.** The sessions become a video series about this town, told
-by you, the AI mayor: honest that you are an AI, learning in public, dry rather than
-clownish. Your notes are the story's raw material — see
-[`docs/15-mayor-persona.md`](docs/15-mayor-persona.md).
+> Recording the play for videos (OBS, the decision journal, B-roll, post-production) is a
+> separate project, **cs1-video-making**, with its own `cs1-studio` MCP server. This server
+> stays the game's office and hands; it only logs what it changed (`city_activity`).
 
 ## 2. The tools by job
 
@@ -57,7 +55,7 @@ clownish. Your notes are the story's raw material — see
 | Drill into one number | `city_demand`, `city_economy`, `city_problems`, `city_facilities`, ... |
 | Know if power, water, sewage, garbage, schools, health keep up | `city_utilities` (capacity vs usage; a negative surplus is the next build) |
 | See the land, roads, zones and buildings | `city_map` (zoom in with a smaller `size` and `cell` 4–8) |
-| See land value, pollution, noise or traffic | `city_map overlay=...` (`saveAs` keeps the PNG for a video) |
+| See land value, pollution, noise or traffic | `city_map overlay=...` (`saveAs` keeps the PNG) |
 | Check the road network for defects | `city_road_anomalies`, `city_zone_anomalies` |
 | Build a road, pipe, power line, path | `city_build_road` (returns the new segment ids) |
 | Zone along a street | `city_zone_segment` with those segment ids |
@@ -74,15 +72,7 @@ clownish. Your notes are the story's raw material — see
 | Rename / specialize / release a district | `city_district` |
 | Show the viewer something | `city_camera` (frames the game camera on a world point) |
 | Find a prefab name | `city_request` GET `/prefabs/networks`, `/prefabs/buildings?service=...` |
-| Check the recording setup | `studio_status` (OBS reachable, scene, capture showing the game, recording state) |
-| Record the session | `studio_record` start / stop / pause / resume |
-| Mark a story beat in the video | `studio_marker` (a chapter at a decision, a mistake, a milestone) |
-| See the real rendered game | `studio_screenshot` (costs image tokens; `city_map` stays the planning eye) |
-| Explain a decision for the video | `studio_note` (kind: decision / mistake / milestone / observation / plan) |
-| Recall the story so far | `studio_journal` (newest journal entries) |
-| Film B-roll | `studio_camera_move` (orbit / flyover / zoom, UI hidden); `city_camera hideUi:true` keeps the UI off across several shots |
-| Return to a fixed angle | `studio_viewpoint` save / go / list / delete (timelapse and before/after frames) |
-| Film the city growing | `studio_timelapse` start / stop / status / capture (viewpoints every N game days, in the background) |
+| Recall what you already changed this session | `city_activity` (the newest entries of the activity log) |
 
 Painting districts is not exposed as a tool yet.
 
@@ -120,11 +110,9 @@ after placing a service, `city_road_anomalies` after road work, `city_map` to se
 **SAVE** — `city_save` with a **new incrementing name**, then `city_saves` to confirm
 the file is on disk.
 
-**JOURNAL** — every build, office and recording action is journalled automatically
-(`journal/<session>.jsonl`, with the game date, population, cash and the recording
-timecode). The videos are scripted from it, so add the *why* with `studio_note`: one or
-two plain sentences per batch — what you saw, what you chose and why, and every mistake
-with what you learned. Mistakes make the story; do not hide them.
+**LOG** — every build and office action is logged automatically
+(`activity/<session>.jsonl`, with the game date, population and cash; dry runs and reads
+are not logged, refusals are). `city_activity` reads it back after a context reset.
 
 ### The clock is the simulation
 
@@ -269,4 +257,3 @@ Money is reported in currency units (₡), the same scale the game HUD shows.
 | `docs/06-expansions.md` | Every expansion's mechanics, thresholds and costs |
 | `docs/07-verification.md` | Checking your work, recovering from failure |
 | `docs/10-roadmap.md` | What is built, what is next |
-| `docs/15-mayor-persona.md` | Your voice as the narrator, and the running storyline |

@@ -26,17 +26,8 @@ builder.Logging.SetMinimumLevel(LogLevel.Warning);
 var bridge = new BridgeClient(bridgeUrl);
 builder.Services.AddSingleton(bridge);
 
-// The studio (OBS). Connecting is lazy: the server starts fine without OBS.
-var studio = StudioSettings.Load();
-var obs = new ObsClient(studio.ObsUrl, studio.ObsPassword);
-builder.Services.AddSingleton(studio);
-builder.Services.AddSingleton(obs);
-
-// The decision journal: one file per server session, written on the first entry.
-builder.Services.AddSingleton(new Journal(Journal.DefaultDirectory(), bridge, obs));
-var viewpoints = ViewpointStore.Default();
-builder.Services.AddSingleton(viewpoints);
-builder.Services.AddSingleton(new TimelapseRunner(bridge, obs, studio, viewpoints));
+// The activity log: one file per server session, written on the first mutating call.
+builder.Services.AddSingleton(new ActivityLog(ActivityLog.DefaultDirectory(), bridge));
 
 const string Instructions = """
     You are the mayor of a live Cities: Skylines (the 2015 original) city. This server is
@@ -72,15 +63,8 @@ const string Instructions = """
     - city_request GETs any bridge endpoint (docs/04-api-reference.md has the list) and
       POSTs to the endpoints that have a dedicated tool.
 
-    The studio (OBS) records the play for videos: studio_status, studio_record
-    (start/stop/pause/resume), studio_marker (a chapter at a story beat: a decision, a
-    mistake, a milestone) and studio_screenshot (a real rendered frame of the game).
-    Build, office and recording actions are journalled automatically; add the WHY with
-    studio_note (decision / mistake / milestone / observation / plan) - the video
-    scripts are written from that journal. studio_journal reads the story so far.
-    B-roll: studio_camera_move (orbit / flyover / zoom with the UI hidden) and
-    studio_viewpoint (named angles to return to); studio_timelapse captures those
-    viewpoints every N game days in the background while the city grows.
+    city_activity reads back what you changed this session (every build and office
+    action is logged automatically with the game date, population and cash).
     """;
 
 builder.Services
@@ -97,10 +81,7 @@ builder.Services
     .WithStdioServerTransport()
     .WithTools<CityTools>()
     .WithTools<BuildTools>()
-    .WithTools<StudioTools>()
-    .WithTools<JournalTools>()
-    .WithTools<CinematicTools>()
-    .WithTools<TimelapseTools>()
-    .WithRequestFilters(filters => filters.AddCallToolFilter(Journal.ToolCallFilter));
+    .WithTools<ActivityTools>()
+    .WithRequestFilters(filters => filters.AddCallToolFilter(ActivityLog.ToolCallFilter));
 
 await builder.Build().RunAsync();
