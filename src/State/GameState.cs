@@ -55,8 +55,49 @@ namespace SkylinesAgentBridge.State
             AppendDemandBar(json, "Residential", "residential", zones.m_residentialDemand, "#7fff00", true);
             AppendDemandBar(json, "Commercial", "commercial", zones.m_commercialDemand, "#30c8ff", false);
             AppendDemandBar(json, "Workplace", "workplace", zones.m_workplaceDemand, "#ffd21a", false);
-            json.Append("]}");
+            json.Append("]");
+            AppendDemandInputs(json, zones);
+            json.Append("}");
             return CommandResult.FromJson(json.ToString());
+        }
+
+        /// <summary>
+        /// Why demand is what it is: the published values are the smoothed demand plus a
+        /// tax/policy offset (ZoneManager: m_xDemand = m_actualXDemand + Calculate*Offset),
+        /// and the smoothed demand is driven by the counts below (docs/05-game-mechanics.md).
+        /// </summary>
+        private static void AppendDemandInputs(StringBuilder json, ZoneManager zones)
+        {
+            District d = Singleton<DistrictManager>.instance.m_districts.m_buffer[0];
+            uint unemployed = d.m_educated0Data.m_finalUnemployed + d.m_educated1Data.m_finalUnemployed +
+                d.m_educated2Data.m_finalUnemployed + d.m_educated3Data.m_finalUnemployed;
+            uint homeless = d.m_educated0Data.m_finalHomeless + d.m_educated1Data.m_finalHomeless +
+                d.m_educated2Data.m_finalHomeless + d.m_educated3Data.m_finalHomeless;
+            uint jobs = d.m_commercialData.m_finalHomeOrWorkCount + d.m_industrialData.m_finalHomeOrWorkCount +
+                d.m_officeData.m_finalHomeOrWorkCount + d.m_playerData.m_finalHomeOrWorkCount;
+            uint vacant = d.m_commercialData.m_finalEmptyCount + d.m_industrialData.m_finalEmptyCount +
+                d.m_officeData.m_finalEmptyCount + d.m_playerData.m_finalEmptyCount;
+            json.Append(",\"formula\":{");
+            json.Append("\"actual\":{\"residential\":").Append(zones.m_actualResidentialDemand)
+                .Append(",\"commercial\":").Append(zones.m_actualCommercialDemand)
+                .Append(",\"workplace\":").Append(zones.m_actualWorkplaceDemand).Append("}");
+            json.Append(",\"offset\":{\"residential\":").Append(zones.m_residentialDemand - zones.m_actualResidentialDemand)
+                .Append(",\"commercial\":").Append(zones.m_commercialDemand - zones.m_actualCommercialDemand)
+                .Append(",\"workplace\":").Append(zones.m_workplaceDemand - zones.m_actualWorkplaceDemand).Append("}");
+            json.Append(",\"homes\":{\"occupied\":").Append(d.m_residentialData.m_finalHomeOrWorkCount)
+                .Append(",\"empty\":").Append(d.m_residentialData.m_finalEmptyCount).Append("}");
+            json.Append(",\"jobs\":{\"total\":").Append(jobs).Append(",\"vacant\":").Append(vacant).Append("}");
+            json.Append(",\"citizens\":{\"unemployed\":").Append(unemployed).Append(",\"homeless\":").Append(homeless)
+                .Append(",\"unemployedByEducation\":[").Append(d.m_educated0Data.m_finalUnemployed).Append(',').Append(d.m_educated1Data.m_finalUnemployed)
+                .Append(',').Append(d.m_educated2Data.m_finalUnemployed).Append(',').Append(d.m_educated3Data.m_finalUnemployed).Append("]")
+                .Append(",\"eligibleByEducation\":[").Append(d.m_educated0Data.m_finalEligibleWorkers).Append(',').Append(d.m_educated1Data.m_finalEligibleWorkers)
+                .Append(',').Append(d.m_educated2Data.m_finalEligibleWorkers).Append(',').Append(d.m_educated3Data.m_finalEligibleWorkers).Append("]}");
+            json.Append(",\"abandoned\":{\"residential\":").Append(d.m_residentialData.m_finalAbandonedCount)
+                .Append(",\"commercial\":").Append(d.m_commercialData.m_finalAbandonedCount)
+                .Append(",\"industrial\":").Append(d.m_industrialData.m_finalAbandonedCount)
+                .Append(",\"office\":").Append(d.m_officeData.m_finalAbandonedCount).Append("}");
+            json.Append(",\"note\":\"published demand = actual + offset (offset = tax/policy effects, negative above the tax ceilings). R target falls with empty homes and with unemployed > vacant jobs; workplace target rises with unemployed > vacant.\"");
+            json.Append("}");
         }
 
         public static CommandResult BuildChirpsJson(int limit)

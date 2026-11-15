@@ -235,6 +235,10 @@ Lessons recorded so far:
   at 10% since 7k people stalled at 36.5k with R −1 once its homes had levelled up (9%
   ceilings); back to 9%. Garbage service is distance-bound: incinerators 2.5 km away
   left 168 south-tile buildings abandoned until incinerators were built there.
+- **Over-education stalls growth.** At 37k people 4,426 of 4,554 unemployed were
+  university graduates (14.4k graduate workers vs graduate-level jobs): unemployed far
+  above vacant jobs pins R at 0. Found with `city_demand.formula` (new). The documented
+  workplace-demand formula did not match this build either (formula ≈ 97, game 8).
 - In this build the Water Pumping Station (`Water Intake`) is `ShorelineOrGround` and the
   `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
   pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the
