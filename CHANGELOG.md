@@ -23,6 +23,8 @@ patch = fixes). Every PR adds its line under `[Unreleased]` with the issue numbe
   buildings were caused by the launch (#84).
 
 ### Added
+- `city_industry` (`GET /state/industry`): factory input and output stocks, shops' goods, supply
+  problems, industry per shop, a diagnosis and the buildings in trouble (#75).
 - `city_resources` (`GET /state/resources`): ore, oil, forest and fertility per map tile with
   the rich area and its centre; `city_map` overlays `ore`, `oil`, `forest`, `fertility` (#72).
 - `build-road` reports tunnel, portal, bridge and elevated stretches (`variants`,

@@ -121,6 +121,13 @@ public sealed class CityTools
         return await Post("/commands/unlock-area", body, cancellationToken).ConfigureAwait(false);
     }
 
+    [System.ComponentModel.Description("GET /state/industry. Is the goods chain flowing? Factories' input stock (raw materials) and output stock (goods) against the game's own capacities, shops' goods stock, the supply problems (NoResources, NoPlaceforGoods, NoGoods, NoWorkers), industryPerShop, a short diagnosis, and the buildings in trouble worst first (id, position, input/output material, amount, max, percent). Read it when shops report NoGoods or factories NoResources, and before rezoning industry to offices.")]
+    [McpServerTool(Name = "city_industry", Title = "Industry & Goods Chain")]
+    public async Task<JsonNode?> CityIndustry(
+        [System.ComponentModel.Description("Maximum number of troubled buildings to list (default 50).")] int limit = 50,
+        CancellationToken cancellationToken = default)
+        => await Get("/state/industry?limit=" + Clamp(limit, 0, 1000), cancellationToken).ConfigureAwait(false);
+
     [System.ComponentModel.Description("GET /state/resources. Natural resources per map tile: for ore, oil, forest and fertility the tile mean (0-255), richKm2 (cells at 128+) and richCentre (where to zone that specialised industry), plus ownedRichKm2 over the owned tiles. A Forest/Farming/Oil/Ore district only produces where its buildings stand on the resource. city_map overlay=ore|oil|forest|fertility shows the grid.")]
     [McpServerTool(Name = "city_resources", Title = "Natural Resources")]
     public Task<JsonNode?> CityResources(CancellationToken cancellationToken)

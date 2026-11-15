@@ -58,6 +58,7 @@ Every command would be racing the game's simulation and silently corrupting the 
 | Know the city's pulse | `city_overview` (one call, five reads) |
 | Drill into one number | `city_demand`, `city_economy`, `city_problems`, `city_facilities`, ... |
 | Know if power, water, sewage, garbage, schools, health keep up | `city_utilities` (capacity vs usage; a negative surplus is the next build) |
+| See whether industry feeds the shops (NoGoods, NoResources) | `city_industry` |
 | See the land, roads, zones and buildings | `city_map` (zoom in with a smaller `size` and `cell` 4–8) |
 | See land value, pollution, noise or traffic | `city_map overlay=...` (`saveAs` keeps the PNG) |
 | Check the road network for defects | `city_road_anomalies`, `city_zone_anomalies` |
