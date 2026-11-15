@@ -223,6 +223,14 @@ Lessons recorded so far:
   station and treatment plant lost power and sewage capacity hit 0. Read `removed` after
   every placement; feed a long utility corridor from a service building, not a
   neighbourhood.
+- **Utility cascade, 33k → 13.6k people.** The coast power corridor lost its feed, so the
+  pumping stations and treatment plants stopped; with no water the **nuclear plant
+  (which needs water) stopped too**, the whole city lost power, and ~1,400 buildings were
+  abandoned within one long wait. Guard rails now: two independent feeds into any long
+  utility corridor (end each on a service building), electricity budget 100% so the
+  coal plants and turbines (no water needed) carry spare capacity, and a pulse check
+  that warns on any utility above 85%. The game cleared about half the abandoned
+  buildings by itself within months; bulldozing the rest speeds regrowth.
 - In this build the Water Pumping Station (`Water Intake`) is `ShorelineOrGround` and the
   `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
   pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the
