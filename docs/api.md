@@ -615,7 +615,7 @@ so the office's aim is deterministic. Edge scrolling toggles live through the ga
 | `verticalAngle` / `horizontalAngle` | Degrees: `verticalAngle` is the pitch (0 = level with the horizon, 90 = top-down, clamped to 0–90), `horizontalAngle` the yaw (−180..180). They map to `CameraController.m_targetAngle` **y** and **x** respectively. Both default to the **current** framing, so re-aiming does not spin or tilt the view. |
 | `instant` | `true` (default) snaps the camera to the target the same frame; `false` lets it glide. |
 | `edgeScroll` | `true`/`false` to toggle edge scrolling — the ergonomics fix: with edge scrolling on, the camera drifts whenever the cursor touches the window edge. |
-| `hideUi` | `true`/`false` to enter/leave the game's free-camera mode (`CameraController.m_freeCamera`, the field the game's hide-UI key toggles). The game then hides the whole UI — including the bridge console — plus notification icons, district names, area borders and road names, and shows them again when cleared. For clean video. Readback: `camera.uiHidden`. |
+| `hideUi` | `true`/`false` to enter/leave the game's free-camera mode (`CameraController.m_freeCamera`, the field the game's hide-UI key toggles). The game then hides the whole UI — including the bridge console — plus notification icons, district names, area borders and road names, and shows them again when cleared. Readback: `camera.uiHidden`. |
 
 With no coordinates, no `edgeScroll` and no `hideUi` the command is a pure camera-state read.
 

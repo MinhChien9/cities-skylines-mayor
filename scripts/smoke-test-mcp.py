@@ -201,7 +201,7 @@ def main():
             failures.append(f"missing tools: {sorted(missing)}")
         foreign = sorted(n for n in names if not n.startswith("city_"))
         if foreign:
-            # Recording and video tools live in the separate cs1-video-making repo.
+            # This server exposes the city_* tools only.
             failures.append(f"non-city tools on the mayor server: {foreign}")
         for tool in tools:
             if not tool.get("description"):

@@ -35,6 +35,5 @@ This repository has two audiences, and both instruction sets live in `AGENTS.md`
   `dotnet test tests/Cs1Mayor.Mcp.Tests/Cs1Mayor.Mcp.Tests.csproj`,
   `python scripts/smoke-test-mcp.py`, `python scripts/check-api-docs.py`, and a live
   check against the running game (`GET /debug/threads`).
-- This repo is MCP only. Recording, the decision journal, timelapse and the whole video
-  pipeline live in `../cs1-video-making` (its own `cs1-studio` MCP server, which tails
-  this server's `activity/` log). Do not add OBS or video code here.
+- This repo is the MCP server and the bridge mod only. Anything else (recording, video,
+  other tooling) does not belong here.

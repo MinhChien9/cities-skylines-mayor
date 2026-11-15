@@ -7,18 +7,11 @@ using ModelContextProtocol.Server;
 namespace Cs1Mayor.Mcp;
 
 /// <summary>
-/// The agent's hands: seeing the land and building on it, without a cursor.
+/// The agent's hands: seeing the land and building on it.
 ///
-/// WHY THIS EXISTS (and why it replaced the cursor-only model)
-/// -----------------------------------------------------------
-/// The first build tools called the game's storage layer directly
-/// (<c>NetManager.CreateSegment</c>, <c>BuildingManager.CreateBuilding</c>) and skipped
-/// every rule the player's tools enforce, so they produced disconnected, overlapping
-/// roads and buildings in rivers. The response was to move all spatial work to a
-/// computer-use cursor — which works, but costs a screenshot per step and still has to
-/// guess world positions from pixels.
-///
-/// The bridge now builds through the game's own tool code: <c>NetTool.CreateNode</c> for
+/// The bridge builds through the game's own tool code, never by writing game data
+/// directly (<c>NetManager.CreateSegment</c> skips every rule the player's tools enforce
+/// and leaves disconnected, overlapping roads): <c>NetTool.CreateNode</c> for
 /// every network and a port of <c>BuildingTool</c>'s placement rules for buildings,
 /// always running the tool's <c>test</c> pass first. The agent gets exactly the snapping,
 /// junction-splitting, collision, slope, locked-tile and money checks the player gets,

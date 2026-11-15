@@ -20,7 +20,7 @@ public sealed class ActivityLogTests : IDisposable
 
     private static BridgeClient Bridge(StubHandler handler) => new("http://127.0.0.1:32123", 5, new HttpClient(handler));
 
-    private ActivityLog NewJournal(BridgeClient? bridge = null)
+    private ActivityLog NewLog(BridgeClient? bridge = null)
         => new(_dir, bridge, () => Start, TimeSpan.FromSeconds(2));
 
     private static Dictionary<string, JsonElement> Args(string json)
@@ -29,13 +29,13 @@ public sealed class ActivityLogTests : IDisposable
     [Fact]
     public async Task Write_AppendsOneJsonLinePerEntry_WithGameContext()
     {
-        var journal = NewJournal(Bridge(StubHandler.Json(Summary)));
+        var activity = NewLog(Bridge(StubHandler.Json(Summary)));
 
-        await journal.WriteAsync("decision", "  Water first: the houses have no water.  ");
-        await journal.WriteAsync("plan", "Zone two streets next.");
+        await activity.WriteAsync("decision", "  Water first: the houses have no water.  ");
+        await activity.WriteAsync("plan", "Zone two streets next.");
 
-        Assert.Equal(Path.Combine(_dir, "20261115-010203.jsonl"), journal.FilePath);
-        string[] lines = File.ReadAllLines(journal.FilePath);
+        Assert.Equal(Path.Combine(_dir, "20261115-010203.jsonl"), activity.FilePath);
+        string[] lines = File.ReadAllLines(activity.FilePath);
         Assert.Equal(2, lines.Length);
         var first = JsonNode.Parse(lines[0])!;
         Assert.Equal(1, (int?)first["seq"]);
@@ -45,7 +45,6 @@ public sealed class ActivityLogTests : IDisposable
         Assert.Equal("2029-11-19T15:18:01", (string?)first["game"]!["date"]);
         Assert.Equal(144, (int?)first["game"]!["population"]);
         Assert.Equal(655752, (long?)first["game"]!["cash"]);
-        Assert.Null(first["recording"]);   // the mayor's log knows nothing about recordings
         Assert.Equal(2, (int?)JsonNode.Parse(lines[1])!["seq"]);
     }
 
@@ -53,20 +52,20 @@ public sealed class ActivityLogTests : IDisposable
     public async Task Write_SurvivesAClosedGame()
     {
         var down = new StubHandler(_ => throw new HttpRequestException("connection refused"));
-        var journal = NewJournal(Bridge(down));
+        var activity = NewLog(Bridge(down));
 
-        var entry = await journal.WriteAsync("note", "The game is closed.");
+        var entry = await activity.WriteAsync("note", "The game is closed.");
 
         Assert.Null(entry["game"]);
-        Assert.Single(File.ReadAllLines(journal.FilePath));
+        Assert.Single(File.ReadAllLines(activity.FilePath));
     }
 
     [Fact]
     public async Task Write_IgnoresTheBridgeWhenNoCityIsLoaded()
     {
-        var journal = NewJournal(Bridge(StubHandler.Json("{\"ok\":false,\"error\":\"no city\"}", HttpStatusCode.Conflict)));
+        var activity = NewLog(Bridge(StubHandler.Json("{\"ok\":false,\"error\":\"no city\"}", HttpStatusCode.Conflict)));
 
-        var entry = await journal.WriteAsync("note", "Main menu.");
+        var entry = await activity.WriteAsync("note", "Main menu.");
 
         Assert.Null(entry["game"]);
     }
@@ -79,23 +78,23 @@ public sealed class ActivityLogTests : IDisposable
     [InlineData("city_overview", "{}", false)]
     [InlineData("city_request", "{\"path\":\"/state/summary\"}", false)]
     [InlineData("city_request", "{\"path\":\"/commands/save\",\"method\":\"post\"}", true)]
-    [InlineData("studio_record", "{\"action\":\"start\"}", false)]
+    [InlineData("other_tool", "{\"action\":\"start\"}", false)]
     [InlineData("city_district", "{\"action\":\"state\"}", false)]
-    public void ShouldJournal_MutatingCallsOnly(string tool, string args, bool expected)
+    public void ShouldLog_MutatingCallsOnly(string tool, string args, bool expected)
     {
-        Assert.Equal(expected, ActivityLog.ShouldJournal(tool, Args(args)));
+        Assert.Equal(expected, ActivityLog.ShouldLog(tool, Args(args)));
     }
 
     [Fact]
     public async Task ToolCall_RecordsToolArgsAndResult()
     {
-        var journal = NewJournal();
+        var activity = NewLog();
         var result = new CallToolResult
         {
             Content = [new TextContentBlock { Text = "{\"ok\":true,\"segmentIds\":[11,12],\"cost\":4800}" }],
         };
 
-        var entry = await journal.WriteToolCallAsync("city_build_road",
+        var entry = await activity.WriteToolCallAsync("city_build_road",
             Args("{\"startX\":10,\"startZ\":20,\"endX\":330,\"endZ\":20,\"prefab\":\"Basic Road\"}"), result);
 
         Assert.Equal("build", (string?)entry["kind"]);
@@ -138,10 +137,10 @@ public sealed class ActivityLogTests : IDisposable
     [Fact]
     public async Task ReadRecent_ReturnsTheNewestEntries()
     {
-        var journal = NewJournal();
-        for (int i = 1; i <= 5; i++) await journal.WriteAsync("note", $"n{i}");
+        var activity = NewLog();
+        for (int i = 1; i <= 5; i++) await activity.WriteAsync("note", $"n{i}");
 
-        var recent = await journal.ReadRecentAsync(2);
+        var recent = await activity.ReadRecentAsync(2);
 
         Assert.Equal(["n4", "n5"], recent.Select(e => (string)e!["text"]!).ToArray());
     }
@@ -149,15 +148,15 @@ public sealed class ActivityLogTests : IDisposable
     [Fact]
     public async Task ReadRecent_BeforeAnyEntry_IsEmpty()
     {
-        Assert.Empty(await NewJournal().ReadRecentAsync(10));
+        Assert.Empty(await NewLog().ReadRecentAsync(10));
     }
 
     [Fact]
     public async Task ActivityTool_ReadsBack()
     {
-        var journal = NewJournal();
-        var tools = new ActivityTools(journal);
-        await journal.WriteAsync("office", "A");
+        var activity = NewLog();
+        var tools = new ActivityTools(activity);
+        await activity.WriteAsync("office", "A");
 
         var read = await tools.CityActivity(10);
 

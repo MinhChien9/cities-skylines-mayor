@@ -71,7 +71,7 @@ build, a player could have built.
 - **Simulation speed is the real limit.** It tops out at 3×, so thirty game days take tens of
   real minutes. Plan about one decision per game week, not per hour.
 - **The activity log is a plain file.** One JSON line per mutating call. Other programs
-  (the video studio) follow it without coupling to the server.
+  can follow it without coupling to the server.
 
 ## History
 
@@ -83,7 +83,7 @@ It then:
 - ran all commands on the simulation thread, replacing a render-thread queue and its
   reflection bypass, plus the "repair" scripts that tried to fix the damage afterwards
 - added the MCP server and the knowledge base (`docs/game-mechanics.md`, `docs/expansions.md`)
-- replaced direct data writes with building through the game's own tool code (after a
-  cursor-driven phase), and added the semantic map
+- replaced direct data writes with building through the game's own tool code, and added
+  the semantic map
 
 The full story is in the git history and the decision log in `PLAN.md`.

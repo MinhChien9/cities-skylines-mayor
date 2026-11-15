@@ -8,8 +8,8 @@ namespace SkylinesAgentBridge.State
 {
     /// <summary>
     /// The optional data layer of GET /state/map (<c>overlay=</c>): one byte per map cell for
-    /// land value, ground pollution, noise or road traffic, for the story maps of the videos
-    /// and for the mayor's own decisions (where to put a park, which road is jammed).
+    /// land value, ground pollution, noise or road traffic, for the mayor's decisions (where
+    /// to put a park, which road is jammed).
     ///
     /// Values are the game's own numbers, clamped to 0-255: land value and noise from
     /// <c>ImmaterialResourceManager.CheckLocalResource</c>, ground pollution from

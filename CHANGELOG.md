@@ -9,6 +9,10 @@ patch = fixes). Every PR adds its line under `[Unreleased]` with the issue numbe
 ## [Unreleased]
 
 ### Documentation
+- Removed text that no longer belongs to an MCP-only repo: links and notes about the video
+  pipeline, the cursor-era history (and the unused `scripts/game-ui.ps1` click helper), API
+  notes for finished work, and a stale environment state. The activity log's `ShouldJournal`
+  / `JournalledTools` are now `ShouldLog` / `LoggedTools` (#102).
 - Transport checks re-run on the populated 53k save: buses despawn when a line is switched off
   and the full fleet respawns when it is switched on; what `passengers` temp / final / average
   mean (`docs/verification.md` §6) (#76).

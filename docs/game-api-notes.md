@@ -1,7 +1,7 @@
 # Game API notes
 
-Which game APIs to use for parts of the game that have no tool yet. Each section links its
-issue. **[V]** means verified against the game assemblies; **[?]** means not yet verified.
+Which game APIs to use for parts of the game that have no tool yet. **[V]** means verified
+against the game assemblies; **[?]** means not yet verified.
 
 ## Choosing a route
 
@@ -32,60 +32,6 @@ IManagers ─┬─ areas            IAreas             map tiles
            ├─ economy          IEconomy           money
            └─ application      IApplication       version, expansion support
 ```
-
-## Loading saves and starting games: [#69](https://github.com/MinhChien9/cities-skylines-mayor/issues/69)
-
-```
-ISerializableData.LoadGame(string saveName) → bool          [V]
-ISerializableData.SaveGame(string saveName) → bool          [V]
-```
-
-Loading is a supported call. Around it, the bridge must reset its `LevelLoaded` flag and drop
-pending dispatcher jobs; `SerializableDataExtensionBase.OnLoadData` is the hook for that.
-Starting a new game from a map or scenario goes through `LoadingManager` (see
-`NewScenarioGamePanel` in the game code) and has to work from the main menu, before a level
-exists.
-
-## Terrain and natural resources: [#72](https://github.com/MinhChien9/cities-skylines-mayor/issues/72)
-
-```
-IResource.WorldToGridPosition(Vector3, out x, out z)        [V]
-IResource.GetResource(x, z, NaturalResource) → byte         [V]   ore, oil, forest, fertility [?]
-ITerrain.SampleTerrainHeight(x, z) / SampleWaterHeight(x, z) [V]
-ITerrain.GetHeights / SetHeights + RawToHeight / HeightToRaw [V]
-```
-
-Return resources as a grid like `/state/map` does, plus a `city_map` overlay. Editing the
-terrain is out of scope (it belongs to the player's landscaping tool).
-
-## Service coverage: [#73](https://github.com/MinhChien9/cities-skylines-mayor/issues/73)
-
-The info views read `ImmaterialResourceManager`: `CheckResource(resource, position, out local,
-out total)` for police, fire, health care, education, entertainment and public transport.
-These terms drive citizen wellbeing (`ResidentAI.UpdateWellbeing`; see
-[game-mechanics.md](game-mechanics.md)). Sample them per map cell the way `MapOverlay` samples
-land value.
-
-## Industry chains and cargo: [#74](https://github.com/MinhChien9/cities-skylines-mayor/issues/74), [#75](https://github.com/MinhChien9/cities-skylines-mayor/issues/75)
-
-- **Cargo routes** are transport lines with a cargo vehicle class. Cargo counts five times
-  more than police in the industrial level-up score.
-- **Production:** read each industrial building's production rate and its input and output
-  buffers (`BuildingManager` data **[?]**), so a starved chain (`NoGoods`) shows before shops
-  are abandoned.
-
-## Special areas (airport, campus, pedestrian, industry)
-
-Special areas are districts in a separate id space **[V]**:
-
-```
-DistrictManager.CreatePark(out byte park, ParkType type, ParkLevel level)
-DistrictManager.AddParkBuilding(byte park, BuildingInfo info, ParkType type)
-```
-
-`/commands/district` with `layer: "park"` already creates and paints them. A new area is
-`functional: false` until its main gate building is placed. Exposing create and paint in the
-MCP tool is [#68](https://github.com/MinhChien9/cities-skylines-mayor/issues/68).
 
 ## Props and landscaping
 

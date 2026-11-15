@@ -61,12 +61,6 @@ To set up opencode, build from source, or troubleshoot, see
 
 The full index is in [docs/README.md](docs/README.md).
 
-## Related
-
-[cities-skylines-video](https://github.com/MinhChien9/cities-skylines-video) records the
-AI mayor's play and turns it into videos. It reads this server's activity log
-(`activity/<session>.jsonl`).
-
 ## Contributing
 
 Every change starts as an [issue](https://github.com/MinhChien9/cities-skylines-mayor/issues).
