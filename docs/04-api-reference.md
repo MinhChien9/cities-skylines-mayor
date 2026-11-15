@@ -37,7 +37,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 | GET | `/state/capabilities` | What the running game supports. See below. |
 | GET | `/state/summary` | Compact city overview. |
 | GET | `/state/problems` | Problem icons. `?limit=` (default 200). |
-| GET | `/state/demand` | RCI demand values, plus `formula`: `actual` (smoothed) and `offset` (tax/policy) per bar — published = actual + offset — and the inputs: homes occupied/empty, jobs total/vacant, citizens unemployed/homeless, abandoned buildings. |
+| GET | `/state/demand` | RCI demand values, plus `formula`: `target` (the game's own `Calculate*Demand` this step), `actual` (smoothed; spawning buildings spend it, so it can sit near 0 under a high target) and `offset` (tax/policy) per bar — published = actual + offset — and the inputs: homes occupied/empty, jobs total/vacant, citizens unemployed/homeless, abandoned buildings. |
 | GET | `/state/areas` | Map tiles (5 × 5 of 1920 m): `areaCount`, `maxAreaCount`, and per tile `x`, `z`, `unlocked`, `canUnlock`, `price`, `bounds`. |
 | GET | `/state/utilities` | City-wide capacity against usage: electricity (kW), water, sewage, garbage, healthcare, deathcare, education per level, crime, jobs. |
 | GET | `/state/chirps` | Citizen chatter. `?limit=` (default 50). |
