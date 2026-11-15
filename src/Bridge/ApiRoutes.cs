@@ -62,6 +62,9 @@ namespace SkylinesAgentBridge
                     return OnGameThread(delegate { return GameState.BuildProblemsJson(limit); });
                 });
 
+            MapGet("/state/scenario", "Read the scenario's win/lose conditions and their live progress",
+                delegate { return OnGameThread(delegate { return ScenarioCollector.BuildScenarioJson(); }); });
+
             MapGet("/state/areas", "Read the map tiles: owned, buyable, price, bounds",
                 delegate { return OnGameThread(delegate { return AreaCommands.BuildAreasJson(); }); });
 

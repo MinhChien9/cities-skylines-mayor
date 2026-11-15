@@ -131,6 +131,13 @@ title (cut by marker); a `timelapse` spreads its frames over the line; a `still`
 Outputs `build/render/<id>-16x9.mp4` (the YouTube master) and `<id>-9x16.mp4` (Shorts,
 TikTok). The e001 pilot renders in ~20 s.
 
+**Silent cut (no voice-over).** `python -X utf8 -m post.edit <script> --silent` skips the
+voice and word-timing steps: each line holds for its reading time (4 syllables/s + 0.8 s,
+at least 2 s), the highlight walks through its words, and the renders carry **no audio
+track** (music is added on the platform at upload). It writes the transcript next to the
+renders as `<id>.vi.srt`. Keep a silent Short's lines short: at reading speed the 60 s
+budget holds about 200 syllables.
+
 **Film for the edit.** Footage recorded with the game UI on shows the chirper, tooltips
 and the bridge console. Hide the UI (`city_camera hideUi:true`) for any stretch that
 might become a clip, and film B-roll with `studio_camera_move`.

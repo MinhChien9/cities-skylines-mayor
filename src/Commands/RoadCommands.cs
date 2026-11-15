@@ -50,6 +50,10 @@ namespace SkylinesAgentBridge.Commands
             {
                 return CommandResult.Fail("Network prefab was not found: " + prefabName + ". List them with GET /prefabs/networks.");
             }
+            if (!UnlockCheck.IsUnlocked(info))
+            {
+                return CommandResult.Fail(UnlockCheck.LockedMessage(info, prefabName));
+            }
 
             // A straight road that runs over an existing node must stop at it, exactly as a
             // player clicks on that node: NetTool reports ObjectCollision for a road drawn

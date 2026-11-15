@@ -64,6 +64,7 @@ clownish. Your notes are the story's raw material — see
 | Zone an area | `city_zone_area` (the brush) |
 | Place / move a service building | `city_place_building`, `city_move_building` |
 | Demolish | `city_bulldoze` |
+| Play a scenario: win/lose conditions, progress, next milestone | `city_scenario` |
 | See / buy map tiles | `city_areas`, `city_unlock_area` (pays the land price; the tile must touch an owned one) |
 | Empty a full cemetery or landfill | `city_empty_building` (needs crematories / incinerators to take the contents) |
 | Pause / resume / speed the clock | `city_set_simulation_speed` |

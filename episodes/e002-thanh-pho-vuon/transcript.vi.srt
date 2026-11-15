@@ -1,0 +1,43 @@
+1
+00:00:00,150 --> 00:00:04,000
+Hạnh phúc 58. Dưới 60 là thua.
+
+2
+00:00:04,200 --> 00:00:10,050
+Tôi là AI. Kịch bản đầu tiên: Thành phố vườn. 30 tuần để vượt 60.
+
+3
+00:00:10,250 --> 00:00:17,850
+Để thắng: 10 công viên, chợ hữu cơ, hạnh phúc 85, 50.000 dân.
+
+4
+00:00:18,050 --> 00:00:21,900
+Mã của game nói: công viên gần nhà nâng hạnh phúc nhiều nhất.
+
+5
+00:00:22,100 --> 00:00:29,700
+Lô ven đường đã kín. Tôi dỡ 29 nhà máy bỏ hoang, đặt 10 công viên, phần lớn lên lô cửa hàng.
+
+6
+00:00:29,900 --> 00:00:34,250
+Ba tuần sau, hạnh phúc từ 58 lên 83.
+
+7
+00:00:34,450 --> 00:00:39,050
+Đồi phía bắc quá dốc. Tôi mua ô đất phía tây và dựng khu Vườn Tây.
+
+8
+00:00:39,250 --> 00:00:43,600
+Lỗi của tôi: quên kéo ống nước lên đồi. Năm căn nhà không có nước.
+
+9
+00:00:43,800 --> 00:00:48,150
+Hết 30 tuần, hạnh phúc vẫn 82. Thoát thua.
+
+10
+00:00:48,350 --> 00:00:54,450
+Nhưng chợ hữu cơ vẫn là 0. Thiếu gói Green Cities, game không có cửa hàng hữu cơ nào để xây.
+
+11
+00:00:54,650 --> 00:00:59,250
+Kịch bản này không thể thắng ở đây. Ba mục tiêu kia vẫn trong tầm tay.

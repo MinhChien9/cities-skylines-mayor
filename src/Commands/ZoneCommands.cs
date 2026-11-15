@@ -32,6 +32,10 @@ namespace SkylinesAgentBridge.Commands
             {
                 return CommandResult.Fail("Unsupported zone: " + zoneName);
             }
+            if (!UnlockCheck.IsZoneUnlocked(zone))
+            {
+                return CommandResult.Fail("Zone is locked: " + zoneName + " unlocks at a later milestone. The player cannot paint it yet.");
+            }
 
             ZoneManager manager = ZoneManager.instance;
             ZoneTally tally = new ZoneTally();
@@ -73,6 +77,10 @@ namespace SkylinesAgentBridge.Commands
             if (!TryParseZone(zoneName, out zone))
             {
                 return CommandResult.Fail("Unsupported zone: " + zoneName);
+            }
+            if (!UnlockCheck.IsZoneUnlocked(zone))
+            {
+                return CommandResult.Fail("Zone is locked: " + zoneName + " unlocks at a later milestone. The player cannot paint it yet.");
             }
             if (side != "left" && side != "right" && side != "both" &&
                 side != "north" && side != "south" && side != "east" && side != "west")

@@ -38,6 +38,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 | GET | `/state/summary` | Compact city overview. |
 | GET | `/state/problems` | Problem icons. `?limit=` (default 200). |
 | GET | `/state/demand` | RCI demand values, plus `formula`: `target` (the game's own `Calculate*Demand` this step), `actual` (smoothed; spawning buildings spend it, so it can sit near 0 under a high target) and `offset` (tax/policy) per bar — published = actual + offset — and the inputs: homes occupied/empty, jobs total/vacant, citizens unemployed/homeless, abandoned buildings. |
+| GET | `/state/scenario` | Scenario goals, as the in-game Scenario goals tab shows them: every win/lose trigger (`kind`, `conditionOrder`, `passed`) with each condition's `description`, `progress`, `current`/`min`/`max`, `passed`; plus `currentMilestone` (title, requirement, progress) and `zoneMilestones` (which milestone unlocks each zone type). `isScenario` is false in free play. |
 | GET | `/state/areas` | Map tiles (5 × 5 of 1920 m): `areaCount`, `maxAreaCount`, and per tile `x`, `z`, `unlocked`, `canUnlock`, `price`, `bounds`. |
 | GET | `/state/utilities` | City-wide capacity against usage: electricity (kW), water, sewage, garbage, healthcare, deathcare, education per level, crime, jobs. |
 | GET | `/state/chirps` | Citizen chatter. `?limit=` (default 50). |
@@ -56,7 +57,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 | GET | `/state/external-connections` | Highway / rail / sea connections. `?limit=`. |
 | GET | `/state/saves` | Saved games on disk. |
 | GET | `/state/map` | Semantic top-down raster of an area: land/water/road/zone/building classes, terrain heights, locked tiles, road dead ends. `?x=&z=` centre, `?size=` metres (default 1024), `?cell=` metres (default 8), `?overlay=` `landValue`\|`pollution`\|`noise`\|`traffic` (optional data layer). See below. |
-| GET | `/prefabs/buildings` | Available building prefabs. `?service=`. |
+| GET | `/prefabs/buildings` | Available building prefabs. `?service=`. Each has `unlocked` (its unlock milestone has passed: the player's toolbar offers it), `unlockMilestone` and `constructionCost` (raw units, ÷100 = ₡). `place-building` and `build-road` refuse locked prefabs, and the zone commands refuse locked zone types (`city_capabilities.unlockedZones`). |
 | GET | `/prefabs/roads` | Available road prefabs. |
 | GET | `/prefabs/networks` | Available network prefabs. `?service=`. |
 | GET | `/prefabs/transport` | Transport line prefabs (bus, metro, …) and their vehicles. `?type=`. |

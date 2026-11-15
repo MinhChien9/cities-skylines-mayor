@@ -161,6 +161,22 @@ namespace SkylinesAgentBridge.State
                     }
                 }
 
+                List<string> zones = new List<string>();
+                foreach (ItemClass.Zone zone in Enum.GetValues(typeof(ItemClass.Zone)))
+                {
+                    if (zone != ItemClass.Zone.None && zone != ItemClass.Zone.Unzoned && zone != ItemClass.Zone.Distant &&
+                        SkylinesAgentBridge.Support.UnlockCheck.IsZoneUnlocked(zone))
+                    {
+                        zones.Add(zone.ToString());
+                    }
+                }
+                json.Append(",\"unlockedZones\":[");
+                for (int i = 0; i < zones.Count; i++)
+                {
+                    json.Append(i > 0 ? ",\"" : "\"").Append(zones[i]).Append("\"");
+                }
+                json.Append("]");
+
                 json.Append(",\"unlockedFeatures\":[");
                 for (int i = 0; i < unlocked.Count; i++)
                 {
