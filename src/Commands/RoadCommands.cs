@@ -73,6 +73,7 @@ namespace SkylinesAgentBridge.Commands
             float totalUnderwater = 0f;
             StringBuilder legJson = new StringBuilder();
             string collisionHint = null;
+            Dictionary<string, float> variantMeters = new Dictionary<string, float>();
 
             // Phase 1: test every leg (no side effects), like NetTool.CreateNodeImpl does.
             for (int i = 0; i < legs; i++)
@@ -88,6 +89,7 @@ namespace SkylinesAgentBridge.Commands
                 int productionRate;
                 ToolBase.ToolErrors errors;
                 string collisions = "";
+                string variants = "";
                 // Open our own collision scope around the test pass: CreateNode marks every
                 // segment and building it collides with in the ToolController's buffers,
                 // which is what the player's tool paints red. Read them, then clear them.
@@ -108,6 +110,7 @@ namespace SkylinesAgentBridge.Commands
                     {
                         collisions = CollisionsJson(leg, collidingSegments, collidingBuildings, ref collisionHint);
                     }
+                    variants = PlannedVariantsJson(info, curved, ref variantMeters);
                 }
                 finally
                 {
@@ -132,6 +135,7 @@ namespace SkylinesAgentBridge.Commands
                     .Append(",\"errors\":").Append(GameValidation.ErrorsJson(errors))
                     .Append(",\"underwaterMeters\":").Append(Mathf.RoundToInt(underwater))
                     .Append(collisions)
+                    .Append(variants)
                     .Append(',').Append(SnapJson("start", leg.Start))
                     .Append(',').Append(SnapJson("end", leg.End)).Append('}');
             }
@@ -171,6 +175,7 @@ namespace SkylinesAgentBridge.Commands
                     ",\"errors\":" + errorsJson +
                     ",\"hint\":\"" + JsonUtil.Escape(hint) + "\"" +
                     PowerLinesCrossedJson(info, waypoints, curved, control) +
+                    VariantWarningJson(info, variantMeters) +
                     ",\"legs\":[" + legJson + "]}");
             }
 
@@ -211,6 +216,8 @@ namespace SkylinesAgentBridge.Commands
             }
 
             Debug.Log("[SkylinesAgentBridge] Built " + prefabName + ": " + created.Count + " segment(s) in " + legs + " leg(s), cost " + (totalCost / 100));
+            Dictionary<string, float> builtVariantMeters = new Dictionary<string, float>();
+            string builtVariants = BuiltVariantsJson(info, created, builtVariantMeters);
 
             return CommandResult.FromJson("{\"ok\":true,\"dryRun\":false,\"built\":true" +
                 ",\"roadPrefab\":\"" + JsonUtil.Escape(prefabName) + "\"" +
@@ -219,6 +226,8 @@ namespace SkylinesAgentBridge.Commands
                 ",\"cost\":" + (totalCost / 100) +
                 ",\"moneyBefore\":" + moneyBefore +
                 ",\"moneyAfter\":" + MoneyNow() +
+                builtVariants +
+                VariantWarningJson(info, builtVariantMeters) +
                 collateral.RemovedJson(splitByDesign) +
                 ",\"legs\":[" + legJson + "]}");
         }
@@ -989,6 +998,132 @@ namespace SkylinesAgentBridge.Commands
             }
             return ItemClass.GetPublicServiceIndex(info.m_class.m_service) != -1 && !info.m_autoRemove &&
                 (building.m_levelUpProgress != byte.MaxValue || (building.m_flags & Building.Flags.Collapsed) == Building.Flags.None);
+        }
+
+        // ------------------------------------------------------------ variants
+
+        /// <summary>
+        /// Which variant of the network the game picks where the ground forces it: a road
+        /// whose nodes lie more than 8 m below the terrain becomes its tunnel (or the slope
+        /// at a portal), one above the terrain its elevated or bridge variant
+        /// (<c>RoadAI.GetInfo</c>). Nothing can be zoned along a tunnel or an elevated road.
+        /// CreateNode clears the per-node infos it chose before it returns, so the same
+        /// <c>NetAI.GetInfo</c> call is repeated on each node's height above the terrain,
+        /// which the test pass leaves in the node buffer.
+        /// </summary>
+        private static string PlannedVariantsJson(NetInfo info, bool curved, ref Dictionary<string, float> meters)
+        {
+            int size = NodeBuffer.m_size;
+            if (size < 2 || info.m_netAI == null)
+            {
+                return "";
+            }
+            NetInfo[] chosen = new NetInfo[size];
+            for (int i = 0; i < size; i++)
+            {
+                NetTool.NodePosition np = NodeBuffer.m_buffer[i];
+                float el = np.m_position.y - np.m_terrainHeight;
+                float length = i > 0 ? VectorUtils.LengthXZ(np.m_position - NodeBuffer.m_buffer[i - 1].m_position) : 0f;
+                ToolBase.ToolErrors ignored = ToolBase.ToolErrors.None;
+                chosen[i] = info.m_netAI.GetInfo(el, el, Mathf.Max(length, 1f), false, false, curved, false, ref ignored) ?? info;
+            }
+            StringBuilder sb = new StringBuilder();
+            int count = 0;
+            int startIndex = -1;
+            NetInfo current = null;
+            for (int i = 1; i <= size; i++)
+            {
+                // A stretch between nodes i-1 and i takes the variant of whichever end is not
+                // the plain network (a tunnel portal is a slope at one end).
+                NetInfo seg = i < size ? (chosen[i] != info ? chosen[i] : chosen[i - 1]) : null;
+                if (seg == info) seg = null;
+                if (seg != current || i == size)
+                {
+                    if (current != null && startIndex >= 0)
+                    {
+                        Vector3 a = NodeBuffer.m_buffer[startIndex].m_position;
+                        Vector3 b = NodeBuffer.m_buffer[i - 1].m_position;
+                        float len = 0f;
+                        for (int k = startIndex + 1; k <= i - 1; k++)
+                        {
+                            len += VectorUtils.LengthXZ(NodeBuffer.m_buffer[k].m_position - NodeBuffer.m_buffer[k - 1].m_position);
+                        }
+                        string kind = VariantKind(current);
+                        float sum;
+                        meters.TryGetValue(kind, out sum);
+                        meters[kind] = sum + len;
+                        if (count++ > 0) sb.Append(',');
+                        sb.Append("{\"kind\":\"").Append(kind).Append("\",\"prefab\":\"").Append(JsonUtil.Escape(current.name)).Append('"')
+                            .Append(",\"meters\":").Append(Mathf.RoundToInt(len))
+                            .Append(",\"from\":{\"x\":").Append(JsonUtil.Number(a.x)).Append(",\"z\":").Append(JsonUtil.Number(a.z)).Append('}')
+                            .Append(",\"to\":{\"x\":").Append(JsonUtil.Number(b.x)).Append(",\"z\":").Append(JsonUtil.Number(b.z)).Append("}}");
+                    }
+                    current = seg;
+                    startIndex = i - 1;
+                }
+            }
+            return count == 0 ? "" : ",\"variants\":[" + sb + "]";
+        }
+
+        /// <summary>The created segments whose prefab is not the requested one.</summary>
+        private static string BuiltVariantsJson(NetInfo info, List<ushort> created, Dictionary<string, float> meters)
+        {
+            NetManager net = Singleton<NetManager>.instance;
+            StringBuilder sb = new StringBuilder();
+            int count = 0;
+            for (int i = 0; i < created.Count; i++)
+            {
+                NetSegment s = net.m_segments.m_buffer[created[i]];
+                NetInfo si = s.Info;
+                if (si == null || si == info || si.m_class == null || si.m_class.m_service != info.m_class.m_service)
+                {
+                    continue; // the requested prefab, or a junction split of another network
+                }
+                Vector3 a = net.m_nodes.m_buffer[s.m_startNode].m_position;
+                Vector3 b = net.m_nodes.m_buffer[s.m_endNode].m_position;
+                float len = VectorUtils.LengthXZ(b - a);
+                string kind = VariantKind(si);
+                float sum;
+                meters.TryGetValue(kind, out sum);
+                meters[kind] = sum + len;
+                if (count++ > 0) sb.Append(',');
+                sb.Append("{\"segmentId\":").Append(created[i])
+                    .Append(",\"kind\":\"").Append(kind).Append("\",\"prefab\":\"").Append(JsonUtil.Escape(si.name)).Append('"')
+                    .Append(",\"meters\":").Append(Mathf.RoundToInt(len)).Append('}');
+            }
+            return count == 0 ? "" : ",\"variants\":[" + sb + "]";
+        }
+
+        private static string VariantKind(NetInfo v)
+        {
+            string n = v.name ?? "";
+            if (n.EndsWith(" Slope", System.StringComparison.OrdinalIgnoreCase)) return "tunnelPortal";
+            if (n.EndsWith(" Tunnel", System.StringComparison.OrdinalIgnoreCase)) return "tunnel";
+            if (n.EndsWith(" Bridge", System.StringComparison.OrdinalIgnoreCase)) return "bridge";
+            if (n.EndsWith(" Elevated", System.StringComparison.OrdinalIgnoreCase)) return "elevated";
+            if (v.m_netAI != null && v.m_netAI.IsUnderground()) return "tunnel";
+            if (v.m_netAI != null && v.m_netAI.IsOverground()) return "elevated";
+            return "variant";
+        }
+
+        private static string VariantWarningJson(NetInfo info, Dictionary<string, float> meters)
+        {
+            if (meters.Count == 0)
+            {
+                return "";
+            }
+            StringBuilder parts = new StringBuilder();
+            StringBuilder totals = new StringBuilder();
+            foreach (KeyValuePair<string, float> kv in meters)
+            {
+                if (parts.Length > 0) { parts.Append(", "); totals.Append(','); }
+                parts.Append(Mathf.RoundToInt(kv.Value)).Append(" m ").Append(kv.Key);
+                totals.Append('"').Append(kv.Key).Append("\":").Append(Mathf.RoundToInt(kv.Value));
+            }
+            bool zonable = info.m_class != null && info.m_class.m_service == ItemClass.Service.Road;
+            string warning = "Part of this network is a tunnel, bridge or elevated variant (the ground forces it, or elevation asked for it): " + parts + "." +
+                (zonable ? " Nothing can be zoned along a tunnel, slope, bridge or elevated road. Reroute round the ridge or valley (city_map heights) if you need frontage there." : "");
+            return ",\"variantMeters\":{" + totals + "},\"variantWarning\":\"" + JsonUtil.Escape(warning) + "\"";
         }
 
         private static string SnapJson(string name, NetTool.ControlPoint p)

@@ -23,6 +23,9 @@ patch = fixes). Every PR adds its line under `[Unreleased]` with the issue numbe
   buildings were caused by the launch (#84).
 
 ### Added
+- `build-road` reports tunnel, portal, bridge and elevated stretches (`variants`,
+  `variantMeters`, `variantWarning`) in dry runs and builds, since nothing can be zoned along
+  them (#67).
 - `city_map` service coverage overlays: `police`, `fire`, `health`, `education`, `highSchool`,
   `university`, `entertainment`, `transport`, `deathCare`, on the game's wellbeing scale (#73).
 - Leave the main menu without the cursor: `city_load_game` loads a save and `city_new_game`
