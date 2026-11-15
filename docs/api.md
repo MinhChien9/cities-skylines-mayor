@@ -225,7 +225,7 @@ units of 1/10000.
 | `dayActive` / `nightActive` | The game's service switches (`GetActive` out readback); `false` means the corresponding `DisabledDay`/`DisabledNight` flag is set. |
 | `stops[].node` | The stop's own net node id (also visible in `/state/networks`). |
 | `selectedVehicle` | The vehicle asset the line will deploy; `null` means the game's default for the line type. |
-| `passengers` | The line's own rider counters (temp / final / average), summed over the game's citizen groups. **Ridership accumulates with simulated time** — compare two reads after letting the city run. |
+| `passengers` | The line's own rider counters, summed over the game's citizen groups: `temp` is the current counting period (it drops when a new one starts), `final` is the last complete period, and `average` is smoothed. **Ridership accumulates with simulated time**: judge a line by `final` / `average`, from two reads some game weeks apart. A line switched off reads 0 / 0 at once, while `average` decays. Verified on a populated city: [verification.md](verification.md#6-transport-lines-on-a-populated-city). |
 
 ### `/state/policies` — the catalogue is the point
 

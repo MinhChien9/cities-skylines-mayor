@@ -60,3 +60,28 @@ check curved work with `city_road_anomalies`.
 4. Run the reads the change touches and look for new anomalies.
 5. Save under a new name, reload it, and compare `city_summary`. A change that scores well
    but corrupts the save has failed.
+
+## 6. Transport lines on a populated city
+
+The first transport checks ran on a city with no residents, so no bus ever had a rider. They
+were repeated on the 53k free-play save (`mayor-50k-34`, two bus lines) on 2026-11-15. It was
+loaded with `city_load_game` and run at speed 3, and Peach Trees was reloaded afterwards
+without saving.
+
+| Read | Game date | Crosstown (14 stops) | North-South (16 stops) |
+|---|---|---|---|
+| Loaded | 2065-03-06 | 11 buses; passengers temp 270, final 182, average 277 | 10 buses; 212 / 269 / 296 |
+| +90 s running | 2065-04-07 | 11 buses; 99 / 342 / 306 | 10 buses; 101 / 331 / 295 |
+| Crosstown `activate active=false`, +60 s | 2065-04-30 | **0 buses**, day/night false; 0 / 0 / 207 | 10 buses; 191 / 347 / 319 |
+| `activate active=true`, +90 s | 2065-06-04 | **11 buses** again; 167 / 243 / 159 | 10 buses; 203 / 263 / 274 |
+
+What this shows:
+
+- **Vehicles spawn and despawn with the line's switches.** Switching a line off empties it
+  within three game weeks. Switching it on brings back the full fleet (the count the budget
+  allows), with no other action needed.
+- **Ridership counters move with simulated time.** `temp` counts the current period and
+  falls back when a new one starts (270 → 99). `final` is the last complete period, and
+  `average` is smoothed. A line that is switched off reads 0 / 0 while `average` decays.
+  Judge a line by `final` or `average`, and compare two reads taken some game weeks apart.
+- `city_transport` reads these while the city runs; no pause is needed.

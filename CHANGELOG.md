@@ -8,6 +8,11 @@ patch = fixes). Every PR adds its line under `[Unreleased]` with the issue numbe
 
 ## [Unreleased]
 
+### Documentation
+- Transport checks re-run on the populated 53k save: buses despawn when a line is switched off
+  and the full fleet respawns when it is switched on; what `passengers` temp / final / average
+  mean (`docs/verification.md` §6) (#76).
+
 ### Fixed
 - `build-road` marks each collision `blocking` (the game's own rule; grown buildings and power
   lines are removed, not blocking), and the hint names the first blocker. A long power line
