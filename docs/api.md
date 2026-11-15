@@ -1,21 +1,16 @@
-# Bridge HTTP API Reference
+# Bridge API
 
-The in-game bridge listens on **127.0.0.1:32123**. Every endpoint executes on the game's
-**simulation thread** — with one named exception: the camera endpoints
-(`/commands/set-camera`, `/commands/project-point`) execute on the **Unity main thread**,
-the thread that owns the camera and the renderer (see the `MainThreadQueue` class in
-`src/Dispatch/`).
+The HTTP API the MCP tools call. You only need it to debug, script, or add a tool; agents
+use the [tools](tools.md).
 
-> **Validated building (2026-11-15).** The build endpoints run the game's own tool
-> code: `build-road` calls `NetTool.CreateNode` (test pass first, then for real) and
-> `place-building` / `move-building` reproduce `BuildingTool`'s placement rules with
-> its public checks. A placement the player could not make is refused with the game's
-> own `ToolErrors` names. `/state/map` is the matching read: a semantic raster of an
-> area with world coordinates. Together they replace the cursor (CUA) for spatial work;
-> the MCP tools `city_map`, `city_build_road`, `city_place_building`,
-> `city_move_building`, `city_zone_segment`, `city_zone_area` and `city_bulldoze` relay
-> them. The legacy `repair-*`, `batch` and `disable-blocked-assets` endpoints still
-> bypass validation and stay off the MCP allowlist.
+- **Address:** `http://127.0.0.1:32123`, on localhost only, with no authentication.
+- **Threads:** every endpoint runs on the game's simulation thread, except `/commands/set-camera`
+  and `/commands/project-point`, which run on the Unity main thread.
+- **Building:** `build-road` calls `NetTool.CreateNode` (a test pass, then the build).
+  `place-building` and `move-building` apply `BuildingTool`'s placement rules. Refusals use the
+  game's `ToolErrors` names.
+- **Legacy:** the `repair-*`, `batch` and `disable-blocked-assets` endpoints bypass validation.
+  `city_request` refuses to POST to them.
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:32123/state/summary
@@ -88,7 +83,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 
 ### `/state/capabilities` — what the running game supports
 
-Read through the supported `ICities` surface (R0 of the roadmap). Values below are from
+Read through the supported `ICities` surface. Values below are from
 a verified run on 2026-11-11.
 
 ```json
@@ -504,9 +499,10 @@ no main gate (`functional: false`), so place the gate building to give it visito
 production. Painting does not cost money — the game's tool charges the Landscaping resource,
 not `ApplyBrush`.
 
-### `/commands/set-camera` and `/commands/project-point` — the office's eye and aiming hand
+### `/commands/set-camera` and `/commands/project-point` — camera and screen projection
 
-The glue between office numbers and cursor clicks. Both run on the **Unity main thread**
+Frame the camera on a world point (for a viewer or a screenshot) and convert world points to
+screen pixels. Both run on the **Unity main thread**
 (the camera and the renderer are Unity objects; city state stays on the simulation thread).
 
 **Which camera:** `ICities.ICamera` (`IManagers.camera` → `CameraWrapper`) turned out to
@@ -558,7 +554,7 @@ With no coordinates, no `edgeScroll` and no `hideUi` the command is a pure camer
   "window": { "x": 0, "y": 0, "width": 1920, "height": 1040, "known": true },
   "client": { "x": 959.8, "y": 499.8 },
   "cursor": { "x": 959.8, "y": 499.8 },
-  "note": "cursor is absolute desktop pixels, origin top-left, ready for a CUA click; re-project after every camera move."
+  "note": "cursor is absolute desktop pixels, origin top-left, ready for a click; re-project after every camera move."
 }
 ```
 
@@ -646,7 +642,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/set-camera `
 Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/project-point `
   -Body ('{"x":' + $problem.position.x + ',"z":' + $problem.position.z + '}') `
   -ContentType "application/json"
-# → cursor: { x: ..., y: ... } — the CUA click target
+# → cursor: { x: ..., y: ... } — where a click would land
 ```
 
 **Place a building:**
@@ -689,7 +685,7 @@ Read the budget or policy state straight back to confirm the game accepted it �
 > **Taxation policies do not change `city_economy`'s tax rates.** `TaxRaise*` /
 > `TaxLower*` shift the *effective* rate by ±2 points through
 > `GetTaxRate(service, subService, level, districtTaxPolicies)` (the effect path,
-> `05-game-mechanics.md` §2). The raw slider array that `/state/economy` reports stays
+> [game-mechanics.md](game-mechanics.md) §2). The raw slider array that `/state/economy` reports stays
 > untouched, so a set taxation policy plus an unchanged "rate" is the expected state,
 > not a bug.
 

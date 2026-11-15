@@ -1,17 +1,20 @@
-# CS1 Expansions — Complete Reference
+# Expansions
 
-This install owns **all 14 expansions** (verified from `gameSettings.cgs`, mask
-`0x01A0FFFE`), so the agent may use all of them.
+What each DLC adds, and how to use it. Check what the running game actually has before
+relying on any of it.
 
 ## Detecting what is available
 
-```csharp
-// The ONLY reliable runtime check.
-bool has = managers.application.SupportsExpansion(Expansion.Industry);
-```
+`city_capabilities.supportedExpansions` (`IApplication.SupportsExpansion`) is **not enough**.
+On an Epic install it listed all 14 expansions, yet none of their buildings were loaded: no
+Organic, Leisure or Tourist shops, no disaster buildings
+([#71](https://github.com/MinhChien9/cities-skylines-mayor/issues/71)). An Organic district then
+demolished ordinary shops with nothing to replace them.
 
-**Never** probe the filesystem for expansion assets — **all expansion prefabs ship in the
-base install** regardless of ownership. Only `m_supportsExpansion[i]` gates them.
+What to trust: the **loaded prefabs**. `GET /prefabs/buildings?service=Commercial` must list
+`CommercialEco` buildings before you plan Organic shops, and so on.
+`SteamHelper.IsDLCOwned` returns false for everything on Epic. A per-expansion report is
+[#70](https://github.com/MinhChien9/cities-skylines-mayor/issues/70).
 
 ### The `Expansion` enum **[C]** — verified from `ICities.dll`
 

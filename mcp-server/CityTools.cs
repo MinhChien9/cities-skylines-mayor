@@ -519,7 +519,7 @@ public sealed class CityTools
 
     // ------------------------------------------------------------- passthrough
 
-    [System.ComponentModel.Description("Raw passthrough for anything with no dedicated tool. GET reaches any endpoint (endpoint list: docs/04-api-reference.md). POST is limited to endpoints that also have a dedicated tool: /commands/set-simulation-speed, set-tax-rate, set-budget, set-policy, set-building-active, empty-building, unlock-area, transport-line, district, save, set-camera, project-point, build-road, place-building, move-building, zone-segment, set-zone, bulldoze. The legacy repair/batch endpoints are not reachable.")]
+    [System.ComponentModel.Description("Raw passthrough for anything with no dedicated tool. GET reaches any endpoint (endpoint list: docs/api.md). POST is limited to endpoints that also have a dedicated tool: /commands/set-simulation-speed, set-tax-rate, set-budget, set-policy, set-building-active, empty-building, unlock-area, transport-line, district, save, set-camera, project-point, build-road, place-building, move-building, zone-segment, set-zone, bulldoze. The legacy repair/batch endpoints are not reachable.")]
     [McpServerTool(Name = "city_request", Title = "Raw Bridge Request")]
     public async Task<JsonNode?> CityRequest(
         [System.ComponentModel.Description("HTTP method: 'GET' or 'POST'.")] string method,

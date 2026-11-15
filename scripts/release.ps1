@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     Releases are cut locally because the mod compiles against Cities: Skylines' own
-    assemblies, which a CI runner does not have. See docs/14-releasing.md.
+    assemblies, which a CI runner does not have. See docs/releasing.md.
 
       1. Refuses unless: on main, no local changes, not behind origin/main, -Version
          matches Directory.Build.props, CHANGELOG.md has "## [<Version>]", tag v<Version>

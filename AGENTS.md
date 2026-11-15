@@ -25,7 +25,7 @@ or screenshots to play.
 > code, so trust their errors: change the plan, do not retry the same coordinates.
 
 The `docs/` folder is your reference library — read it before making non-obvious
-decisions. The `docs/05-game-mechanics.md` formulas and `docs/06-expansions.md`
+decisions. The `docs/game-mechanics.md` formulas and `docs/expansions.md`
 thresholds are the truth about the city.
 
 ---
@@ -239,12 +239,12 @@ Money is reported in currency units (₡), the same scale the game HUD shows.
 2. Check `city_road_anomalies` / `city_building_anomalies` — a broken road network
    explains most "the city isn't growing" situations.
 3. Check `city_threads` — if a command timed out, the simulation thread may be stuck.
-4. Read `docs/05-game-mechanics.md` for the exact formula rather than approximating.
+4. Read `docs/game-mechanics.md` for the exact formula rather than approximating.
 5. Look at `city_map` around the problem's position. If the numbers and the map
    cannot settle it, ask the user. A wrong
    guess costs sim-days; a question costs one turn.
 6. `city_request` GETs any bridge endpoint that has no dedicated tool — the endpoint
-   list is `docs/04-api-reference.md`.
+   list is `docs/api.md`.
 
 ## 8. When a tool is wrong — open an issue
 
@@ -264,11 +264,9 @@ the evidence. Then keep playing with a workaround if there is one, and say so.
 
 | Document | Use it for |
 |---|---|
-| `docs/README.md` | The index — start here |
-| `docs/12-command-surface.md` | The tool surface and what each tier means now |
-| `docs/13-development-process.md` | Issues first: how problems are filed, triaged and fixed |
-| `docs/04-api-reference.md` | The raw HTTP bridge (what each tool relays) |
-| `docs/05-game-mechanics.md` | Demand formulas, tax ceilings, budget curves, coverage, level-up rules |
-| `docs/06-expansions.md` | Every expansion's mechanics, thresholds and costs |
-| `docs/07-verification.md` | Checking your work, recovering from failure |
-| `docs/10-roadmap.md` | What is built, what is next |
+| `docs/tools.md` | Every tool, grouped by job, and how building works |
+| `docs/game-mechanics.md` | Demand formulas, tax ceilings, budgets, coverage, level-up, what raises happiness |
+| `docs/expansions.md` | What each expansion adds, and how to check it is really loaded |
+| `docs/verification.md` | Checking your work, recovering from failure |
+| `docs/api.md` | The raw HTTP bridge (what each tool relays; for `city_request`) |
+| `docs/development.md` | Issues first: how problems are filed, triaged and fixed |

@@ -4,9 +4,15 @@ All notable changes to the bridge mod and the MCP server. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/) (pre-1.0: minor = new or changed tools,
 patch = fixes). Every PR adds its line under `[Unreleased]` with the issue number;
-`docs/14-releasing.md` says how a version is cut.
+`docs/releasing.md` says how a version is cut.
 
 ## [Unreleased]
+
+### Changed
+- README and docs rewritten for newcomers: install from the release, task-first pages with
+  plain names (`docs/getting-started.md`, `docs/tools.md`, `docs/architecture.md`,
+  `docs/development.md`, …), outdated history removed, the expansions caveat (#71) and the
+  happiness levers added (#80).
 
 ## [0.1.0] - 2026-11-15
 
@@ -34,7 +40,7 @@ Cities: Skylines (2015) city without a cursor, through the game's own tool code.
   population and cash; the video project (`cities-skylines-video`) follows it.
 - Project management: issues first (forms for bugs, features, game findings and tasks;
   labels; milestones; PR-standards and stale triage workflows; CODEOWNERS),
-  `docs/13-development-process.md`, `docs/14-releasing.md`, `scripts/release.ps1`, this
+  `docs/development.md`, `docs/releasing.md`, `scripts/release.ps1`, this
   changelog and `SECURITY.md`.
 - Scripts: `build-mod.ps1`, `install-mod.ps1`, `start-game.ps1`, `restart-game.ps1`
   (save → rebuild → relaunch → resume), the MCP smoke test and the API doc check.

@@ -3,7 +3,7 @@
 The project plan: the goal, the phase summary, the decision log, the lessons and the
 environment state. **The backlog is not here: it is the GitHub issues**
 (https://github.com/MinhChien9/cities-skylines-mayor/issues), grouped into milestones (one per release). See
-[`docs/13-development-process.md`](docs/13-development-process.md).
+[`docs/development.md`](docs/development.md).
 
 ## Session protocol
 
@@ -18,7 +18,7 @@ environment state. **The backlog is not here: it is the GitHub issues**
 4. **End of task:** the PR closes its issue, adds a `CHANGELOG.md` line under
    `[Unreleased]`, records a *decision* here if one was made, and updates "Environment
    state". A closed *finding* adds its lesson to the list below (or to
-   `docs/05-game-mechanics.md`).
+   `docs/game-mechanics.md`).
 
 ## Goal
 
