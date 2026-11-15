@@ -81,6 +81,9 @@ namespace SkylinesAgentBridge.State
             json.Append("\"actual\":{\"residential\":").Append(zones.m_actualResidentialDemand)
                 .Append(",\"commercial\":").Append(zones.m_actualCommercialDemand)
                 .Append(",\"workplace\":").Append(zones.m_actualWorkplaceDemand).Append("}");
+            json.Append(",\"target\":{\"residential\":").Append(DemandTarget(zones, "CalculateResidentialDemand", ref d))
+                .Append(",\"commercial\":").Append(DemandTarget(zones, "CalculateCommercialDemand", ref d))
+                .Append(",\"workplace\":").Append(DemandTarget(zones, "CalculateWorkplaceDemand", ref d)).Append("}");
             json.Append(",\"offset\":{\"residential\":").Append(zones.m_residentialDemand - zones.m_actualResidentialDemand)
                 .Append(",\"commercial\":").Append(zones.m_commercialDemand - zones.m_actualCommercialDemand)
                 .Append(",\"workplace\":").Append(zones.m_workplaceDemand - zones.m_actualWorkplaceDemand).Append("}");
@@ -96,8 +99,32 @@ namespace SkylinesAgentBridge.State
                 .Append(",\"commercial\":").Append(d.m_commercialData.m_finalAbandonedCount)
                 .Append(",\"industrial\":").Append(d.m_industrialData.m_finalAbandonedCount)
                 .Append(",\"office\":").Append(d.m_officeData.m_finalAbandonedCount).Append("}");
-            json.Append(",\"note\":\"published demand = actual + offset (offset = tax/policy effects, negative above the tax ceilings). R target falls with empty homes and with unemployed > vacant jobs; workplace target rises with unemployed > vacant.\"");
+            json.Append(",\"note\":\"published demand = actual + offset (offset = tax/policy effects, negative above the tax ceilings). target is the game's own goal this step; actual moves 2 points toward it per update and every newly spawned building spends some of it, so a low published bar with a high target means buildings are spawning as fast as demand accrues. R target falls with empty homes and with unemployed > vacant jobs; workplace target rises with unemployed > vacant.\"");
             json.Append("}");
+        }
+
+        /// <summary>
+        /// The game's own demand target this step (the value the smoothed demand moves
+        /// towards, 2 points per update), from ZoneManager's private Calculate*Demand(ref
+        /// District). -1 when the method cannot be called.
+        /// </summary>
+        private static int DemandTarget(ZoneManager zones, string method, ref District district)
+        {
+            try
+            {
+                System.Reflection.MethodInfo m = typeof(ZoneManager).GetMethod(method,
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+                if (m == null)
+                {
+                    return -1;
+                }
+                object[] args = new object[] { district };
+                return (int)m.Invoke(zones, args);
+            }
+            catch (System.Exception)
+            {
+                return -1;
+            }
         }
 
         public static CommandResult BuildChirpsJson(int limit)

@@ -239,6 +239,9 @@ Lessons recorded so far:
   university graduates (14.4k graduate workers vs graduate-level jobs): unemployed far
   above vacant jobs pins R at 0. Found with `city_demand.formula` (new). The documented
   workplace-demand formula did not match this build either (formula ≈ 97, game 8).
+- A low demand bar is not low demand. Workplace showed 2 while the game's own target was
+  96: each spawned building spends actual demand, so the bar sits near 0 while
+  buildings appear as fast as demand accrues. Judge by `city_demand.formula.target`.
 - In this build the Water Pumping Station (`Water Intake`) is `ShorelineOrGround` and the
   `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
   pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the
