@@ -26,6 +26,11 @@ Start the game. Make sure **Skylines Agent Bridge** is enabled in **Content Mana
 The bridge listens on `http://127.0.0.1:32123`, on localhost only. It answers `/health`
 from the main menu, and every other endpoint once a city is loaded.
 
+In a city, the mod shows a small **API console**: a floating log of the bridge calls.
+`_` folds it to its title bar, `CLR` empties it and `X` hides it completely (remembered
+across restarts). To show it again, tick **Show the API console** in
+**Options → Skylines Agent Bridge**.
+
 ## 2. Install the MCP server
 
 Unpack `cs1-mayor-mcp-<version>.zip` from the same release, for example to

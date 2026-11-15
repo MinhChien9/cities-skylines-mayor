@@ -28,6 +28,7 @@ namespace SkylinesAgentBridge
         private static UILabel label;
         private static UIButton minimizeButton;
         private static UIButton clearButton;
+        private static UIButton closeButton;
         private static bool minimized;
         private static bool dragging;
         private static Vector3 lastMousePosition;
@@ -56,11 +57,30 @@ namespace SkylinesAgentBridge
         public static void Update(float realTimeDelta)
         {
             EnsurePanel();
-            if (DrainPending())
+            bool changed = DrainPending();
+
+            // The close button and the Options checkbox both write the saved setting;
+            // the panel follows it here. Lines keep arriving while it is hidden.
+            bool visible = AgentBridgeSettings.ShowConsole;
+            if (panel != null && panel.isVisible != visible)
+            {
+                panel.isVisible = visible;
+                changed = true;
+            }
+
+            if (changed && visible)
             {
                 Refresh();
             }
-            UpdateDrag();
+
+            if (visible)
+            {
+                UpdateDrag();
+            }
+            else
+            {
+                dragging = false;
+            }
         }
 
         /// <summary>
@@ -109,12 +129,13 @@ namespace SkylinesAgentBridge
             label = null;
             minimizeButton = null;
             clearButton = null;
+            closeButton = null;
             minimized = false;
         }
 
         private static void EnsurePanel()
         {
-            if (panel != null && titleLabel != null && label != null && minimizeButton != null && clearButton != null)
+            if (panel != null && titleLabel != null && label != null && minimizeButton != null && clearButton != null && closeButton != null)
             {
                 return;
             }
@@ -137,7 +158,7 @@ namespace SkylinesAgentBridge
             panel.width = 560f;
             panel.height = 230f;
             panel.relativePosition = savedPanelPosition;
-            panel.isVisible = true;
+            panel.isVisible = AgentBridgeSettings.ShowConsole;
             RegisterDragEvents(panel);
 
             titleLabel = panel.AddUIComponent(typeof(UILabel)) as UILabel;
@@ -156,7 +177,7 @@ namespace SkylinesAgentBridge
             titleLabel.relativePosition = new Vector3(10f, 8f);
             RegisterDragEvents(titleLabel);
 
-            minimizeButton = CreateButton("SkylinesAgentBridgeNotifierMinimize", "_", 470f);
+            minimizeButton = CreateButton("SkylinesAgentBridgeNotifierMinimize", "_", 430f);
             if (minimizeButton != null)
             {
                 minimizeButton.eventClick += delegate(UIComponent component, UIMouseEventParameter eventParam)
@@ -166,13 +187,30 @@ namespace SkylinesAgentBridge
                 };
             }
 
-            clearButton = CreateButton("SkylinesAgentBridgeNotifierClear", "CLR", 510f);
+            clearButton = CreateButton("SkylinesAgentBridgeNotifierClear", "CLR", 470f);
             if (clearButton != null)
             {
                 clearButton.eventClick += delegate(UIComponent component, UIMouseEventParameter eventParam)
                 {
                     entries.Clear();
                     Refresh();
+                };
+            }
+
+            // Hides the console completely and remembers it across restarts.
+            // Content Manager > Options > Skylines Agent Bridge shows it again.
+            closeButton = CreateButton("SkylinesAgentBridgeNotifierClose", "X", 510f);
+            if (closeButton != null)
+            {
+                closeButton.tooltip = "Hide the console. Show it again from Options > Skylines Agent Bridge.";
+                closeButton.eventClick += delegate(UIComponent component, UIMouseEventParameter eventParam)
+                {
+                    AgentBridgeSettings.ShowConsole = false;
+                    dragging = false;
+                    if (panel != null)
+                    {
+                        panel.isVisible = false;
+                    }
                 };
             }
 
@@ -294,7 +332,6 @@ namespace SkylinesAgentBridge
                 return;
             }
 
-            panel.isVisible = true;
             minimizeButton.text = minimized ? "+" : "_";
 
             if (minimized)

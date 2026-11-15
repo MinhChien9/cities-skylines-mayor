@@ -25,7 +25,16 @@ namespace SkylinesAgentBridge
         public AgentBridgeMod()
         {
             Debug.Log("[SkylinesAgentBridge] Mod constructed - starting the API bridge.");
+            AgentBridgeSettings.Register();
             AgentBridge.Instance.Start();
+        }
+
+        /// <summary>
+        /// The game calls this to build the mod's group in Content Manager > Options.
+        /// </summary>
+        public void OnSettingsUI(UIHelperBase helper)
+        {
+            AgentBridgeSettings.BuildOptions(helper);
         }
     }
 }
