@@ -25,6 +25,7 @@ public class CityToolsTests
     [InlineData("CitySummary", "/state/summary")]
     [InlineData("CityDemand", "/state/demand")]
     [InlineData("CityUtilities", "/state/utilities")]
+    [InlineData("CityResources", "/state/resources")]
     [InlineData("CityAreas", "/state/areas")]
     [InlineData("CityZones", "/state/zones")]
     [InlineData("CityEconomy", "/state/economy")]

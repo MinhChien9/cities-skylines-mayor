@@ -46,6 +46,7 @@ EXPECTED_TOOLS = {
     "city_external_connections",
     "city_saves",
     "city_maps",
+    "city_resources",
     "city_load_game",
     "city_new_game",
     "city_capabilities",

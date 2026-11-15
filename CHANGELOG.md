@@ -23,6 +23,8 @@ patch = fixes). Every PR adds its line under `[Unreleased]` with the issue numbe
   buildings were caused by the launch (#84).
 
 ### Added
+- `city_resources` (`GET /state/resources`): ore, oil, forest and fertility per map tile with
+  the rich area and its centre; `city_map` overlays `ore`, `oil`, `forest`, `fertility` (#72).
 - `build-road` reports tunnel, portal, bridge and elevated stretches (`variants`,
   `variantMeters`, `variantWarning`) in dry runs and builds, since nothing can be zoned along
   them (#67).

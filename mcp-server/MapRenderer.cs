@@ -70,6 +70,10 @@ public static class MapRenderer
             "entertainment" => (230, 60, 170),
             "transport" => (230, 200, 20),
             "deathCare" => (110, 110, 110),
+            "ore" => (180, 90, 40),
+            "oil" => (25, 25, 35),
+            "forest" => (20, 120, 40),
+            "fertility" => (160, 210, 40),
             _ => (230, 40, 30),
         };
         // Scale to the highest value in view, but never below a floor: a town whose land
@@ -79,6 +83,11 @@ public static class MapRenderer
         if (IsCoverage(overlay))
         {
             return Mix(baseColor, hue, 0.85 * Math.Min(1.0, value / 250.0));
+        }
+        // Natural resources: the game's own 0-255.
+        if (overlay is "ore" or "oil" or "forest" or "fertility")
+        {
+            return Mix(baseColor, hue, 0.85 * value / 255.0);
         }
         double scaleMax = Math.Max(max, overlay switch { "landValue" => 60, "pollution" => 60, "noise" => 80, _ => 1 });
         return Mix(baseColor, hue, 0.8 * Math.Min(1.0, value / scaleMax));

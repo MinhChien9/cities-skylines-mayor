@@ -38,6 +38,7 @@ Each tool's own description (what the agent sees) has the full parameter list.
 | `city_scenario` | In a scenario: win and lose conditions with live progress, next milestone, zone unlocks |
 | `city_capabilities` | Game version, expansions, milestones, unlocked features and zones, enabled and cheat mods |
 | `city_saves` | Saved games on disk (also at the main menu) |
+| `city_resources` | Ore, oil, forest and fertility per map tile, with where the rich land is (for specialised industry) |
 | `city_maps` | Maps and scenarios a new game can start from (also at the main menu) |
 
 ## Check for defects

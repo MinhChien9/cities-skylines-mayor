@@ -68,6 +68,9 @@ namespace SkylinesAgentBridge
             MapGet("/state/areas", "Read the map tiles: owned, buyable, price, bounds",
                 delegate { return OnGameThread(delegate { return AreaCommands.BuildAreasJson(); }); });
 
+            MapGet("/state/resources", "Read the natural resources (ore, oil, forest, fertility) per map tile",
+                delegate { return OnGameThread(delegate { return ResourceCollector.Build(); }); });
+
             MapGet("/state/utilities", "Read city-wide service capacity against usage (power, water, sewage, garbage, health, education, jobs)",
                 delegate { return OnGameThread(delegate { return UtilitiesCollector.BuildUtilitiesJson(); }); });
 
