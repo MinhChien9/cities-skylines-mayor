@@ -26,6 +26,7 @@ namespace SkylinesAgentBridge.State
 
             AppendVersion(json, managers);
             AppendExpansions(json, managers);
+            AppendLoadedContent(json, managers);
             AppendMilestones(json, managers);
             AppendFeatures(json);
             AppendClock(json, managers);
@@ -94,6 +95,130 @@ namespace SkylinesAgentBridge.State
             catch (Exception)
             {
             }
+        }
+
+        /// <summary>
+        /// What expansion content is really loaded: <c>SupportsExpansion</c> said yes to all 14
+        /// expansions on an Epic game started without the Epic login, while not one of their
+        /// buildings was loaded (#71, #84). The loaded building prefabs are the truth, so each
+        /// expansion is judged by the services, sub-services or building AIs only it adds.
+        /// </summary>
+        private static readonly string[][] ExpansionMarkers =
+        {
+            // expansion, display name, markers (service, sub-service or "ai:<BuildingAI type>")
+            new[] { "AfterDark", "After Dark", "CommercialLeisure", "CommercialTourist", "PublicTransportTaxi" },
+            new[] { "Snowfall", "Snowfall", "PublicTransportTram" },
+            new[] { "NaturalDisasters", "Natural Disasters", "Disaster" },
+            new[] { "InMotion", "Mass Transit", "PublicTransportMonorail", "PublicTransportCableCar" },
+            new[] { "GreenCities", "Green Cities", "CommercialEco", "ResidentialLowEco", "ResidentialHighEco", "OfficeHightech" },
+            new[] { "Parks", "Parklife", "ai:ParkGateAI" }, // the base game has 5 BeautificationParks pillars
+            new[] { "Industry", "Industries", "PlayerIndustry", "PublicTransportPost" },
+            new[] { "Campuses", "Campus", "PlayerEducation", "VarsitySports" },
+            new[] { "Urban", "Sunset Harbor", "Fishing", "PublicTransportTrolleybus" },
+            new[] { "Airport", "Airports", "ai:AirportGateAI", "ai:AirportCargoGateAI", "ai:AirportAuxBuildingAI" },
+            new[] { "PlazasAndPromenades", "Plazas & Promenades", "ServicePoint" },
+            new[] { "FinanceExpansion", "Financial Districts", "OfficeFinancial", "PoliceDepartmentBank", "ai:BankOfficeAI" },
+            new[] { "Hotels", "Hotels & Retreats", "Hotel" },
+            new[] { "RacesAndParades", "Match Day / Races & Parades", "Race" },
+        };
+
+        private static void AppendLoadedContent(StringBuilder json, IManagers managers)
+        {
+            try
+            {
+                Dictionary<string, int> counts = new Dictionary<string, int>();
+                int total = 0;
+                uint loaded = (uint)PrefabCollection<BuildingInfo>.LoadedCount();
+                for (uint i = 0; i < loaded; i++)
+                {
+                    BuildingInfo info = PrefabCollection<BuildingInfo>.GetLoaded(i);
+                    if (info == null || info.m_class == null)
+                    {
+                        continue;
+                    }
+                    total++;
+                    string key = info.m_class.m_subService != ItemClass.SubService.None
+                        ? info.m_class.m_subService.ToString()
+                        : info.m_class.m_service.ToString();
+                    Increment(counts, key);
+                    if (info.m_class.m_subService != ItemClass.SubService.None)
+                    {
+                        Increment(counts, info.m_class.m_service.ToString());
+                    }
+                    if (info.m_buildingAI != null)
+                    {
+                        Increment(counts, "ai:" + info.m_buildingAI.GetType().Name);
+                    }
+                }
+
+                StringBuilder expansions = new StringBuilder();
+                StringBuilder missing = new StringBuilder();
+                for (int e = 0; e < ExpansionMarkers.Length; e++)
+                {
+                    string[] row = ExpansionMarkers[e];
+                    bool supported = false;
+                    try
+                    {
+                        Expansion value = (Expansion)Enum.Parse(typeof(Expansion), row[0]);
+                        supported = managers != null && managers.application.SupportsExpansion(value);
+                    }
+                    catch (Exception)
+                    {
+                    }
+                    StringBuilder evidence = new StringBuilder();
+                    int found = 0;
+                    for (int m = 2; m < row.Length; m++)
+                    {
+                        int n;
+                        counts.TryGetValue(row[m], out n);
+                        found += n;
+                        if (m > 2) evidence.Append(',');
+                        evidence.Append('"').Append(JsonUtil.Escape(row[m])).Append("\":").Append(n);
+                    }
+                    if (e > 0) expansions.Append(',');
+                    expansions.Append("{\"expansion\":\"").Append(row[0]).Append('"')
+                        .Append(",\"name\":\"").Append(JsonUtil.Escape(row[1])).Append('"')
+                        .Append(",\"supported\":").Append(JsonUtil.Bool(supported))
+                        .Append(",\"loaded\":").Append(JsonUtil.Bool(found > 0))
+                        .Append(",\"evidence\":{").Append(evidence).Append("}}");
+                    if (found == 0)
+                    {
+                        if (missing.Length > 0) missing.Append(',');
+                        missing.Append('"').Append(JsonUtil.Escape(row[1] + (supported ? " (supported, but none of its buildings are loaded)" : ""))).Append('"');
+                    }
+                }
+
+                List<string> keys = new List<string>(counts.Keys);
+                keys.Sort(StringComparer.Ordinal);
+                StringBuilder bySub = new StringBuilder();
+                bool first = true;
+                for (int k = 0; k < keys.Count; k++)
+                {
+                    if (keys[k].StartsWith("ai:", StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+                    if (!first) bySub.Append(',');
+                    first = false;
+                    bySub.Append('"').Append(JsonUtil.Escape(keys[k])).Append("\":").Append(counts[keys[k]]);
+                }
+
+                json.Append(",\"loadedContent\":{\"buildingPrefabs\":").Append(total)
+                    .Append(",\"byServiceAndSubService\":{").Append(bySub).Append('}')
+                    .Append(",\"expansions\":[").Append(expansions).Append(']')
+                    .Append(",\"missingContent\":[").Append(missing).Append(']')
+                    .Append(",\"notes\":\"loaded is judged from the loaded building prefabs, not from ownership: on Epic the game loads expansion content only when started with the Epic login (scripts/start-game.ps1). Check a scenario's goals against this before playing it.\"}");
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        private static void Increment(Dictionary<string, int> counts, string key)
+        {
+            int n;
+            counts.TryGetValue(key, out n);
+            counts[key] = n + 1;
         }
 
         private static void AppendMilestones(StringBuilder json, IManagers managers)
