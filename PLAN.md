@@ -276,6 +276,15 @@ Lessons recorded so far:
   unemployment 21 % → 12 %, the residential target turned positive and the city grew
   to 53.4k. Mistake on the way: the new columns were not dry-run and cut through about
   20 grown offices on the boulevard they crossed; dry-run and route through gaps.
+- **Water pollution to 0 %: groundwater towers, no sea intakes.** After years of drains
+  the whole west-coast sea stayed polluted (6–9 % city water pollution with every intake
+  north of all discharge). Removing intakes one group at a time showed the two
+  northernmost were the source; 22 water towers (₡3.5k each, power passes tower to
+  tower) in a clean residential area now supply 1.32M at 0 %.
+- A power line can follow a road corridor under a highway: pylons in the gaps between
+  ramps and carriageways (spans ≤ ~90 m; a 10 m leg is `TooShort`, and a dry run on a
+  route through an existing node re-splits there, so rebuild the span in one piece).
+  The Cooper Street line joined the east districts to the main grid.
 - In this build the Water Pumping Station (`Water Intake`) is `ShorelineOrGround` and the
   `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
   pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the
