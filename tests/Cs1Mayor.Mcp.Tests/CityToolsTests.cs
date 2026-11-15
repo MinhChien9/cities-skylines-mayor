@@ -403,6 +403,52 @@ public class CityToolsTests
     }
 
     [Fact]
+    public async Task CityDistrict_paint_posts_the_brush_centre_and_radius()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityDistrict("paint", id: 4, x: 240, z: -40, radius: 120, cancellationToken: CancellationToken.None);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("/commands/district", request.Path);
+        Assert.Contains("\"action\":\"paint\"", request.Body);
+        Assert.Contains("\"id\":4", request.Body);
+        Assert.Contains("\"center\":{\"x\":240,\"z\":-40}", request.Body);
+        Assert.Contains("\"radius\":120", request.Body);
+    }
+
+    [Fact]
+    public async Task CityDistrict_create_area_posts_the_park_type_and_level()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        await tools.CityDistrict("create", layer: "park", name: "Pine Forest", parkType: "Forestry", parkLevel: "Level1",
+            cancellationToken: CancellationToken.None);
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Contains("\"action\":\"create\"", request.Body);
+        Assert.Contains("\"layer\":\"park\"", request.Body);
+        Assert.Contains("\"name\":\"Pine Forest\"", request.Body);
+        Assert.Contains("\"parkType\":\"Forestry\"", request.Body);
+        Assert.Contains("\"parkLevel\":\"Level1\"", request.Body);
+        Assert.DoesNotContain("\"center\"", request.Body);
+    }
+
+    [Fact]
+    public async Task CityDistrict_paint_without_z_is_refused_before_the_bridge()
+    {
+        var handler = Always("{\"ok\":true}");
+        var tools = Tools(handler);
+
+        var result = await tools.CityDistrict("paint", id: 4, x: 240, radius: 120, cancellationToken: CancellationToken.None);
+
+        Assert.Empty(handler.Requests);
+        Assert.False(result!["ok"]!.GetValue<bool>());
+    }
+
+    [Fact]
     public async Task CityDistrict_release_posts_the_id()
     {
         var handler = Always("{\"ok\":true}");
