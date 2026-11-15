@@ -258,6 +258,18 @@ public class BuildToolsTests
     }
 
     [Fact]
+    public void Tint_scales_coverage_to_the_game_wellbeing_scale_not_the_view_maximum()
+    {
+        // Byte 250 = rate 500 = the full wellbeing effect: full colour (85 % of police blue).
+        Assert.Equal(((byte)34, (byte)76, (byte)195), MapRenderer.Tint("police", 250, 250, (0, 0, 0)));
+        // A weak signal stays weak even when it is the highest value in view.
+        var weak = MapRenderer.Tint("police", 25, 25, (0, 0, 0));
+        Assert.True(weak.B < 30);
+        // Uncovered cells keep the base map colour.
+        Assert.Equal(((byte)10, (byte)20, (byte)30), MapRenderer.Tint("entertainment", 0, 250, (10, 20, 30)));
+    }
+
+    [Fact]
     public async Task CityMap_reports_a_bridge_failure_as_a_tool_error()
     {
         var handler = StubHandler.Json("{\"ok\":false,\"error\":\"No city is loaded.\"}");

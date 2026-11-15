@@ -52,7 +52,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:32123/commands/build-road -
 | GET | `/state/external-connections` | Highway / rail / sea connections. `?limit=`. |
 | GET | `/state/saves` | Saved games on disk. Also at the main menu. |
 | GET | `/state/maps` | The maps and scenarios a new game can start from: `maps` and `scenarios`, each `{name, displayName, environment, asset}`. Also at the main menu. |
-| GET | `/state/map` | Semantic top-down raster of an area: land/water/road/zone/building classes, terrain heights, locked tiles, road dead ends. `?x=&z=` centre, `?size=` metres (default 1024), `?cell=` metres (default 8), `?overlay=` `landValue`\|`pollution`\|`noise`\|`traffic` (optional data layer). See below. |
+| GET | `/state/map` | Semantic top-down raster of an area: land/water/road/zone/building classes, terrain heights, locked tiles, road dead ends. `?x=&z=` centre, `?size=` metres (default 1024), `?cell=` metres (default 8), `?overlay=` `landValue`\|`pollution`\|`noise`\|`traffic`, or coverage `police`\|`fire`\|`health`\|`education`\|`highSchool`\|`university`\|`entertainment`\|`transport`\|`deathCare` (optional data layer). See below. |
 | GET | `/prefabs/buildings` | Available building prefabs. `?service=`. Each has `unlocked` (its unlock milestone has passed: the player's toolbar offers it), `unlockMilestone` and `constructionCost` (raw units, ÷100 = ₡). `place-building` and `build-road` refuse locked prefabs, and the zone commands refuse locked zone types (`city_capabilities.unlockedZones`). |
 | GET | `/prefabs/roads` | Available road prefabs. |
 | GET | `/prefabs/networks` | Available network prefabs. `?service=`. |
@@ -477,6 +477,12 @@ from). The MCP tool `city_map` renders it as a PNG with labelled coordinates.
 `NaturalResourceManager.CheckPollution` (0–255), traffic from each road segment's
 `m_trafficDensity` (0–100 % scaled to 1–255 along the road; 0 = not a road). Values are
 the game's own, clamped to 0–255. An unknown overlay name is a 400.
+Coverage overlays read the local rate of the matching `ImmaterialResourceManager` resource
+(`PoliceDepartment`, `FireDepartment`, `HealthCare`, `EducationElementary` /
+`EducationHighSchool` / `EducationUniversity`, `Entertainment`, `PublicTransport`,
+`DeathCare`). This is the same number `ResidentAI.UpdateWellbeing` turns into happiness with
+`CalculateResourceEffect` (full effect at rate 500). The byte is the rate halved, so 250 is
+the full effect; `rawMax` is the unhalved maximum in view.
 
 ### `/commands/transport-line` — the line editor
 
