@@ -8,6 +8,11 @@ patch = fixes). Every PR adds its line under `[Unreleased]` with the issue numbe
 
 ## [Unreleased]
 
+### Added
+- The in-game API console has a close button (`X`) that hides it completely and is
+  remembered across restarts; **Options → Skylines Agent Bridge → Show the API console**
+  brings it back (#82).
+
 ### Changed
 - README and docs rewritten for newcomers: install from the release, task-first pages with
   plain names (`docs/getting-started.md`, `docs/tools.md`, `docs/architecture.md`,
