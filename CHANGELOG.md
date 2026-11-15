@@ -23,6 +23,9 @@ patch = fixes). Every PR adds its line under `[Unreleased]` with the issue numbe
   buildings were caused by the launch (#84).
 
 ### Added
+- `city_district` creates, paints and erases districts and special areas (`parkType`,
+  `parkLevel`, brush `x`, `z`, `radius`), so painting no longer needs a hand-written
+  `city_request` body (#68).
 - The in-game API console has a close button (`X`) that hides it completely and is
   remembered across restarts; **Options → Skylines Agent Bridge → Show the API console**
   brings it back (#82).

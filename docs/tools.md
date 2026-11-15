@@ -74,7 +74,7 @@ Each tool's own description (what the agent sees) has the full parameter list.
 | `city_set_building_active` · `city_empty_building` | Turn a building on or off · empty a full cemetery or landfill |
 | `city_unlock_area` | Buys a map tile and pays the land price |
 | `city_transport_line` | Creates a line, adds stops, closes the loop, renames it, sets the vehicle, activates it |
-| `city_district` | Renames, specializes or releases a district. Painting: see [#68](https://github.com/MinhChien9/cities-skylines-mayor/issues/68) |
+| `city_district` | Creates, paints (the game's own brush; radius ≥ ~100), erases, renames, specializes or releases a district or special area |
 | `city_save` | Saves to a named slot. Use a new name each time |
 
 ## Other

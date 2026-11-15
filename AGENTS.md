@@ -69,12 +69,13 @@ Every command would be racing the game's simulation and silently corrupting the 
 | Change taxes, budgets, policies | `city_set_tax_rate`, `city_set_budget`, `city_set_policy` |
 | Save | `city_save` (new incrementing name) |
 | Create a bus/metro line, add stops, manage it | `city_transport_line` (create → add-stop … → add-stop close=true; needs a depot) |
-| Rename / specialize / release a district | `city_district` |
+| Create, paint, erase, rename, specialize or release a district or special area | `city_district` (create → paint with `x`, `z`, `radius` ≥ ~100) |
 | Show the viewer something | `city_camera` (frames the game camera on a world point) |
 | Find a prefab name | `city_request` GET `/prefabs/networks`, `/prefabs/buildings?service=...` |
 | Recall what you already changed this session | `city_activity` (the newest entries of the activity log) |
 
-Painting districts is not exposed as a tool yet.
+Districts are painted with the game's own brush (`city_district action=paint`); check
+`areaCells` in the reply or `city_districts` afterwards.
 
 ## 3. The working pattern
 

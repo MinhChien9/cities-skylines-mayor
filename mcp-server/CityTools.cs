@@ -275,8 +275,8 @@ public sealed class CityTools
 
     // ------------------------------------------------------------------ office
     // Everything here is non-spatial: one API call replaces opening the game's
-    // menus and moving its sliders. Building lives in BuildTools. Drawing transit
-    // lines and painting districts are not exposed yet - those stay cursor work.
+    // menus and moving its sliders. Building lives in BuildTools; districts are
+    // painted with the game's own brush through city_district.
 
     [System.ComponentModel.Description("POST /commands/set-simulation-speed. Set simulation speed (1-3) and/or pause state. This is the office's hands on the clock: pause while you plan a batch of construction, then run at speed 3 so the city reacts.")]
     [McpServerTool(Name = "city_set_simulation_speed", Title = "Set Simulation Speed")]
@@ -429,15 +429,20 @@ public sealed class CityTools
         return await Post("/commands/transport-line", body, cancellationToken).ConfigureAwait(false);
     }
 
-    [System.ComponentModel.Description("POST /commands/district. Manage an EXISTING district or special area: action='rename' (id + name, empty clears), action='specialize' (id + specialization: Forest/Farming/Oil/Ore/Leisure/Tourist/Organic/Selfsufficient/Hightech/ResidentialWallToWall/CommercialWallToWall/OfficeWallToWall/Financial; the game keeps one per family and replaces a competing one), action='release' (id — clears its grid cells and frees it), action='state' (one entity, or the whole list when no id). Districts and park areas are painted with the cursor in the game's own district/area tools; this office only manages them afterwards. Mutations report the live readback (areaCells before/after).")]
-    [McpServerTool(Name = "city_district", Title = "District & Area Management")]
+    [System.ComponentModel.Description("POST /commands/district. Districts and special areas, both id spaces (layer 'district' or 'park'). action='create' (name?; for an area also parkType: Generic/AmusementPark/Zoo/NatureReserve, industry Farming/Forestry/Ore/Oil, campus types, ... and parkLevel?) returns the new id, then action='paint' (id + x, z, radius) paints it with the game's own brush (DistrictTool.ApplyBrush: full strength inside radius - 38.4 m, so use radius >= ~100; one cell is 19.2 m). action='erase' (x, z, radius; id? to clear only that one) unpaints. action='rename' (id + name, empty clears), action='specialize' (id + specialization: Forest/Farming/Oil/Ore/Leisure/Tourist/Organic/Selfsufficient/Hightech/ResidentialWallToWall/CommercialWallToWall/OfficeWallToWall/Financial; the game keeps one per family and replaces a competing one; needs the expansion's buildings loaded), action='release' (id: clears its cells and frees it), action='state' (one entity, or the whole list when no id). A special area is not functional until its main gate building is placed. Mutations report the live readback (areaCells before/after).")]
+    [McpServerTool(Name = "city_district", Title = "Districts & Areas: Create, Paint, Manage")]
     public async Task<JsonNode?> CityDistrict(
-        [System.ComponentModel.Description("Action: 'rename', 'specialize', 'release' or 'state'.")] string action,
+        [System.ComponentModel.Description("Action: 'create', 'paint', 'erase', 'rename', 'specialize', 'release' or 'state'.")] string action,
         [System.ComponentModel.Description("Layer: 'district' (default) or 'park' (a special area).")] string layer = "district",
         [System.ComponentModel.Description("District or area id (0 = none; 'state' with 0 lists everything).")] int id = 0,
-        [System.ComponentModel.Description("For 'rename': the name (empty clears a custom name).")] string? name = null,
+        [System.ComponentModel.Description("For 'create' and 'rename': the name (empty clears a custom name).")] string? name = null,
         [System.ComponentModel.Description("For 'specialize': the specialization name from the tool description.")] string? specialization = null,
         [System.ComponentModel.Description("For 'specialize': true to set (default), false to clear.")] bool set = true,
+        [System.ComponentModel.Description("For 'create' with layer 'park': the area type (e.g. Generic, AmusementPark, Zoo, NatureReserve, Farming, Forestry, Ore, Oil).")] string? parkType = null,
+        [System.ComponentModel.Description("For 'create' with layer 'park': the area level (default Level1).")] string? parkLevel = null,
+        [System.ComponentModel.Description("For 'paint' / 'erase': brush centre x (world metres).")] double? x = null,
+        [System.ComponentModel.Description("For 'paint' / 'erase': brush centre z (world metres).")] double? z = null,
+        [System.ComponentModel.Description("For 'paint' / 'erase': brush radius in metres (default 64; paints nothing below ~77, use >= 100).")] double? radius = null,
         [System.ComponentModel.Description("Validate only, do not mutate (default false).")] bool dryRun = false,
         CancellationToken cancellationToken = default)
     {
@@ -456,6 +461,30 @@ public sealed class CityTools
         if (!string.IsNullOrWhiteSpace(specialization))
         {
             body["specialization"] = specialization;
+        }
+        if (!string.IsNullOrWhiteSpace(parkType))
+        {
+            body["parkType"] = parkType;
+        }
+        if (!string.IsNullOrWhiteSpace(parkLevel))
+        {
+            body["parkLevel"] = parkLevel;
+        }
+        if (x.HasValue || z.HasValue)
+        {
+            if (!x.HasValue || !z.HasValue)
+            {
+                return new JsonObject
+                {
+                    ["ok"] = false,
+                    ["error"] = "Give both x and z for the brush centre.",
+                };
+            }
+            body["center"] = new Dictionary<string, object?> { ["x"] = x.Value, ["z"] = z.Value };
+        }
+        if (radius.HasValue)
+        {
+            body["radius"] = radius.Value;
         }
         return await Post("/commands/district", body, cancellationToken).ConfigureAwait(false);
     }
