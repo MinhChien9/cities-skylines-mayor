@@ -27,6 +27,7 @@ namespace SkylinesAgentBridge.State
             "landValue", "pollution", "noise", "traffic",
             "police", "fire", "health", "education", "highSchool", "university",
             "entertainment", "transport", "deathCare",
+            "ore", "oil", "forest", "fertility",
         };
 
         /// <summary>The coverage overlays and the resource each reads.</summary>
@@ -66,6 +67,20 @@ namespace SkylinesAgentBridge.State
             {
                 unit = "traffic density, 255 = 100 %";
                 max = PaintTraffic(values, n, west, north, cell);
+            }
+            else if (name == "ore" || name == "oil" || name == "forest" || name == "fertility")
+            {
+                unit = name + " 0-255 (the natural resource grid, 33.75 m cells; 128+ = rich)";
+                for (int r = 0; r < n; r++)
+                {
+                    float z = north - (r + 0.5f) * cell;
+                    for (int c = 0; c < n; c++)
+                    {
+                        int v = ResourceCollector.Sample(name, west + (c + 0.5f) * cell, z);
+                        if (v > max) max = v;
+                        values[r * n + c] = (byte)Mathf.Clamp(v, 0, 255);
+                    }
+                }
             }
             else if (TryCoverage(name, out coverage))
             {

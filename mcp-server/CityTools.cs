@@ -121,6 +121,11 @@ public sealed class CityTools
         return await Post("/commands/unlock-area", body, cancellationToken).ConfigureAwait(false);
     }
 
+    [System.ComponentModel.Description("GET /state/resources. Natural resources per map tile: for ore, oil, forest and fertility the tile mean (0-255), richKm2 (cells at 128+) and richCentre (where to zone that specialised industry), plus ownedRichKm2 over the owned tiles. A Forest/Farming/Oil/Ore district only produces where its buildings stand on the resource. city_map overlay=ore|oil|forest|fertility shows the grid.")]
+    [McpServerTool(Name = "city_resources", Title = "Natural Resources")]
+    public Task<JsonNode?> CityResources(CancellationToken cancellationToken)
+        => Get("/state/resources", cancellationToken);
+
     [System.ComponentModel.Description("GET /state/utilities. City-wide capacity against usage for every capacity-limited service: electricity (kW), water, sewage, garbage, healthcare, deathcare, education (capacity vs need per level), crime, jobs and unemployment. Check it before growing the city: a negative surplus is the next thing to build.")]
     [McpServerTool(Name = "city_utilities", Title = "Utility Capacity")]
     public Task<JsonNode?> CityUtilities(CancellationToken cancellationToken)
