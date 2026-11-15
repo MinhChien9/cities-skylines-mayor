@@ -394,6 +394,14 @@ control points the tool would make:
   pass reports `ObjectCollision` for a road drawn straight across a dead end or across the
   middle of a segment; stopping at those points is what a player does by clicking there,
   and it turns each crossing into a real intersection.
+  Only nodes and crossings **on the road's own level** count (within 4 m of the terrain
+  plus `elevation` there): an elevated road (`elevation >= 4`) passes over a ground road or
+  highway, and a ground road under an elevated one, without a junction. Those segment ids
+  are listed in `crossesWithoutJunction`. `autoSplit: false` builds one leg from start to
+  end; split an overpass into legs yourself to put its pillars (the leg ends) off the
+  carriageways (#99). When a node of such a leg (a pillar: the game puts
+  nodes at the leg ends and divides a long leg evenly) lands on a road it passes over, the
+  hint lists the leg's planned node positions.
 - **Test first, then build.** Every leg runs with `test: true`; nothing is built unless all
   legs pass. `dryRun: true` stops there.
 - **Refusals are the game's own.** `errors` lists `ToolErrors` names (`ObjectCollision`,

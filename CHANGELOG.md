@@ -14,6 +14,11 @@ patch = fixes). Every PR adds its line under `[Unreleased]` with the issue numbe
   mean (`docs/verification.md` §6) (#76).
 
 ### Fixed
+- `build-road` splits a straight road only at nodes and crossings on its own level: an elevated
+  road passes over a highway (and a ground road under an elevated one) instead of being pulled
+  into an at-grade junction, and the response lists them in `crossesWithoutJunction`.
+  When a pillar lands on the road below, the hint lists where the game puts
+  the leg's nodes. `city_build_road` exposes `autoSplit` (#99).
 - `build-road` marks each collision `blocking` (the game's own rule; grown buildings and power
   lines are removed, not blocking), and the hint names the first blocker. A long power line
   is refused for a road or turbine its pylons would hit, never for its length (#66).

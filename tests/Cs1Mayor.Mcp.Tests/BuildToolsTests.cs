@@ -33,6 +33,19 @@ public class BuildToolsTests
         Assert.Null(body["control"]);
         Assert.Null(body["name"]);
         Assert.False(body["dryRun"]!.GetValue<bool>());
+        Assert.True(body["autoSplit"]!.GetValue<bool>());
+    }
+
+    [Fact]
+    public async Task BuildRoad_passes_autoSplit_through()
+    {
+        var handler = StubHandler.Json("{\"ok\":true}");
+
+        await Tools(handler).CityBuildRoad(-1512, -724, -1592, -724, elevation: 14, autoSplit: false, cancellationToken: CancellationToken.None);
+
+        var body = JsonNode.Parse(Assert.Single(handler.Requests).Body!)!;
+        Assert.False(body["autoSplit"]!.GetValue<bool>());
+        Assert.Equal(14, body["elevation"]!.GetValue<double>());
     }
 
     [Fact]
