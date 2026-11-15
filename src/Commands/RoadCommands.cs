@@ -545,14 +545,17 @@ namespace SkylinesAgentBridge.Commands
                 // ending anywhere else on the building - its centre included - leaves a free
                 // node that conducts nothing (found live: a drain pipe stayed "not connected").
                 ushort own = FindBuildingNode(info, point, excludeNode);
-                if (own != 0)
+                ushort node = FindNode(info, point, snapRadius, excludeNode);
+                // An existing node right at the point wins over the building's own node
+                // (a pipe started on a network node that happened to lie inside a new
+                // building ran from the building's node to its centre instead).
+                if (own != 0 && (node == 0 || DistanceXZ(node, point) > DistanceXZ(own, point)))
                 {
                     p.m_node = own;
                     p.m_position = Singleton<NetManager>.instance.m_nodes.m_buffer[own].m_position;
                     return p;
                 }
 
-                ushort node = FindNode(info, point, snapRadius, excludeNode);
                 if (node != 0)
                 {
                     p.m_node = node;
@@ -631,6 +634,14 @@ namespace SkylinesAgentBridge.Commands
                 }
             }
             return found;
+        }
+
+        private static float DistanceXZ(ushort node, Vector3 point)
+        {
+            Vector3 p = Singleton<NetManager>.instance.m_nodes.m_buffer[node].m_position;
+            float dx = p.x - point.x;
+            float dz = p.z - point.z;
+            return Mathf.Sqrt(dx * dx + dz * dz);
         }
 
         private static ushort FindNode(NetInfo info, Vector3 point, float radius, ushort excludeNode)

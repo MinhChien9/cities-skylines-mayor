@@ -217,6 +217,12 @@ Lessons recorded so far:
 - Highway ramps through `city_build_road prefab HighwayRamp` work: a curved off-ramp
   from the southbound carriageway (Grove, west side, right-hand traffic) carried traffic
   at once. A tight control point collides with the highway itself; move it outwards.
+- Placing a water treatment plant on the coast cleared a power-line pylon in its
+  footprint; the `removed` report said so but the caller did not read it. The coast power
+  corridor then fed only through incidental neighbours and later failed: every pumping
+  station and treatment plant lost power and sewage capacity hit 0. Read `removed` after
+  every placement; feed a long utility corridor from a service building, not a
+  neighbourhood.
 - In this build the Water Pumping Station (`Water Intake`) is `ShorelineOrGround` and the
   `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
   pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the
