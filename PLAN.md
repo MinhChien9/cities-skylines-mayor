@@ -252,6 +252,16 @@ Lessons recorded so far:
   in an hour of sweeping. Search with `city_map` first, dry-run a handful.
 - New districts out of reach of transmission lines can be powered locally with wind
   turbines (free-standing): seven turbines brought an unpowered office district back.
+- **Industry → office fixes graduate unemployment, but keep the goods.** Rezoning
+  industry to offices (`zone-segment overwrite`) turns over in a few game months (44 of
+  48 buildings in one block), but converting almost all of it cut industry from 418 to 49
+  buildings and starved 810 shops: ~50 `NoGoods` problems, 33 abandoned. Restored part of
+  it beside the highway. Keep industry roughly in proportion to commercial (it was
+  stable near 418 : 655).
+- Sea pockets where raw drains discharged for years stay polluted long after: two new
+  intakes there raised city water pollution 6 % → 11 %, and a death wave followed (2,063
+  sick). Water towers (groundwater, clean residential area) dilute; removing two of them
+  pushed pollution to 16 %. Eight towers in the north brought it back to 6 %.
 - In this build the Water Pumping Station (`Water Intake`) is `ShorelineOrGround` and the
   `Advanced Wind Turbine` is the offshore `OnWater` model: the bridge accepts an inland
   pumping station and refuses an inland advanced turbine (`WaterNotFound`) because the
