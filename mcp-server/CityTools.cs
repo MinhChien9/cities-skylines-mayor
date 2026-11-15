@@ -83,7 +83,7 @@ public sealed class CityTools
         CancellationToken cancellationToken = default)
         => await Get($"/state/problems?limit={Clamp(limit, 1, 500)}", cancellationToken).ConfigureAwait(false);
 
-    [System.ComponentModel.Description("GET /state/demand. RCI demand values (residential, commercial, workplace).")]
+    [System.ComponentModel.Description("GET /state/demand. RCI demand values (residential, commercial, workplace) and, in formula, why: the smoothed demand vs the tax/policy offset (published = actual + offset), occupied/empty homes, total/vacant jobs, unemployed and homeless citizens, abandoned buildings. Read it when growth stalls.")]
     [McpServerTool(Name = "city_demand", Title = "RCI Demand")]
     public Task<JsonNode?> CityDemand(CancellationToken cancellationToken)
         => Get("/state/demand", cancellationToken);
