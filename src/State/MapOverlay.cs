@@ -26,7 +26,7 @@ namespace SkylinesAgentBridge.State
         {
             "landValue", "pollution", "noise", "traffic",
             "police", "fire", "health", "education", "highSchool", "university",
-            "entertainment", "transport", "deathCare",
+            "entertainment", "transport", "deathCare", "cargo",
             "ore", "oil", "forest", "fertility",
         };
 
@@ -44,6 +44,7 @@ namespace SkylinesAgentBridge.State
                 case "entertainment": resource = ImmaterialResourceManager.Resource.Entertainment; return true;
                 case "transport": resource = ImmaterialResourceManager.Resource.PublicTransport; return true;
                 case "deathCare": resource = ImmaterialResourceManager.Resource.DeathCare; return true;
+                case "cargo": resource = ImmaterialResourceManager.Resource.CargoTransport; return true;
                 default: resource = ImmaterialResourceManager.Resource.None; return false;
             }
         }

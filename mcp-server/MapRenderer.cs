@@ -70,6 +70,7 @@ public static class MapRenderer
             "entertainment" => (230, 60, 170),
             "transport" => (230, 200, 20),
             "deathCare" => (110, 110, 110),
+            "cargo" => (200, 120, 30),
             "ore" => (180, 90, 40),
             "oil" => (25, 25, 35),
             "forest" => (20, 120, 40),
@@ -94,7 +95,7 @@ public static class MapRenderer
     }
 
     private static bool IsCoverage(string? overlay) => overlay is "police" or "fire" or "health" or "education"
-        or "highSchool" or "university" or "entertainment" or "transport" or "deathCare";
+        or "highSchool" or "university" or "entertainment" or "transport" or "deathCare" or "cargo";
 
     private static (byte R, byte G, byte B) Mix((byte R, byte G, byte B) a, (byte R, byte G, byte B) b, double t)
         => ((byte)(a.R + (b.R - a.R) * t), (byte)(a.G + (b.G - a.G) * t), (byte)(a.B + (b.B - a.B) * t));

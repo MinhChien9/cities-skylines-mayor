@@ -23,6 +23,10 @@ patch = fixes). Every PR adds its line under `[Unreleased]` with the issue numbe
   buildings were caused by the launch (#84).
 
 ### Added
+- Cargo for industry: `city_industry.levelUpServices` scores every factory with the game's own
+  level-up formula (cargo counts 5× police) and counts factories without cargo coverage, and
+  `city_map overlay=cargo` shows that coverage. Cargo stations work through their outside
+  connection; CS1 has no cargo lines (#74).
 - `city_industry` (`GET /state/industry`): factory input and output stocks, shops' goods, supply
   problems, industry per shop, a diagnosis and the buildings in trouble (#75).
 - `city_resources` (`GET /state/resources`): ore, oil, forest and fertility per map tile with
